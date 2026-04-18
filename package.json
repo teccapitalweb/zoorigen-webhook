@@ -1,7 +1,7 @@
 {
   "name": "zoorigen-webhook",
-  "version": "1.0.0",
-  "description": "Webhook Shopify → Railway → Firebase para Club VIP Zoorigen",
+  "version": "2.0.0",
+  "description": "Webhook Shopify + Cron de noticias automáticas para Club VIP Zoorigen",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
