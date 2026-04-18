@@ -24,8 +24,9 @@ if (!WEBHOOK_SECRET) {
   process.exit(1);
 }
 
-// Secret para proteger el endpoint de cron (cualquier string largo random)
-const CRON_SECRET = process.env.CRON_SECRET || 'zoorigen-cron-' + Math.random().toString(36);
+// Secret para proteger el endpoint de cron
+// Fijo para que puedas disparar la limpieza manualmente desde el navegador
+const CRON_SECRET = process.env.CRON_SECRET || 'zoorigen-2026-reset';
 
 // ══════════════════════════════════════════════════════════════
 // 3. MAPEO PRODUCTOS SHOPIFY → PLAN
@@ -95,21 +96,45 @@ async function cancelarPlan(email) {
 // ══════════════════════════════════════════════════════════════
 
 // Fuentes RSS de fauna/biodiversidad/conservación
+// Priorizamos fuentes SERIAS y ESPECÍFICAS del sector ambiental
 const RSS_FEEDS = [
-  { name: 'Mongabay Latam', url: 'https://es.mongabay.com/feed/', icon: '🌎' },
-  { name: 'SciDev.Net', url: 'https://www.scidev.net/america-latina/feed/', icon: '🔬' },
-  { name: 'DW Ambiente', url: 'https://rss.dw.com/rdf/rss-sp-eco', icon: '🌱' },
-  { name: 'BBC Mundo Ciencia', url: 'https://feeds.bbci.co.uk/mundo/ciencia_tecnologia/rss.xml', icon: '🧪' }
+  { name: 'Mongabay Latam',         url: 'https://es.mongabay.com/feed/',                           icon: '🌎' },
+  { name: 'Ambientum',              url: 'https://www.ambientum.com/feed/',                         icon: '🌱' },
+  { name: 'National Geographic ES', url: 'https://www.nationalgeographic.com.es/rss/animales',       icon: '🦒' },
+  { name: 'DW Ambiente',            url: 'https://rss.dw.com/rdf/rss-sp-eco',                       icon: '🌿' },
+  { name: 'SciDev Latam',           url: 'https://www.scidev.net/america-latina/feed/',             icon: '🔬' }
 ];
 
-// Palabras clave para filtrar solo noticias relevantes a Zoorigen
-const KEYWORDS = [
-  'fauna', 'silvestre', 'biodiversidad', 'conservaci', 'espec', 'animal',
-  'bosque', 'selva', 'ecosistema', 'tortug', 'abej', 'apicul', 'vete',
-  'zoo', 'jaguar', 'lobo', 'ave', 'rept', 'anfib', 'mamifero', 'mamífero',
-  'extinci', 'hábitat', 'habitat', 'reserva natural', 'manglar', 'arrecife',
-  'serpiente', 'araña', 'insect', 'polinizad', 'ballenas', 'tiburones',
-  'monarca', 'abandon', 'rescat', 'fauna ponzo'
+// Keywords POSITIVAS — la noticia DEBE contener al menos una de estas
+const KEYWORDS_POSITIVAS = [
+  'fauna', 'silvestre', 'biodiversidad', 'conservaci', 'especie',
+  'animal', 'bosque', 'selva', 'ecosistema', 'tortug', 'abej', 'apicul',
+  'veterinar', 'zoo', 'jaguar', 'lobo', 'ave ', 'aves', 'reptil', 'anfib',
+  'mamífero', 'mamifero', 'extinci', 'hábitat', 'habitat', 'reserva natural',
+  'manglar', 'arrecife', 'serpiente', 'araña', 'insect', 'polinizad',
+  'ballena', 'tiburón', 'tiburon', 'monarca', 'rescate de fauna', 'vida silvestre',
+  'mariposa', 'abeja', 'coral', 'ecología', 'ecologia', 'parque nacional',
+  'área natural', 'zoológico', 'refugio', 'endémic', 'endemic', 'pangolín',
+  'felino', 'primate', 'anfibio', 'reptiles', 'murciélago', 'murcielago',
+  'lince', 'oso', 'cóndor', 'condor', 'águila', 'aguila', 'lechuza',
+  'tortuga', 'cocodrilo', 'iguana', 'rana', 'salamandra', 'delfín', 'delfin',
+  'foca', 'lobo marino', 'polinización', 'polinizacion', 'flora y fauna',
+  'reintroducción', 'reintroduccion', 'protección animal', 'maltrato animal',
+  'semarnat', 'conanp', 'uma ', 'cites', 'iucn', 'wwf', 'greenpeace'
+];
+
+// Keywords NEGATIVAS — si la noticia contiene ALGUNA, se descarta aunque tenga positivas
+// Esto evita noticias de política, economía, deportes, etc. que se cuelan por casualidad
+const KEYWORDS_NEGATIVAS = [
+  'trump', 'biden', 'presidente', 'elecci', 'campaña política', 'campaña electoral',
+  'fútbol', 'futbol', 'selección', 'mundial', 'liga', 'champions',
+  'bolsa', 'nasdaq', 'dólar', 'inflación', 'petróleo', 'petroleo',
+  'guerra en', 'bombardeo', 'invasión', 'invasion',
+  'papa', 'vaticano',
+  'netflix', 'disney', 'hollywood', 'actriz', 'actor', 'celebridad',
+  'apple', 'google', 'meta ', 'tesla', 'microsoft',
+  'ciberataque', 'hack', 'criptomoneda', 'bitcoin',
+  'accident', 'muerto', 'muerte', 'asesin', 'homicidio'
 ];
 
 function fetchURL(url) {
@@ -256,7 +281,16 @@ function parseRSSItems(xml, sourceName) {
 
 function isRelevant(item) {
   const haystack = (item.title + ' ' + item.summary).toLowerCase();
-  return KEYWORDS.some(kw => haystack.includes(kw));
+
+  // DEBE contener al menos una keyword positiva (fauna, biodiversidad, etc.)
+  const hasPositive = KEYWORDS_POSITIVAS.some(kw => haystack.includes(kw));
+  if (!hasPositive) return false;
+
+  // NO debe contener keywords negativas (política, deportes, economía, etc.)
+  const hasNegative = KEYWORDS_NEGATIVAS.some(kw => haystack.includes(kw));
+  if (hasNegative) return false;
+
+  return true;
 }
 
 function hashItem(item) {
@@ -459,6 +493,38 @@ app.get('/cron/sync-news', async (req, res) => {
     const result = await syncNews();
     res.json({ success: true, ...result });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- LIMPIEZA TOTAL: Borra TODAS las noticias y vuelve a sincronizar con filtros nuevos ---
+// Úsalo cuando cambies los keywords o la lógica de filtrado
+app.get('/cron/reset-news', async (req, res) => {
+  if (req.query.secret !== CRON_SECRET) {
+    return res.status(401).json({ error: 'Invalid cron secret' });
+  }
+  try {
+    console.log('🧹 LIMPIEZA TOTAL de noticias solicitada');
+
+    // Borrar todas las noticias en lotes de 100
+    let deleted = 0;
+    while (true) {
+      const snap = await db.collection('noticias').limit(100).get();
+      if (snap.empty) break;
+      const batch = db.batch();
+      snap.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      deleted += snap.size;
+      if (snap.size < 100) break;
+    }
+    console.log(`🧹 ${deleted} noticias eliminadas`);
+
+    // Re-sincronizar
+    const result = await syncNews();
+
+    res.json({ success: true, borradas: deleted, ...result });
+  } catch (err) {
+    console.error('Reset error:', err);
     res.status(500).json({ error: err.message });
   }
 });
