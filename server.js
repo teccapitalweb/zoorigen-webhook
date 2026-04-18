@@ -137,29 +137,58 @@ const KEYWORDS_NEGATIVAS = [
   'accident', 'muerto', 'muerte', 'asesin', 'homicidio'
 ];
 
-function fetchURL(url) {
+function fetchURL(url, redirects = 0) {
   return new Promise((resolve, reject) => {
+    if (redirects > 5) return reject(new Error('Too many redirects'));
     const timeout = setTimeout(() => reject(new Error('Timeout')), 12000);
-    https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ZoorigenBot/1.0; +https://zoorigen.com)' } }, (res) => {
+
+    const urlObj = new URL(url);
+    const options = {
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      method: 'GET',
+      headers: {
+        // User-Agent de Chrome real en Windows para evitar bloqueos anti-bot
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Language': 'es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'identity',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0'
+      }
+    };
+
+    const req = https.request(options, (res) => {
       clearTimeout(timeout);
+      // Manejar redirects
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        // Manejar URLs relativas en redirects
         const nextUrl = res.headers.location.startsWith('http')
           ? res.headers.location
           : new URL(res.headers.location, url).href;
-        return fetchURL(nextUrl).then(resolve).catch(reject);
+        return fetchURL(nextUrl, redirects + 1).then(resolve).catch(reject);
+      }
+      // Rechazar respuestas de error
+      if (res.statusCode >= 400) {
+        return reject(new Error(`HTTP ${res.statusCode}`));
       }
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => resolve(data));
-    }).on('error', (err) => { clearTimeout(timeout); reject(err); });
+    });
+    req.on('error', (err) => { clearTimeout(timeout); reject(err); });
+    req.end();
   });
 }
 
 /**
  * Entra a la URL de un artículo y extrae la imagen principal (Open Graph).
  * Es lo mismo que hacen WhatsApp/Facebook al previsualizar un link.
- * Busca en orden: og:image → twitter:image → primera imagen grande del <article>
+ * Busca en orden: og:image → twitter:image → image_src → primera <img> grande.
+ * Si todo falla, usa el servicio de screenshots públicos de Microlink como fallback.
  */
 async function scrapeOgImage(articleUrl) {
   if (!articleUrl || !articleUrl.startsWith('http')) return '';
@@ -167,37 +196,103 @@ async function scrapeOgImage(articleUrl) {
   try {
     const html = await fetchURL(articleUrl);
 
-    // Sólo leer los primeros ~30KB (las metas siempre están en el <head>)
-    const head = html.substring(0, 30000);
+    // Si el HTML es muy corto, probablemente nos bloquearon
+    if (html.length < 500) {
+      console.warn(`    ⚠️  HTML muy corto (${html.length}), usando fallback`);
+      return fallbackImageService(articleUrl);
+    }
 
-    // Prioridad 1: og:image (estándar oficial)
-    const ogMatch = head.match(/<meta[^>]+property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
-                 || head.match(/<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
-    if (ogMatch && ogMatch[1]) return resolveImageUrl(ogMatch[1], articleUrl);
+    // Leer los primeros ~50KB (las metas siempre están en el <head>)
+    const head = html.substring(0, 50000);
 
-    // Prioridad 2: twitter:image
-    const twMatch = head.match(/<meta[^>]+name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i)
-                 || head.match(/<meta[^>]+content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
-    if (twMatch && twMatch[1]) return resolveImageUrl(twMatch[1], articleUrl);
-
-    // Prioridad 3: link rel="image_src"
-    const linkImg = head.match(/<link[^>]+rel=["']image_src["'][^>]*href=["']([^"']+)["']/i);
-    if (linkImg && linkImg[1]) return resolveImageUrl(linkImg[1], articleUrl);
-
-    // Prioridad 4: primera imagen grande en el body
-    // Buscar dentro de <article>, <main> o simplemente en el body
-    const bodyMatch = html.match(/<article[^>]*>([\s\S]{0,20000})/i)
-                   || html.match(/<main[^>]*>([\s\S]{0,20000})/i);
-    if (bodyMatch) {
-      const imgMatch = bodyMatch[1].match(/<img[^>]+src=["']([^"']+)["']/i);
-      if (imgMatch && imgMatch[1] && !imgMatch[1].includes('logo') && !imgMatch[1].includes('avatar')) {
-        return resolveImageUrl(imgMatch[1], articleUrl);
+    // Prioridad 1: og:image — varias combinaciones posibles de orden de atributos
+    const ogPatterns = [
+      /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i,
+      /<meta[^>]+property=["']og:image:url["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+property=["']og:image:secure_url["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+name=["']og:image["'][^>]+content=["']([^"']+)["']/i
+    ];
+    for (const pattern of ogPatterns) {
+      const match = head.match(pattern);
+      if (match && match[1]) {
+        const url = resolveImageUrl(match[1], articleUrl);
+        if (url) return url;
       }
     }
 
-    return '';
+    // Prioridad 2: twitter:image — varias variantes
+    const twPatterns = [
+      /<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i,
+      /<meta[^>]+name=["']twitter:image:src["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+property=["']twitter:image["'][^>]+content=["']([^"']+)["']/i
+    ];
+    for (const pattern of twPatterns) {
+      const match = head.match(pattern);
+      if (match && match[1]) {
+        const url = resolveImageUrl(match[1], articleUrl);
+        if (url) return url;
+      }
+    }
+
+    // Prioridad 3: link rel="image_src"
+    const linkImg = head.match(/<link[^>]+rel=["']image_src["'][^>]+href=["']([^"']+)["']/i);
+    if (linkImg && linkImg[1]) {
+      const url = resolveImageUrl(linkImg[1], articleUrl);
+      if (url) return url;
+    }
+
+    // Prioridad 4: itemprop="image" (schema.org)
+    const itemprop = head.match(/<meta[^>]+itemprop=["']image["'][^>]+content=["']([^"']+)["']/i)
+                  || head.match(/<img[^>]+itemprop=["']image["'][^>]+src=["']([^"']+)["']/i);
+    if (itemprop && itemprop[1]) {
+      const url = resolveImageUrl(itemprop[1], articleUrl);
+      if (url) return url;
+    }
+
+    // Prioridad 5: primera imagen grande dentro del <article>
+    const bodyMatch = html.match(/<article[^>]*>([\s\S]{0,30000})/i)
+                   || html.match(/<main[^>]*>([\s\S]{0,30000})/i)
+                   || html.match(/<div[^>]+class=["'][^"']*(?:content|post|entry)[^"']*["'][^>]*>([\s\S]{0,30000})/i);
+    if (bodyMatch) {
+      const imgs = bodyMatch[1].match(/<img[^>]+>/gi) || [];
+      for (const imgTag of imgs) {
+        const srcMatch = imgTag.match(/src=["']([^"']+)["']/i);
+        if (!srcMatch) continue;
+        const src = srcMatch[1];
+        // Saltar logos, avatares, iconos
+        if (/logo|avatar|icon|emoji|pixel|blank|spacer/i.test(src)) continue;
+        // Saltar imágenes muy pequeñas (tamaño declarado)
+        const width = imgTag.match(/width=["']?(\d+)/i);
+        if (width && parseInt(width[1]) < 200) continue;
+        const url = resolveImageUrl(src, articleUrl);
+        if (url) return url;
+      }
+    }
+
+    // Último recurso: fallback al servicio de screenshots
+    console.warn(`    ⚠️  Sin imagen en meta tags, usando fallback de Microlink`);
+    return fallbackImageService(articleUrl);
+
   } catch (err) {
-    console.warn(`    ⚠️  No se pudo scrapear ${articleUrl}: ${err.message}`);
+    console.warn(`    ⚠️  Error scrapeando ${articleUrl.substring(0, 60)}: ${err.message}`);
+    // Si falló el scraping, usar fallback
+    return fallbackImageService(articleUrl);
+  }
+}
+
+/**
+ * Fallback: usa el servicio público de Microlink que genera un preview
+ * con screenshot de la página. Es gratis y funciona con cualquier URL.
+ * Ref: https://microlink.io/
+ */
+function fallbackImageService(articleUrl) {
+  try {
+    // Microlink obtiene automáticamente la imagen preview de cualquier URL
+    // Funciona porque su infraestructura SÍ puede scrapear sin bloqueos
+    return `https://api.microlink.io/?url=${encodeURIComponent(articleUrl)}&screenshot=true&embed=screenshot.url`;
+  } catch {
     return '';
   }
 }
