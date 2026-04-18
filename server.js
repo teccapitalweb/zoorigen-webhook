@@ -114,25 +114,96 @@ const KEYWORDS = [
 
 function fetchURL(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 ZoorigenBot/1.0' } }, (res) => {
+    const timeout = setTimeout(() => reject(new Error('Timeout')), 12000);
+    https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ZoorigenBot/1.0; +https://zoorigen.com)' } }, (res) => {
+      clearTimeout(timeout);
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return fetchURL(res.headers.location).then(resolve).catch(reject);
+        // Manejar URLs relativas en redirects
+        const nextUrl = res.headers.location.startsWith('http')
+          ? res.headers.location
+          : new URL(res.headers.location, url).href;
+        return fetchURL(nextUrl).then(resolve).catch(reject);
       }
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => resolve(data));
-    }).on('error', reject);
+    }).on('error', (err) => { clearTimeout(timeout); reject(err); });
   });
+}
+
+/**
+ * Entra a la URL de un artículo y extrae la imagen principal (Open Graph).
+ * Es lo mismo que hacen WhatsApp/Facebook al previsualizar un link.
+ * Busca en orden: og:image → twitter:image → primera imagen grande del <article>
+ */
+async function scrapeOgImage(articleUrl) {
+  if (!articleUrl || !articleUrl.startsWith('http')) return '';
+
+  try {
+    const html = await fetchURL(articleUrl);
+
+    // Sólo leer los primeros ~30KB (las metas siempre están en el <head>)
+    const head = html.substring(0, 30000);
+
+    // Prioridad 1: og:image (estándar oficial)
+    const ogMatch = head.match(/<meta[^>]+property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+                 || head.match(/<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+    if (ogMatch && ogMatch[1]) return resolveImageUrl(ogMatch[1], articleUrl);
+
+    // Prioridad 2: twitter:image
+    const twMatch = head.match(/<meta[^>]+name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i)
+                 || head.match(/<meta[^>]+content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
+    if (twMatch && twMatch[1]) return resolveImageUrl(twMatch[1], articleUrl);
+
+    // Prioridad 3: link rel="image_src"
+    const linkImg = head.match(/<link[^>]+rel=["']image_src["'][^>]*href=["']([^"']+)["']/i);
+    if (linkImg && linkImg[1]) return resolveImageUrl(linkImg[1], articleUrl);
+
+    // Prioridad 4: primera imagen grande en el body
+    // Buscar dentro de <article>, <main> o simplemente en el body
+    const bodyMatch = html.match(/<article[^>]*>([\s\S]{0,20000})/i)
+                   || html.match(/<main[^>]*>([\s\S]{0,20000})/i);
+    if (bodyMatch) {
+      const imgMatch = bodyMatch[1].match(/<img[^>]+src=["']([^"']+)["']/i);
+      if (imgMatch && imgMatch[1] && !imgMatch[1].includes('logo') && !imgMatch[1].includes('avatar')) {
+        return resolveImageUrl(imgMatch[1], articleUrl);
+      }
+    }
+
+    return '';
+  } catch (err) {
+    console.warn(`    ⚠️  No se pudo scrapear ${articleUrl}: ${err.message}`);
+    return '';
+  }
+}
+
+// Convierte rutas relativas (/img.jpg) en absolutas (https://sitio.com/img.jpg)
+function resolveImageUrl(imgUrl, baseUrl) {
+  if (!imgUrl) return '';
+  if (imgUrl.startsWith('http://') || imgUrl.startsWith('https://')) return imgUrl;
+  if (imgUrl.startsWith('//')) return 'https:' + imgUrl;
+  try {
+    return new URL(imgUrl, baseUrl).href;
+  } catch { return ''; }
 }
 
 function parseRSSItems(xml, sourceName) {
   const items = [];
-  // Regex simple para extraer items de RSS (suficiente para feeds estándar)
+  // Regex para extraer items de RSS (suficiente para feeds estándar)
   const itemRegex = /<item>([\s\S]*?)<\/item>/g;
   const titleRegex = /<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/;
   const linkRegex = /<link>([\s\S]*?)<\/link>/;
   const descRegex = /<description>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/;
   const dateRegex = /<pubDate>([\s\S]*?)<\/pubDate>/;
+
+  // Varias estrategias para encontrar la imagen de la noticia
+  const mediaContentRegex   = /<media:content[^>]*url="([^"]+)"[^>]*>/i;
+  const mediaThumbnailRegex = /<media:thumbnail[^>]*url="([^"]+)"[^>]*>/i;
+  const enclosureRegex      = /<enclosure[^>]*url="([^"]+)"[^>]*type="image[^"]*"[^>]*>/i;
+  const enclosureRegex2     = /<enclosure[^>]*type="image[^"]*"[^>]*url="([^"]+)"[^>]*>/i;
+  const itunesImageRegex    = /<itunes:image[^>]*href="([^"]+)"[^>]*\/>/i;
+  const imgInContentRegex   = /<img[^>]+src=["']([^"']+)["']/i;
+  const contentEncodedRegex = /<content:encoded>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/content:encoded>/;
 
   let match;
   while ((match = itemRegex.exec(xml)) !== null) {
@@ -145,11 +216,38 @@ function parseRSSItems(xml, sourceName) {
     // Limpiar HTML del description
     const cleanDesc = desc.replace(/<[^>]+>/g, '').replace(/&[^;]+;/g, ' ').trim().substring(0, 220);
 
+    // Intentar extraer imagen por varias vías (prioridad: media > enclosure > itunes > img en content)
+    let image = '';
+    const contentEncoded = (block.match(contentEncodedRegex) || [])[1] || '';
+    const m_media   = block.match(mediaContentRegex);
+    const m_thumb   = block.match(mediaThumbnailRegex);
+    const m_encl    = block.match(enclosureRegex);
+    const m_encl2   = block.match(enclosureRegex2);
+    const m_itunes  = block.match(itunesImageRegex);
+    const m_imgDesc = desc.match(imgInContentRegex);
+    const m_imgCont = contentEncoded.match(imgInContentRegex);
+
+    if (m_media)         image = m_media[1];
+    else if (m_thumb)    image = m_thumb[1];
+    else if (m_encl)     image = m_encl[1];
+    else if (m_encl2)    image = m_encl2[1];
+    else if (m_itunes)   image = m_itunes[1];
+    else if (m_imgCont)  image = m_imgCont[1];
+    else if (m_imgDesc)  image = m_imgDesc[1];
+
+    // Convertir fecha a ISO estándar
+    let pubDate = new Date().toISOString();
+    if (date) {
+      const parsed = new Date(date);
+      if (!isNaN(parsed.getTime())) pubDate = parsed.toISOString();
+    }
+
     items.push({
       title: title.trim(),
       link: link.trim(),
       summary: cleanDesc,
-      date: date.trim(),
+      image: image.trim(),
+      pubDate: pubDate,
       source: sourceName
     });
   }
@@ -170,6 +268,7 @@ async function syncNews() {
   console.log('🗞️  Iniciando sync de noticias...');
   let totalNuevas = 0;
   let totalDescartadas = 0;
+  let totalActualizadas = 0;
 
   for (const feed of RSS_FEEDS) {
     try {
@@ -185,8 +284,35 @@ async function syncNews() {
         const id = hashItem(item);
         const docRef = db.collection('noticias').doc(id);
         const exists = await docRef.get();
-        if (exists.exists) { totalDescartadas++; continue; }
 
+        // Si ya existe y YA tiene imagen, skip
+        if (exists.exists && exists.data().image) {
+          totalDescartadas++;
+          continue;
+        }
+
+        // Si no tiene imagen del RSS, entrar a la página y extraerla (Open Graph)
+        if (!item.image && item.link) {
+          console.log(`     🖼️  Scrapeando imagen de ${item.link.substring(0, 60)}...`);
+          item.image = await scrapeOgImage(item.link);
+          if (item.image) console.log(`        ✅ Imagen encontrada`);
+        }
+
+        // Si existe pero sin imagen → solo actualizar la imagen
+        if (exists.exists) {
+          if (item.image) {
+            await docRef.update({
+              image: item.image,
+              pubDate: item.pubDate,
+              summary: item.summary
+            });
+            totalActualizadas++;
+          }
+          totalDescartadas++;
+          continue;
+        }
+
+        // Nueva noticia
         await docRef.set({
           ...item,
           icon: feed.icon,
@@ -216,8 +342,8 @@ async function syncNews() {
     console.warn('⚠️ No se pudo limpiar (puede que falte un índice en Firestore, no es crítico)');
   }
 
-  console.log(`✅ Sync completo: ${totalNuevas} nuevas, ${totalDescartadas} ya existían`);
-  return { nuevas: totalNuevas, existentes: totalDescartadas };
+  console.log(`✅ Sync completo: ${totalNuevas} nuevas, ${totalActualizadas} con imagen actualizada, ${totalDescartadas - totalActualizadas} ya completas`);
+  return { nuevas: totalNuevas, actualizadas: totalActualizadas, existentes: totalDescartadas };
 }
 
 // ══════════════════════════════════════════════════════════════
