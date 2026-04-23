@@ -13,15 +13,20 @@ const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const PORT = process.env.PORT || 3000;
 
-// Firebase Admin
+// Firebase Admin — usa FIREBASE_SERVICE_ACCOUNT (JSON completo)
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
+  let credential;
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    credential = admin.credential.cert(serviceAccount);
+  } else {
+    credential = admin.credential.cert({
       projectId: process.env.FIREBASE_PROJECT_ID || 'club-zoorigen',
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-    }),
-  });
+    });
+  }
+  admin.initializeApp({ credential });
 }
 const db = admin.firestore();
 
