@@ -1,16 +1,15 @@
 {
-  "name": "zoorigen-webhook",
+  "name": "zoorigen-stripe-webhook",
   "version": "2.0.0",
-  "description": "Webhook Shopify + Cron de noticias automáticas para Club VIP Zoorigen",
+  "description": "Webhook Stripe para Club VIP Zoorigen",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "firebase-admin": "^12.0.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "firebase-admin": "^12.0.0",
+    "stripe": "^17.0.0"
   }
 }
