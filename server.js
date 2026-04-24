@@ -81,6 +81,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         // Actualizar Firestore — escribir en AMBAS colecciones
         const dataPlan = {
           planActivo: true,
+          planCancelado: false,
           tipoPlan: planType,
           fechaActivacion: admin.firestore.FieldValue.serverTimestamp(),
           fechaExpiracion: admin.firestore.Timestamp.fromDate(expDate),
@@ -96,9 +97,11 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         // Colección "miembros" (sistema VIP del club)
         await db.collection('miembros').doc(firebaseUID).set({
           planActivo: true,
+          planCancelado: false,
           planTipo: planType,
           planInicio: admin.firestore.FieldValue.serverTimestamp(),
           planVence: admin.firestore.Timestamp.fromDate(expDate),
+          planStatus: 'active',
           stripeCustomerId: customerId,
           stripeSubscriptionId: subscriptionId,
           email: email,
