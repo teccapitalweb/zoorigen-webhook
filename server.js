@@ -213,16 +213,16 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
   res.json({ received: true });
 });
 
-// ── Endpoint para crear Checkout Session (llamado desde el frontend) ──
+// ── Endpoint para crear Checkout Session (redirect o embedded) ──
 app.post('/create-checkout-session', express.json(), async (req, res) => {
   try {
-    const { priceId, firebaseUID, email, planType } = req.body;
+    const { priceId, firebaseUID, email, planType, embedded } = req.body;
 
     if (!priceId || !firebaseUID || !email) {
       return res.status(400).json({ error: 'Faltan datos: priceId, firebaseUID, email' });
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionConfig = {
       payment_method_types: ['card'],
       mode: 'subscription',
       customer_email: email,
@@ -231,11 +231,25 @@ app.post('/create-checkout-session', express.json(), async (req, res) => {
         firebaseUID: firebaseUID,
         planType: planType || 'mensual',
       },
-      success_url: 'https://www.zoorigen.com/pages/club-gracias.html?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'https://www.zoorigen.com/pages/club-suscripcion.html?cancelado=true',
-    });
+    };
 
-    res.json({ url: session.url });
+    if (embedded) {
+      // Embedded Checkout — formulario dentro de la página
+      sessionConfig.ui_mode = 'embedded';
+      sessionConfig.return_url = 'https://www.zoorigen.com/pages/club-gracias.html?session_id={CHECKOUT_SESSION_ID}';
+    } else {
+      // Redirect Checkout — redirige a Stripe
+      sessionConfig.success_url = 'https://www.zoorigen.com/pages/club-gracias.html?session_id={CHECKOUT_SESSION_ID}';
+      sessionConfig.cancel_url = 'https://www.zoorigen.com/pages/club-suscripcion.html?cancelado=true';
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
+
+    if (embedded) {
+      res.json({ clientSecret: session.client_secret });
+    } else {
+      res.json({ url: session.url });
+    }
   } catch (error) {
     console.error('❌ Error creando sesión:', error);
     res.status(500).json({ error: error.message });
