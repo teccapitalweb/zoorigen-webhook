@@ -9,8 +9,12 @@ const Stripe = require('stripe');
 const admin = require('firebase-admin');
 
 // ── Config ──────────────────────────────────────────────
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
-const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+const rawKey = (process.env.STRIPE_SECRET_KEY || '').trim().replace(/^["']|["']$/g, '');
+console.log('🔑 Stripe key starts with:', rawKey.substring(0, 12) + '...');
+console.log('🔑 Stripe key ends with:', '...' + rawKey.substring(rawKey.length - 8));
+console.log('🔑 Stripe key length:', rawKey.length);
+const stripe = Stripe(rawKey);
+const WEBHOOK_SECRET = (process.env.STRIPE_WEBHOOK_SECRET || '').trim().replace(/^["']|["']$/g, '');
 const PORT = process.env.PORT || 3000;
 
 // Firebase Admin — usa FIREBASE_SERVICE_ACCOUNT (JSON completo)
