@@ -312,6 +312,51 @@ app.post('/cancel-subscription', express.json(), async (req, res) => {
   }
 });
 
+// ── Endpoint para reactivar suscripción ──
+app.post('/reactivate-subscription', express.json(), async (req, res) => {
+  try {
+    const { firebaseUID } = req.body;
+    if (!firebaseUID) {
+      return res.status(400).json({ error: 'Falta firebaseUID' });
+    }
+
+    let subscriptionId = null;
+    const miembroDoc = await db.collection('miembros').doc(firebaseUID).get();
+    if (miembroDoc.exists && miembroDoc.data().stripeSubscriptionId) {
+      subscriptionId = miembroDoc.data().stripeSubscriptionId;
+    } else {
+      const usuarioDoc = await db.collection('usuarios').doc(firebaseUID).get();
+      if (usuarioDoc.exists && usuarioDoc.data().stripeSubscriptionId) {
+        subscriptionId = usuarioDoc.data().stripeSubscriptionId;
+      }
+    }
+
+    if (!subscriptionId) {
+      return res.status(404).json({ error: 'No se encontró suscripción' });
+    }
+
+    await stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: false,
+    });
+
+    await db.collection('miembros').doc(firebaseUID).update({
+      planActivo: true,
+      planCancelado: false,
+      reanudadoEn: admin.firestore.FieldValue.serverTimestamp(),
+    }).catch(() => {});
+    await db.collection('usuarios').doc(firebaseUID).update({
+      planActivo: true,
+      planCancelado: false,
+    }).catch(() => {});
+
+    console.log(`✅ Suscripción reactivada para ${firebaseUID}`);
+    res.json({ success: true, message: 'Suscripción reactivada exitosamente.' });
+  } catch (error) {
+    console.error('❌ Error reactivando:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Webhook Stripe corriendo en puerto ${PORT}`);
 });
