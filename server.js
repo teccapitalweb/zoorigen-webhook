@@ -79,7 +79,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         }
 
         // Actualizar Firestore
-        await db.collection('usuarios').doc(firebaseUID).set({
+        await db.collection('miembros').doc(firebaseUID).set({
           planActivo: true,
           tipoPlan: planType,
           fechaActivacion: admin.firestore.FieldValue.serverTimestamp(),
@@ -104,7 +104,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         }
 
         // Buscar usuario por subscriptionId
-        const snapshot = await db.collection('usuarios')
+        const snapshot = await db.collection('miembros')
           .where('stripeSubscriptionId', '==', subscriptionId)
           .limit(1)
           .get();
@@ -141,7 +141,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         const subscription = event.data.object;
         const subscriptionId = subscription.id;
 
-        const snapshot = await db.collection('usuarios')
+        const snapshot = await db.collection('miembros')
           .where('stripeSubscriptionId', '==', subscriptionId)
           .limit(1)
           .get();
