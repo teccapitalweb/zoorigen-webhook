@@ -265,6 +265,53 @@ app.get('/', (req, res) => {
   });
 });
 
+// ── Endpoint para cancelar suscripción ──
+app.post('/cancel-subscription', express.json(), async (req, res) => {
+  try {
+    const { firebaseUID } = req.body;
+    if (!firebaseUID) {
+      return res.status(400).json({ error: 'Falta firebaseUID' });
+    }
+
+    // Buscar subscriptionId en miembros o usuarios
+    let subscriptionId = null;
+    const miembroDoc = await db.collection('miembros').doc(firebaseUID).get();
+    if (miembroDoc.exists && miembroDoc.data().stripeSubscriptionId) {
+      subscriptionId = miembroDoc.data().stripeSubscriptionId;
+    } else {
+      const usuarioDoc = await db.collection('usuarios').doc(firebaseUID).get();
+      if (usuarioDoc.exists && usuarioDoc.data().stripeSubscriptionId) {
+        subscriptionId = usuarioDoc.data().stripeSubscriptionId;
+      }
+    }
+
+    if (!subscriptionId) {
+      return res.status(404).json({ error: 'No se encontró suscripción activa' });
+    }
+
+    // Cancelar en Stripe (al final del periodo)
+    await stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: true,
+    });
+
+    // Actualizar Firestore
+    await db.collection('miembros').doc(firebaseUID).update({
+      planCancelado: true,
+      canceladoEn: admin.firestore.FieldValue.serverTimestamp(),
+    }).catch(() => {});
+    await db.collection('usuarios').doc(firebaseUID).update({
+      planCancelado: true,
+      fechaCancelacion: admin.firestore.FieldValue.serverTimestamp(),
+    }).catch(() => {});
+
+    console.log(`🚫 Suscripción cancelada (al final del periodo) para ${firebaseUID}`);
+    res.json({ success: true, message: 'Suscripción cancelada. Mantienes acceso hasta el final del periodo pagado.' });
+  } catch (error) {
+    console.error('❌ Error cancelando:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Webhook Stripe corriendo en puerto ${PORT}`);
 });
