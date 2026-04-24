@@ -78,12 +78,27 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
           expDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
         }
 
-        // Actualizar Firestore
-        await db.collection('miembros').doc(firebaseUID).set({
+        // Actualizar Firestore — escribir en AMBAS colecciones
+        const dataPlan = {
           planActivo: true,
           tipoPlan: planType,
           fechaActivacion: admin.firestore.FieldValue.serverTimestamp(),
           fechaExpiracion: admin.firestore.Timestamp.fromDate(expDate),
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: subscriptionId,
+          email: email,
+          ultimoPago: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        // Colección "usuarios" (datos de Stripe)
+        await db.collection('usuarios').doc(firebaseUID).set(dataPlan, { merge: true });
+
+        // Colección "miembros" (sistema VIP del club)
+        await db.collection('miembros').doc(firebaseUID).set({
+          planActivo: true,
+          planTipo: planType,
+          planInicio: admin.firestore.FieldValue.serverTimestamp(),
+          planVence: admin.firestore.Timestamp.fromDate(expDate),
           stripeCustomerId: customerId,
           stripeSubscriptionId: subscriptionId,
           email: email,
@@ -103,11 +118,18 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
           break;
         }
 
-        // Buscar usuario por subscriptionId
-        const snapshot = await db.collection('miembros')
+        // Buscar usuario por subscriptionId en ambas colecciones
+        let snapshot = await db.collection('usuarios')
           .where('stripeSubscriptionId', '==', subscriptionId)
           .limit(1)
           .get();
+
+        if (snapshot.empty) {
+          snapshot = await db.collection('miembros')
+            .where('stripeSubscriptionId', '==', subscriptionId)
+            .limit(1)
+            .get();
+        }
 
         if (snapshot.empty) {
           console.error('❌ No se encontró usuario con subscription:', subscriptionId);
@@ -116,7 +138,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
         const userDoc = snapshot.docs[0];
         const userData = userDoc.data();
-        const planType = userData.tipoPlan || 'mensual';
+        const planType = userData.tipoPlan || userData.planTipo || 'mensual';
 
         const now = new Date();
         let expDate;
@@ -126,11 +148,18 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
           expDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
         }
 
-        await userDoc.ref.update({
+        const uid = userDoc.id;
+        // Actualizar ambas colecciones
+        await db.collection('usuarios').doc(uid).update({
           planActivo: true,
           fechaExpiracion: admin.firestore.Timestamp.fromDate(expDate),
           ultimoPago: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        }).catch(() => {});
+        await db.collection('miembros').doc(uid).update({
+          planActivo: true,
+          planVence: admin.firestore.Timestamp.fromDate(expDate),
+          ultimoPago: admin.firestore.FieldValue.serverTimestamp(),
+        }).catch(() => {});
 
         console.log(`🔄 Renovación exitosa para ${userDoc.id} (${planType})`);
         break;
@@ -141,21 +170,34 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         const subscription = event.data.object;
         const subscriptionId = subscription.id;
 
-        const snapshot = await db.collection('miembros')
+        let snapCancel = await db.collection('usuarios')
           .where('stripeSubscriptionId', '==', subscriptionId)
           .limit(1)
           .get();
 
-        if (snapshot.empty) {
+        if (snapCancel.empty) {
+          snapCancel = await db.collection('miembros')
+            .where('stripeSubscriptionId', '==', subscriptionId)
+            .limit(1)
+            .get();
+        }
+
+        if (snapCancel.empty) {
           console.error('❌ No se encontró usuario para cancelar:', subscriptionId);
           break;
         }
 
-        const userDoc = snapshot.docs[0];
-        await userDoc.ref.update({
+        const cancelUid = snapCancel.docs[0].id;
+        // Cancelar en ambas colecciones
+        await db.collection('usuarios').doc(cancelUid).update({
           planActivo: false,
           fechaCancelacion: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        }).catch(() => {});
+        await db.collection('miembros').doc(cancelUid).update({
+          planActivo: false,
+          planCancelado: true,
+          canceladoEn: admin.firestore.FieldValue.serverTimestamp(),
+        }).catch(() => {});
 
         console.log(`🚫 Suscripción cancelada para ${userDoc.id}`);
         break;
