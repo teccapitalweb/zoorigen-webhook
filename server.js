@@ -230,6 +230,8 @@ app.post('/create-checkout-session', express.json(), async (req, res) => {
       mode: 'subscription',
       customer_email: email,
       line_items: [{ price: priceId, quantity: 1 }],
+      // Desactiva Stripe Link (pago directo con tarjeta, sin verificación por teléfono)
+      wallet_options: { link: { display: 'never' } },
       metadata: {
         firebaseUID: firebaseUID,
         planType: planType || 'mensual',
@@ -246,7 +248,7 @@ app.post('/create-checkout-session', express.json(), async (req, res) => {
       sessionConfig.cancel_url = 'https://www.zoorigen.com/pages/club-suscripcion.html?cancelado=true';
     }
 
-    const session = await stripe.checkout.sessions.create(sessionConfig);
+    const session = await stripe.checkout.sessions.create(sessionConfig, { apiVersion: '2025-04-30.basil' });
 
     if (embedded) {
       res.json({ clientSecret: session.client_secret });
