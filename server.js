@@ -7,6 +7,8 @@ const express = require('express');
 const cors = require('cors');
 const Stripe = require('stripe');
 const admin = require('firebase-admin');
+const crypto = require('crypto');
+const bunnyCatalog = require('./data/zoorigen-bunny-catalog.json');
 
 // ── Config ──────────────────────────────────────────────
 const rawKey = (process.env.STRIPE_SECRET_KEY || '').trim().replace(/^["']|["']$/g, '');
@@ -16,6 +18,12 @@ console.log('🔑 Stripe key length:', rawKey.length);
 const stripe = Stripe(rawKey);
 const WEBHOOK_SECRET = (process.env.STRIPE_WEBHOOK_SECRET || '').trim().replace(/^["']|["']$/g, '');
 const PORT = process.env.PORT || 3000;
+const BUNNY_STREAM_LIBRARY_ID = String(process.env.BUNNY_STREAM_LIBRARY_ID || '731751').trim();
+const BUNNY_TOKEN_AUTH_KEY = (process.env.BUNNY_TOKEN_AUTH_KEY || '').trim().replace(/^["']|["']$/g, '');
+const BUNNY_TOKEN_TTL_SECONDS = Math.min(900, Math.max(60, Number(process.env.BUNNY_TOKEN_TTL_SECONDS) || 300));
+const BUNNY_VIDEO_IDS = new Set(
+  bunnyCatalog.flatMap(course => (course.lecciones || []).map(lesson => String(lesson.videoId || ''))).filter(Boolean)
+);
 
 // Firebase Admin — usa FIREBASE_SERVICE_ACCOUNT (JSON completo)
 if (!admin.apps.length) {
@@ -33,6 +41,7 @@ if (!admin.apps.length) {
   admin.initializeApp({ credential });
 }
 const db = admin.firestore();
+const auth = admin.auth();
 
 const app = express();
 
@@ -261,6 +270,73 @@ app.post('/create-checkout-session', express.json(), async (req, res) => {
   }
 });
 
+function fechaComoDate(valor) {
+  if (!valor) return null;
+  if (typeof valor.toDate === 'function') return valor.toDate();
+  if (valor._seconds) return new Date(valor._seconds * 1000);
+  const fecha = new Date(valor);
+  return Number.isNaN(fecha.getTime()) ? null : fecha;
+}
+
+function tieneAccesoVigente(data = {}) {
+  const vence = fechaComoDate(data.planVence || data.fechaExpiracion);
+  const noHaVencido = !vence || vence.getTime() > Date.now();
+  if (data.planStatus === 'cancelled_active') return Boolean(vence && noHaVencido);
+  if (data.planStatus === 'active') return noHaVencido;
+  return data.planActivo === true && noHaVencido;
+}
+
+// Reproductor privado: el navegador nunca recibe la clave secreta de Bunny.
+app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    if (!BUNNY_TOKEN_AUTH_KEY || !BUNNY_STREAM_LIBRARY_ID) {
+      return res.status(503).json({ error: 'Bunny Stream no está configurado en Railway' });
+    }
+
+    const videoId = String(req.body?.videoId || '').trim();
+    if (!videoId || !BUNNY_VIDEO_IDS.has(videoId)) {
+      return res.status(404).json({ error: 'Video no reconocido en el catálogo de Zoorigen' });
+    }
+
+    const authorization = String(req.headers.authorization || '');
+    const match = authorization.match(/^Bearer\s+(.+)$/i);
+    if (!match) return res.status(401).json({ error: 'Sesión requerida' });
+
+    let decoded;
+    try {
+      decoded = await auth.verifyIdToken(match[1]);
+    } catch (_) {
+      return res.status(401).json({ error: 'Sesión inválida o vencida' });
+    }
+
+    const [adminDoc, miembroDoc, usuarioDoc] = await Promise.all([
+      db.collection('admins').doc(decoded.uid).get(),
+      db.collection('miembros').doc(decoded.uid).get(),
+      db.collection('usuarios').doc(decoded.uid).get()
+    ]);
+    const esAdmin = adminDoc.exists;
+    const tienePlan = (miembroDoc.exists && tieneAccesoVigente(miembroDoc.data())) ||
+      (usuarioDoc.exists && tieneAccesoVigente(usuarioDoc.data()));
+
+    if (!esAdmin && !tienePlan) {
+      return res.status(403).json({ error: 'Necesitas una membresía activa para ver esta clase' });
+    }
+
+    const expires = Math.floor(Date.now() / 1000) + BUNNY_TOKEN_TTL_SECONDS;
+    const token = crypto
+      .createHash('sha256')
+      .update(BUNNY_TOKEN_AUTH_KEY + videoId + expires)
+      .digest('hex');
+    const embedUrl = `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${videoId}?token=${token}&expires=${expires}`;
+
+    return res.json({ embedUrl, expires });
+  } catch (error) {
+    console.error('[Bunny embed-token]', error);
+    return res.status(500).json({ error: 'No se pudo preparar la reproducción' });
+  }
+});
+
 // ── Health check ──
 app.get('/', (req, res) => {
   res.json({
@@ -364,4 +440,5 @@ app.post('/reactivate-subscription', express.json(), async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Webhook Stripe corriendo en puerto ${PORT}`);
+  console.log(`🐰 Bunny Stream: ${BUNNY_VIDEO_IDS.size} videos permitidos · biblioteca ${BUNNY_STREAM_LIBRARY_ID}`);
 });

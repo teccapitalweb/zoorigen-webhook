@@ -1,0 +1,444 @@
+[
+  {
+    "title": "Biología, Ecología y Conservación de Tiburones y Rayas",
+    "lecciones": [
+      {
+        "num": 1,
+        "titulo": "Clase 1",
+        "provider": "bunny",
+        "videoId": "befd1641-850a-4099-88a8-047a1badc703"
+      },
+      {
+        "num": 2,
+        "titulo": "Clase 2",
+        "provider": "bunny",
+        "videoId": "b9b4a50a-9cec-45c2-b66f-e965eb97aebe"
+      },
+      {
+        "num": 3,
+        "titulo": "Clase 3",
+        "provider": "bunny",
+        "videoId": "541320f8-54bd-4e3e-9c67-fc8fb6bd11cf"
+      }
+    ]
+  },
+  {
+    "title": "Entrenamiento Básico Canino Obediencia y Comportamiento",
+    "lecciones": [
+      {
+        "num": 1,
+        "titulo": "Clase 1",
+        "provider": "bunny",
+        "videoId": "32bb0482-e005-45b3-bcd4-1a4abd058855"
+      },
+      {
+        "num": 2,
+        "titulo": "Clase 2",
+        "provider": "bunny",
+        "videoId": "60e817e7-5e43-4bea-82c2-e71b73cc9125"
+      },
+      {
+        "num": 3,
+        "titulo": "Clase 3",
+        "provider": "bunny",
+        "videoId": "e2706fff-612e-4cfc-b892-ebbdc60cda8a"
+      },
+      {
+        "num": 4,
+        "titulo": "Clase 4",
+        "provider": "bunny",
+        "videoId": "4aee0702-1f35-4553-8725-e45c2997d50a"
+      }
+    ]
+  },
+  {
+    "title": "Etología Aplicada en Fauna Silvestre bajo Cuidado Humano",
+    "lecciones": [
+      {
+        "num": 1,
+        "titulo": "Clase 1",
+        "provider": "bunny",
+        "videoId": "a15897f3-cc15-4307-8e3c-3643c586e500"
+      },
+      {
+        "num": 2,
+        "titulo": "Clase 2",
+        "provider": "bunny",
+        "videoId": "b016c877-4e84-4cf7-b4c8-b953e3414fb8"
+      },
+      {
+        "num": 3,
+        "titulo": "Clase 3",
+        "provider": "bunny",
+        "videoId": "010821ca-47a3-44a5-b6e8-4b7fd5e5cea4"
+      }
+    ]
+  },
+  {
+    "title": "Fauna Ponzoñosa de México Identificación y Primeros Auxilios",
+    "lecciones": [
+      {
+        "num": 1,
+        "titulo": "Clase 1",
+        "provider": "bunny",
+        "videoId": "f0e91455-d3d7-45ca-bc34-ac62dffa601a"
+      },
+      {
+        "num": 2,
+        "titulo": "Clase 2",
+        "provider": "bunny",
+        "videoId": "c98fdeaa-ceaa-4f16-88b0-0f2d7df56159"
+      },
+      {
+        "num": 3,
+        "titulo": "Clase 3",
+        "provider": "bunny",
+        "videoId": "3a83f418-5efd-4d36-bfe0-91d2006a9d89"
+      }
+    ]
+  },
+  {
+    "title": "FOTOTRAMPEO Y ANÁLISIS DE DATOS PARA EL MONITOREO DE MAMÍFEROS SILVESTRES",
+    "lecciones": [
+      {
+        "num": 1,
+        "titulo": "Clase 1",
+        "provider": "bunny",
+        "videoId": "9a19011c-fb05-4430-9200-f0fbb5cbf035"
+      },
+      {
+        "num": 2,
+        "titulo": "Clase 2",
+        "provider": "bunny",
+        "videoId": "7abbb452-9074-4e99-8a12-1a9b90e636e9"
+      },
+      {
+        "num": 3,
+        "titulo": "Clase 3",
+        "provider": "bunny",
+        "videoId": "1c8b6574-257a-4765-966d-a12d0bbd792a"
+      },
+      {
+        "num": 4,
+        "titulo": "Clase 4",
+        "provider": "bunny",
+        "videoId": "c30c3be7-5e0a-4ad4-ae40-f6a1ad20fe15"
+      },
+      {
+        "num": 5,
+        "titulo": "Clase 5",
+        "provider": "bunny",
+        "videoId": "521d49b1-227d-497b-984a-aea8c72d773e"
+      }
+    ]
+  },
+  {
+    "title": "Introducción a la Entomología Forense y Biodiversidad de Artrópodos",
+    "lecciones": [
+      {
+        "num": 1,
+        "titulo": "Clase 1",
+        "provider": "bunny",
+        "videoId": "b8b62973-039e-4d67-a249-0ef4779521c2"
+      },
+      {
+        "num": 2,
+        "titulo": "Clase 2",
+        "provider": "bunny",
+        "videoId": "fd6f2391-fcf6-48e7-ad30-89e5af02d115"
+      },
+      {
+        "num": 3,
+        "titulo": "Clase 3",
+        "provider": "bunny",
+        "videoId": "fbd8f5b3-f0f0-4eaf-bfe6-bc53e482b16b"
+      }
+    ]
+  },
+  {
+    "title": "Legislación y Manejo de Fauna Silvestre en UMAs y Zoológicos",
+    "lecciones": [
+      {
+        "num": 1,
+        "titulo": "Clase 1",
+        "provider": "bunny",
+        "videoId": "722e41e0-0bff-47dd-b267-94b1c7b29fd2"
+      },
+      {
+        "num": 2,
+        "titulo": "Clase 2",
+        "provider": "bunny",
+        "videoId": "4f0256ed-477b-4e97-90d4-f2f0487d854b"
+      },
+      {
+        "num": 3,
+        "titulo": "Clase 3",
+        "provider": "bunny",
+        "videoId": "c0b0667c-d587-4525-a326-92075975f09e"
+      },
+      {
+        "num": 4,
+        "titulo": "Clase 4",
+        "provider": "bunny",
+        "videoId": "88c196a1-3fd3-4a62-b902-e4cededbf462"
+      },
+      {
+        "num": 5,
+        "titulo": "Clase 5",
+        "provider": "bunny",
+        "videoId": "92e414e5-407f-417a-a4a7-3f1047a11e6b"
+      }
+    ]
+  },
+  {
+    "title": "Manejo y Rehabilitación de Aves Rapaces en Cautiverio",
+    "lecciones": [
+      {
+        "num": 1,
+        "titulo": "Clase 1",
+        "provider": "bunny",
+        "videoId": "bb0cf448-b1b6-4cc7-9a63-705898a370e1"
+      },
+      {
+        "num": 2,
+        "titulo": "Clase 2",
+        "provider": "bunny",
+        "videoId": "e0acf03c-c49c-4e4b-b933-ef84ade9a3a6"
+      },
+      {
+        "num": 3,
+        "titulo": "Clase 3",
+        "provider": "bunny",
+        "videoId": "1cef605b-519d-49a7-b91a-82282849df18"
+      },
+      {
+        "num": 4,
+        "titulo": "Clase 4",
+        "provider": "bunny",
+        "videoId": "8d5e1b55-166e-483d-89ff-c3e8d8ef931a"
+      },
+      {
+        "num": 5,
+        "titulo": "Clase 5",
+        "provider": "bunny",
+        "videoId": "ee89acb1-ec44-4015-9dc4-7176398d280e"
+      }
+    ]
+  },
+  {
+    "title": "Manifiesto de Impacto Ambiental Elaboración, Evaluación y Gestión",
+    "lecciones": [
+      {
+        "num": 1,
+        "titulo": "Clase 1",
+        "provider": "bunny",
+        "videoId": "a06cb125-4b83-4e7e-81d0-85c658b5e7d9"
+      },
+      {
+        "num": 2,
+        "titulo": "Clase 2",
+        "provider": "bunny",
+        "videoId": "09711b1d-31e8-4a0d-be46-a8846a5d5817"
+      },
+      {
+        "num": 3,
+        "titulo": "Clase 3",
+        "provider": "bunny",
+        "videoId": "358a013a-f999-4df9-8b5b-52ef5348ed4e"
+      }
+    ]
+  },
+  {
+    "title": "Mariposarios Manejo, Conservación y Educación Ambiental",
+    "lecciones": [
+      {
+        "num": 1,
+        "titulo": "Clase 1",
+        "provider": "bunny",
+        "videoId": "a5f93340-30dd-4f2f-9b6b-c6f269aa2720"
+      },
+      {
+        "num": 2,
+        "titulo": "Clase 2",
+        "provider": "bunny",
+        "videoId": "7ced1971-a0d5-4b47-bed4-13e91d979dc3"
+      },
+      {
+        "num": 3,
+        "titulo": "Clase 3",
+        "provider": "bunny",
+        "videoId": "855e9b26-8dfc-4c74-b7f3-ce5e0ce7421b"
+      },
+      {
+        "num": 4,
+        "titulo": "Clase 4",
+        "provider": "bunny",
+        "videoId": "64be4c76-6c6e-42bf-a7ce-24c4be5cf1c3"
+      },
+      {
+        "num": 5,
+        "titulo": "Clase 5",
+        "provider": "bunny",
+        "videoId": "2495060e-09d8-4ff1-ae44-91b715dfb7db"
+      }
+    ]
+  },
+  {
+    "title": "Monitoreo y Conservación de Aves como Bioindicadoras",
+    "lecciones": [
+      {
+        "num": 1,
+        "titulo": "Clase 1",
+        "provider": "bunny",
+        "videoId": "887c25c2-7d52-445f-a7c3-ba445f1329f1"
+      },
+      {
+        "num": 2,
+        "titulo": "Clase 2",
+        "provider": "bunny",
+        "videoId": "06e4442c-220b-4081-b6c7-07cdcdc8573f"
+      },
+      {
+        "num": 3,
+        "titulo": "Clase 3",
+        "provider": "bunny",
+        "videoId": "77db49f3-eee3-4c13-9d02-82541bf440c0"
+      },
+      {
+        "num": 4,
+        "titulo": "Clase 4",
+        "provider": "bunny",
+        "videoId": "2feb4624-60c6-4eb0-a5f5-a7680bc71450"
+      },
+      {
+        "num": 5,
+        "titulo": "Clase 5",
+        "provider": "bunny",
+        "videoId": "e427bfd8-e124-457d-b11a-f1553796f567"
+      }
+    ]
+  },
+  {
+    "title": "Monitoreo y Conservación de Felinos Silvestres en México",
+    "lecciones": [
+      {
+        "num": 1,
+        "titulo": "Clase 1",
+        "provider": "bunny",
+        "videoId": "6b0bc713-b461-49e2-a209-d1873d49a93d"
+      },
+      {
+        "num": 2,
+        "titulo": "Clase 2",
+        "provider": "bunny",
+        "videoId": "b5ae558f-b669-4330-8da0-b09043a717df"
+      },
+      {
+        "num": 3,
+        "titulo": "Clase 3",
+        "provider": "bunny",
+        "videoId": "aa5c0c50-24e4-4266-9e0c-866bb44e7c21"
+      },
+      {
+        "num": 4,
+        "titulo": "Clase 4",
+        "provider": "bunny",
+        "videoId": "068605ff-b258-4c3b-80b3-4883f5c6b2eb"
+      },
+      {
+        "num": 5,
+        "titulo": "Clase 5",
+        "provider": "bunny",
+        "videoId": "b1064767-4c31-4d5a-bd2b-51d668d1e857"
+      }
+    ]
+  },
+  {
+    "title": "Rescate y Reubicación de Fauna Silvestre en Proyectos de Impacto Ambiental",
+    "lecciones": [
+      {
+        "num": 1,
+        "titulo": "Clase 1",
+        "provider": "bunny",
+        "videoId": "a9147baa-71af-45f6-8ed9-52150d994aac"
+      },
+      {
+        "num": 2,
+        "titulo": "Clase 2",
+        "provider": "bunny",
+        "videoId": "b5e46577-be7e-474e-b735-b3f62e202dd0"
+      },
+      {
+        "num": 3,
+        "titulo": "Clase 3",
+        "provider": "bunny",
+        "videoId": "39457dcd-dac7-40f0-bfce-b1119d3c9b80"
+      },
+      {
+        "num": 4,
+        "titulo": "Clase 4",
+        "provider": "bunny",
+        "videoId": "e87dc7f7-a10b-4cd6-9f7b-fc1012560306"
+      },
+      {
+        "num": 5,
+        "titulo": "Clase 5",
+        "provider": "bunny",
+        "videoId": "8da37d59-bb0b-48b9-9881-0598c3b9b3e1"
+      }
+    ]
+  },
+  {
+    "title": "Ultrasonografía y Diagnóstico por Imagen en Mamíferos Silvestres y Exóticos",
+    "lecciones": [
+      {
+        "num": 1,
+        "titulo": "Clase 1",
+        "provider": "bunny",
+        "videoId": "cfcb842e-63c1-4620-93c2-6e8a6f325bcb"
+      },
+      {
+        "num": 2,
+        "titulo": "Clase 2",
+        "provider": "bunny",
+        "videoId": "df40066e-cdd3-477f-b136-1260eaa2ca32"
+      },
+      {
+        "num": 3,
+        "titulo": "Clase 3",
+        "provider": "bunny",
+        "videoId": "addab9cd-1e9f-48ce-ab90-1ac0d075f705"
+      },
+      {
+        "num": 4,
+        "titulo": "Clase 4",
+        "provider": "bunny",
+        "videoId": "f7f0eb57-02de-4650-8e66-69ff22caf04a"
+      }
+    ]
+  },
+  {
+    "title": "Vigilancia y control de vectores en Zoonosis y salud pública",
+    "lecciones": [
+      {
+        "num": 1,
+        "titulo": "Clase 1",
+        "provider": "bunny",
+        "videoId": "12e34282-4dcb-49bf-940b-99b57ec7a943"
+      },
+      {
+        "num": 2,
+        "titulo": "Clase 2",
+        "provider": "bunny",
+        "videoId": "fce2a059-6e7c-4018-8121-970c12d7de05"
+      },
+      {
+        "num": 3,
+        "titulo": "Clase 3",
+        "provider": "bunny",
+        "videoId": "88147abe-5b2c-4d1e-91f3-b88a079e8c1b"
+      }
+    ]
+  }
+]
+
