@@ -24,6 +24,8 @@ const BUNNY_TOKEN_TTL_SECONDS = Math.min(900, Math.max(60, Number(process.env.BU
 const BUNNY_VIDEO_IDS = new Set(
   bunnyCatalog.flatMap(course => (course.lecciones || []).map(lesson => String(lesson.videoId || ''))).filter(Boolean)
 );
+// Única clase gratuita de toda la plataforma: primera clase del primer curso.
+const BUNNY_FREE_VIDEO_IDS = new Set(['befd1641-850a-4099-88a8-047a1badc703']);
 
 // Firebase Admin — usa FIREBASE_SERVICE_ACCOUNT (JSON completo)
 if (!admin.apps.length) {
@@ -318,8 +320,9 @@ app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
     const esAdmin = adminDoc.exists;
     const tienePlan = (miembroDoc.exists && tieneAccesoVigente(miembroDoc.data())) ||
       (usuarioDoc.exists && tieneAccesoVigente(usuarioDoc.data()));
+    const esClaseGratis = BUNNY_FREE_VIDEO_IDS.has(videoId);
 
-    if (!esAdmin && !tienePlan) {
+    if (!esClaseGratis && !esAdmin && !tienePlan) {
       return res.status(403).json({ error: 'Necesitas una membresía activa para ver esta clase' });
     }
 
@@ -330,7 +333,7 @@ app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
       .digest('hex');
     const embedUrl = `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${videoId}?token=${token}&expires=${expires}`;
 
-    return res.json({ embedUrl, expires });
+    return res.json({ embedUrl, expires, freePreview: esClaseGratis });
   } catch (error) {
     console.error('[Bunny embed-token]', error);
     return res.status(500).json({ error: 'No se pudo preparar la reproducción' });
@@ -441,4 +444,5 @@ app.post('/reactivate-subscription', express.json(), async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Webhook Stripe corriendo en puerto ${PORT}`);
   console.log(`🐰 Bunny Stream: ${BUNNY_VIDEO_IDS.size} videos permitidos · biblioteca ${BUNNY_STREAM_LIBRARY_ID}`);
+  console.log(`🎁 Vista gratuita: ${BUNNY_FREE_VIDEO_IDS.size} clase`);
 });
