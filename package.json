@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "audit:memberships": "node audit-memberships.js"
+    "audit:memberships": "node audit-memberships.js",
+    "sync:memberships": "node sync-memberships.js",
+    "normalize:membership-dates": "node normalize-membership-dates.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
