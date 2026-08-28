@@ -12,12 +12,13 @@ const bunnyCatalog = require('./data/zoorigen-bunny-catalog.json');
 
 // ── Config ──────────────────────────────────────────────
 const rawKey = (process.env.STRIPE_SECRET_KEY || '').trim().replace(/^["']|["']$/g, '');
-console.log('🔑 Stripe key starts with:', rawKey.substring(0, 12) + '...');
-console.log('🔑 Stripe key ends with:', '...' + rawKey.substring(rawKey.length - 8));
-console.log('🔑 Stripe key length:', rawKey.length);
 const stripe = Stripe(rawKey);
 const WEBHOOK_SECRET = (process.env.STRIPE_WEBHOOK_SECRET || '').trim().replace(/^["']|["']$/g, '');
 const PORT = process.env.PORT || 3000;
+const STRIPE_PRICES = Object.freeze({
+  mensual: String(process.env.STRIPE_PRICE_MENSUAL || 'price_1TRcJnA7If2CqXs9dMBGRmDF').trim(),
+  anual: String(process.env.STRIPE_PRICE_ANUAL || 'price_1TRcJlA7If2CqXs97WQNmKFq').trim(),
+});
 const BUNNY_STREAM_LIBRARY_ID = String(process.env.BUNNY_STREAM_LIBRARY_ID || '731751').trim();
 const BUNNY_TOKEN_AUTH_KEY = (process.env.BUNNY_TOKEN_AUTH_KEY || '').trim().replace(/^["']|["']$/g, '');
 const BUNNY_TOKEN_TTL_SECONDS = Math.min(900, Math.max(60, Number(process.env.BUNNY_TOKEN_TTL_SECONDS) || 300));
@@ -50,6 +51,132 @@ const app = express();
 // ── CORS para el frontend ──
 app.use(cors());
 
+function unixComoTimestamp(valor) {
+  const segundos = Number(valor);
+  return Number.isFinite(segundos) && segundos > 0
+    ? admin.firestore.Timestamp.fromMillis(segundos * 1000)
+    : null;
+}
+
+function idDeReferencia(valor) {
+  return typeof valor === 'string' ? valor : (valor && valor.id) || null;
+}
+
+function subscriptionIdDeInvoice(invoice = {}) {
+  return idDeReferencia(invoice.subscription) ||
+    idDeReferencia(invoice.parent?.subscription_details?.subscription);
+}
+
+function periodoFinDeSubscription(subscription = {}) {
+  return unixComoTimestamp(subscription.current_period_end) ||
+    unixComoTimestamp(subscription.items?.data?.[0]?.current_period_end) ||
+    unixComoTimestamp(subscription.cancel_at) ||
+    unixComoTimestamp(subscription.ended_at);
+}
+
+function planDeSubscription(subscription = {}, fallback = 'mensual') {
+  const priceId = idDeReferencia(subscription.items?.data?.[0]?.price);
+  if (priceId === STRIPE_PRICES.anual) return 'anual';
+  if (priceId === STRIPE_PRICES.mensual) return 'mensual';
+  return subscription.metadata?.planType === 'anual' ? 'anual' : fallback;
+}
+
+function estadoDeSubscription(subscription = {}) {
+  const planVence = periodoFinDeSubscription(subscription);
+  const vigente = planVence && planVence.toMillis() > Date.now();
+  const cobrando = subscription.status === 'active' || subscription.status === 'trialing';
+  if (cobrando && vigente && subscription.cancel_at_period_end) return 'cancelled_active';
+  if (cobrando && vigente) return 'active';
+  if (subscription.status === 'past_due' || subscription.status === 'unpaid' || subscription.status === 'incomplete') return 'past_due';
+  return 'expired';
+}
+
+function subscriptionPerteneceAUid(subscription = {}, firebaseUID) {
+  const uidMetadata = subscription.metadata?.firebaseUID;
+  return !uidMetadata || uidMetadata === firebaseUID;
+}
+
+async function buscarUidPorSubscription(subscriptionId) {
+  for (const collectionName of ['miembros', 'usuarios']) {
+    const snapshot = await db.collection(collectionName)
+      .where('stripeSubscriptionId', '==', subscriptionId)
+      .limit(1)
+      .get();
+    if (!snapshot.empty) return snapshot.docs[0].id;
+  }
+  return null;
+}
+
+async function sincronizarSubscription(firebaseUID, subscription, options = {}) {
+  if (!firebaseUID) throw new Error('No se encontró el UID de Firebase para la suscripción');
+  const subscriptionId = idDeReferencia(subscription);
+  const customerId = idDeReferencia(subscription.customer);
+  const planTipo = planDeSubscription(subscription, options.planType || 'mensual');
+  const planVence = periodoFinDeSubscription(subscription);
+  const planStatus = estadoDeSubscription(subscription);
+  const planActivo = planStatus === 'active' || planStatus === 'cancelled_active';
+  const planCancelado = planStatus === 'cancelled_active' || planStatus === 'expired';
+  const pagoConfirmado = options.pagoConfirmado === true;
+
+  const miembro = {
+    planActivo,
+    planCancelado,
+    planTipo,
+    planStatus,
+    stripeCustomerId: customerId,
+    stripeSubscriptionId: subscriptionId,
+    stripeSubscriptionStatus: subscription.status || null,
+    actualizadoDesdeStripe: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  const usuario = {
+    planActivo,
+    planCancelado,
+    tipoPlan: planTipo,
+    planStatus,
+    stripeCustomerId: customerId,
+    stripeSubscriptionId: subscriptionId,
+    stripeSubscriptionStatus: subscription.status || null,
+    actualizadoDesdeStripe: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  if (planVence) {
+    miembro.planVence = planVence;
+    usuario.fechaExpiracion = planVence;
+  }
+  if (options.email) {
+    miembro.email = options.email;
+    usuario.email = options.email;
+  }
+  if (options.nuevaSuscripcion) {
+    miembro.planInicio = admin.firestore.FieldValue.serverTimestamp();
+    usuario.fechaActivacion = admin.firestore.FieldValue.serverTimestamp();
+  }
+  if (pagoConfirmado) {
+    miembro.ultimoPago = admin.firestore.FieldValue.serverTimestamp();
+    usuario.ultimoPago = admin.firestore.FieldValue.serverTimestamp();
+  }
+
+  const batch = db.batch();
+  batch.set(db.collection('miembros').doc(firebaseUID), miembro, { merge: true });
+  batch.set(db.collection('usuarios').doc(firebaseUID), usuario, { merge: true });
+  await batch.commit();
+  return { planStatus, planActivo, planVence };
+}
+
+async function autenticarFirebase(req, res) {
+  const authorization = String(req.headers.authorization || '');
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  if (!match) {
+    res.status(401).json({ error: 'Sesión requerida' });
+    return null;
+  }
+  try {
+    return await auth.verifyIdToken(match[1]);
+  } catch (_) {
+    res.status(401).json({ error: 'Sesión inválida o vencida' });
+    return null;
+  }
+}
+
 // ── STRIPE WEBHOOK (necesita body RAW para verificar firma) ──
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   let event;
@@ -72,148 +199,72 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         const firebaseUID = session.metadata?.firebaseUID;
         const email = session.customer_email || session.customer_details?.email;
         const planType = session.metadata?.planType || 'mensual';
-        const customerId = session.customer;
-        const subscriptionId = session.subscription;
-
-        if (!firebaseUID) {
-          console.error('❌ No firebaseUID en metadata');
+        const subscriptionId = idDeReferencia(session.subscription);
+        if (!firebaseUID || !subscriptionId) throw new Error('Checkout sin firebaseUID o subscriptionId');
+        if (session.payment_status !== 'paid') {
+          console.warn(`Pago no confirmado para checkout ${session.id}: ${session.payment_status}`);
           break;
         }
 
-        // Calcular fecha de expiración
-        const now = new Date();
-        let expDate;
-        if (planType === 'anual') {
-          expDate = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
-        } else {
-          expDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
-        }
-
-        // Actualizar Firestore — escribir en AMBAS colecciones
-        const dataPlan = {
-          planActivo: true,
-          planCancelado: false,
-          tipoPlan: planType,
-          fechaActivacion: admin.firestore.FieldValue.serverTimestamp(),
-          fechaExpiracion: admin.firestore.Timestamp.fromDate(expDate),
-          stripeCustomerId: customerId,
-          stripeSubscriptionId: subscriptionId,
-          email: email,
-          ultimoPago: admin.firestore.FieldValue.serverTimestamp(),
-        };
-
-        // Colección "usuarios" (datos de Stripe)
-        await db.collection('usuarios').doc(firebaseUID).set(dataPlan, { merge: true });
-
-        // Colección "miembros" (sistema VIP del club)
-        await db.collection('miembros').doc(firebaseUID).set({
-          planActivo: true,
-          planCancelado: false,
-          planTipo: planType,
-          planInicio: admin.firestore.FieldValue.serverTimestamp(),
-          planVence: admin.firestore.Timestamp.fromDate(expDate),
-          planStatus: 'active',
-          stripeCustomerId: customerId,
-          stripeSubscriptionId: subscriptionId,
-          email: email,
-          ultimoPago: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-
-        console.log(`🎉 Plan ${planType} activado para ${firebaseUID} (${email})`);
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const resultado = await sincronizarSubscription(firebaseUID, subscription, {
+          email,
+          planType,
+          nuevaSuscripcion: true,
+          pagoConfirmado: true,
+        });
+        if (!resultado.planActivo) throw new Error(`La suscripción ${subscriptionId} no quedó activa (${subscription.status})`);
+        console.log(`🎉 Plan ${planType} activado para ${firebaseUID}`);
         break;
       }
 
       // ── RENOVACIÓN AUTOMÁTICA ──
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object;
-        const subscriptionId = invoice.subscription;
-
-        if (!subscriptionId || invoice.billing_reason === 'subscription_create') {
-          break;
-        }
-
-        // Buscar usuario por subscriptionId en ambas colecciones
-        let snapshot = await db.collection('usuarios')
-          .where('stripeSubscriptionId', '==', subscriptionId)
-          .limit(1)
-          .get();
-
-        if (snapshot.empty) {
-          snapshot = await db.collection('miembros')
-            .where('stripeSubscriptionId', '==', subscriptionId)
-            .limit(1)
-            .get();
-        }
-
-        if (snapshot.empty) {
-          console.error('❌ No se encontró usuario con subscription:', subscriptionId);
-          break;
-        }
-
-        const userDoc = snapshot.docs[0];
-        const userData = userDoc.data();
-        const planType = userData.tipoPlan || userData.planTipo || 'mensual';
-
-        const now = new Date();
-        let expDate;
-        if (planType === 'anual') {
-          expDate = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
-        } else {
-          expDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
-        }
-
-        const uid = userDoc.id;
-        // Actualizar ambas colecciones
-        await db.collection('usuarios').doc(uid).update({
-          planActivo: true,
-          fechaExpiracion: admin.firestore.Timestamp.fromDate(expDate),
-          ultimoPago: admin.firestore.FieldValue.serverTimestamp(),
-        }).catch(() => {});
-        await db.collection('miembros').doc(uid).update({
-          planActivo: true,
-          planVence: admin.firestore.Timestamp.fromDate(expDate),
-          ultimoPago: admin.firestore.FieldValue.serverTimestamp(),
-        }).catch(() => {});
-
-        console.log(`🔄 Renovación exitosa para ${userDoc.id} (${planType})`);
+        const subscriptionId = subscriptionIdDeInvoice(invoice);
+        if (!subscriptionId || invoice.billing_reason === 'subscription_create') break;
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const firebaseUID = subscription.metadata?.firebaseUID || await buscarUidPorSubscription(subscriptionId);
+        if (!firebaseUID) throw new Error(`No se encontró miembro para la suscripción ${subscriptionId}`);
+        await sincronizarSubscription(firebaseUID, subscription, { pagoConfirmado: true });
+        console.log(`🔄 Renovación exitosa para ${firebaseUID}`);
         break;
       }
 
-      // ── CANCELACIÓN ──
+      // ── PAGO FALLIDO → suspender hasta que Stripe confirme un cobro ──
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object;
+        const subscriptionId = subscriptionIdDeInvoice(invoice);
+        if (!subscriptionId) break;
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const firebaseUID = subscription.metadata?.firebaseUID || await buscarUidPorSubscription(subscriptionId);
+        if (!firebaseUID) throw new Error(`No se encontró miembro para el pago fallido ${subscriptionId}`);
+        await sincronizarSubscription(firebaseUID, { ...subscription, status: 'past_due' });
+        console.log(`⚠️ Membresía suspendida por pago fallido para ${firebaseUID}`);
+        break;
+      }
+
+      // ── CAMBIO DE ESTADO / CANCELACIÓN AL FINAL DEL PERIODO ──
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object;
+        const firebaseUID = subscription.metadata?.firebaseUID || await buscarUidPorSubscription(subscription.id);
+        if (!firebaseUID) throw new Error(`No se encontró miembro para la suscripción ${subscription.id}`);
+        await sincronizarSubscription(firebaseUID, subscription);
+        console.log(`🔁 Suscripción sincronizada para ${firebaseUID}: ${subscription.status}`);
+        break;
+      }
+
+      // ── CANCELACIÓN DEFINITIVA ──
       case 'customer.subscription.deleted': {
         const subscription = event.data.object;
-        const subscriptionId = subscription.id;
-
-        let snapCancel = await db.collection('usuarios')
-          .where('stripeSubscriptionId', '==', subscriptionId)
-          .limit(1)
-          .get();
-
-        if (snapCancel.empty) {
-          snapCancel = await db.collection('miembros')
-            .where('stripeSubscriptionId', '==', subscriptionId)
-            .limit(1)
-            .get();
-        }
-
-        if (snapCancel.empty) {
-          console.error('❌ No se encontró usuario para cancelar:', subscriptionId);
-          break;
-        }
-
-        const cancelUid = snapCancel.docs[0].id;
-        // Cancelar en ambas colecciones
-        await db.collection('usuarios').doc(cancelUid).update({
-          planActivo: false,
-          fechaCancelacion: admin.firestore.FieldValue.serverTimestamp(),
-        }).catch(() => {});
-        await db.collection('miembros').doc(cancelUid).update({
-          planActivo: false,
-          planCancelado: true,
-          canceladoEn: admin.firestore.FieldValue.serverTimestamp(),
-        }).catch(() => {});
-
-        console.log(`🚫 Suscripción cancelada para ${userDoc.id}`);
+        const firebaseUID = subscription.metadata?.firebaseUID || await buscarUidPorSubscription(subscription.id);
+        if (!firebaseUID) throw new Error(`No se encontró miembro para cancelar ${subscription.id}`);
+        await sincronizarSubscription(firebaseUID, { ...subscription, status: 'canceled' });
+        await Promise.all([
+          db.collection('miembros').doc(firebaseUID).set({ canceladoEn: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }),
+          db.collection('usuarios').doc(firebaseUID).set({ fechaCancelacion: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }),
+        ]);
+        console.log(`🚫 Suscripción cancelada para ${firebaseUID}`);
         break;
       }
 
@@ -222,18 +273,41 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     }
   } catch (error) {
     console.error('❌ Error procesando evento:', error);
+    // Stripe reintentará el webhook. Nunca confirmar un evento que no se guardó.
+    return res.status(500).json({ received: false });
   }
 
-  res.json({ received: true });
+  return res.json({ received: true });
 });
 
 // ── Endpoint para crear Checkout Session (redirect o embedded) ──
 app.post('/create-checkout-session', express.json(), async (req, res) => {
   try {
-    const { priceId, firebaseUID, email, planType, embedded } = req.body;
+    const decoded = await autenticarFirebase(req, res);
+    if (!decoded) return;
+    const { embedded } = req.body;
+    const planType = req.body.planType === 'anual' ? 'anual' : 'mensual';
+    const priceId = STRIPE_PRICES[planType];
+    const firebaseUID = decoded.uid;
+    const email = decoded.email;
+    if (!email) return res.status(400).json({ error: 'Tu cuenta no tiene correo electrónico' });
 
-    if (!priceId || !firebaseUID || !email) {
-      return res.status(400).json({ error: 'Faltan datos: priceId, firebaseUID, email' });
+    // Evita cobros duplicados cuando ya hay una suscripción vigente en Stripe.
+    const miembroDoc = await db.collection('miembros').doc(firebaseUID).get();
+    const subscriptionIdActual = miembroDoc.data()?.stripeSubscriptionId;
+    if (subscriptionIdActual) {
+      try {
+        const actual = await stripe.subscriptions.retrieve(subscriptionIdActual);
+        if (!subscriptionPerteneceAUid(actual, firebaseUID)) {
+          return res.status(403).json({ error: 'La suscripción guardada no pertenece a esta cuenta' });
+        }
+        if (estadoDeSubscription(actual) === 'active' || estadoDeSubscription(actual) === 'cancelled_active') {
+          return res.status(409).json({ error: 'Ya tienes una membresía vigente; no se generó otro cobro.' });
+        }
+      } catch (error) {
+        if (error?.code !== 'resource_missing') throw error;
+        // Las referencias del sistema anterior no existen en la cuenta Stripe actual.
+      }
     }
 
     const sessionConfig = {
@@ -245,7 +319,10 @@ app.post('/create-checkout-session', express.json(), async (req, res) => {
       wallet_options: { link: { display: 'never' } },
       metadata: {
         firebaseUID: firebaseUID,
-        planType: planType || 'mensual',
+        planType,
+      },
+      subscription_data: {
+        metadata: { firebaseUID, planType },
       },
     };
 
@@ -282,7 +359,8 @@ function fechaComoDate(valor) {
 
 function tieneAccesoVigente(data = {}) {
   const vence = fechaComoDate(data.planVence || data.fechaExpiracion);
-  const noHaVencido = !vence || vence.getTime() > Date.now();
+  const noHaVencido = Boolean(vence && vence.getTime() > Date.now());
+  if (['past_due', 'unpaid', 'incomplete', 'expired', 'cancelled', 'pending_payment'].includes(data.planStatus)) return false;
   if (data.planStatus === 'cancelled_active') return Boolean(vence && noHaVencido);
   if (data.planStatus === 'active') return noHaVencido;
   return data.planActivo === true && noHaVencido;
@@ -317,7 +395,7 @@ app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
       db.collection('miembros').doc(decoded.uid).get(),
       db.collection('usuarios').doc(decoded.uid).get()
     ]);
-    const esAdmin = adminDoc.exists;
+    const esAdmin = adminDoc.exists || miembroDoc.data()?.role === 'admin';
     const tienePlan = (miembroDoc.exists && tieneAccesoVigente(miembroDoc.data())) ||
       (usuarioDoc.exists && tieneAccesoVigente(usuarioDoc.data()));
     const esClaseGratis = BUNNY_FREE_VIDEO_IDS.has(videoId);
@@ -340,11 +418,61 @@ app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
   }
 });
 
+// Verificación bajo demanda: Stripe es la fuente de verdad para suscripciones Stripe.
+app.post('/verify-membership', express.json(), async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    const decoded = await autenticarFirebase(req, res);
+    if (!decoded) return;
+    const miembroDoc = await db.collection('miembros').doc(decoded.uid).get();
+    const miembro = miembroDoc.exists ? miembroDoc.data() : {};
+    const subscriptionId = miembro.stripeSubscriptionId;
+
+    if (!subscriptionId) {
+      const active = tieneAccesoVigente(miembro);
+      return res.json({
+        active,
+        status: active ? (miembro.planCancelado ? 'cancelled_active' : 'active') : 'expired',
+        source: miembro.activadoManualmente ? 'manual' : (miembro.shopifyOrderId ? 'shopify' : 'firestore'),
+        expiresAt: fechaComoDate(miembro.planVence)?.toISOString() || null,
+        verifiedWithStripe: false,
+      });
+    }
+
+    try {
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      if (!subscriptionPerteneceAUid(subscription, decoded.uid)) {
+        return res.status(403).json({ error: 'La suscripción no pertenece a esta cuenta' });
+      }
+      const resultado = await sincronizarSubscription(decoded.uid, subscription);
+      return res.json({
+        active: resultado.planActivo,
+        status: resultado.planStatus,
+        source: 'stripe',
+        expiresAt: resultado.planVence ? resultado.planVence.toDate().toISOString() : null,
+        verifiedWithStripe: true,
+      });
+    } catch (error) {
+      if (error?.code === 'resource_missing') {
+        return res.status(409).json({
+          error: 'Esta suscripción pertenece al sistema de cobro anterior y requiere revisión de soporte.',
+          code: 'historical_subscription',
+        });
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error('❌ Error verificando membresía:', error);
+    return res.status(500).json({ error: 'No se pudo verificar la membresía' });
+  }
+});
+
 // ── Health check ──
 app.get('/', (req, res) => {
   res.json({
     status: 'OK',
     service: 'Club VIP Zoorigen — Stripe Webhook',
+    version: 'membership-sync-2026-08-28',
     timestamp: new Date().toISOString(),
   });
 });
@@ -352,10 +480,9 @@ app.get('/', (req, res) => {
 // ── Endpoint para cancelar suscripción ──
 app.post('/cancel-subscription', express.json(), async (req, res) => {
   try {
-    const { firebaseUID } = req.body;
-    if (!firebaseUID) {
-      return res.status(400).json({ error: 'Falta firebaseUID' });
-    }
+    const decoded = await autenticarFirebase(req, res);
+    if (!decoded) return;
+    const firebaseUID = decoded.uid;
 
     // Buscar subscriptionId en miembros o usuarios
     let subscriptionId = null;
@@ -373,23 +500,28 @@ app.post('/cancel-subscription', express.json(), async (req, res) => {
       return res.status(404).json({ error: 'No se encontró suscripción activa' });
     }
 
+    const subscriptionActual = await stripe.subscriptions.retrieve(subscriptionId);
+    if (!subscriptionPerteneceAUid(subscriptionActual, firebaseUID)) {
+      return res.status(403).json({ error: 'La suscripción no pertenece a esta cuenta' });
+    }
+
     // Cancelar en Stripe (al final del periodo)
-    await stripe.subscriptions.update(subscriptionId, {
+    const subscription = await stripe.subscriptions.update(subscriptionId, {
       cancel_at_period_end: true,
     });
 
-    // Actualizar Firestore
-    await db.collection('miembros').doc(firebaseUID).update({
-      planCancelado: true,
-      canceladoEn: admin.firestore.FieldValue.serverTimestamp(),
-    }).catch(() => {});
-    await db.collection('usuarios').doc(firebaseUID).update({
-      planCancelado: true,
-      fechaCancelacion: admin.firestore.FieldValue.serverTimestamp(),
-    }).catch(() => {});
+    const resultado = await sincronizarSubscription(firebaseUID, subscription);
+    await Promise.all([
+      db.collection('miembros').doc(firebaseUID).set({ canceladoEn: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }),
+      db.collection('usuarios').doc(firebaseUID).set({ fechaCancelacion: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }),
+    ]);
 
     console.log(`🚫 Suscripción cancelada (al final del periodo) para ${firebaseUID}`);
-    res.json({ success: true, message: 'Suscripción cancelada. Mantienes acceso hasta el final del periodo pagado.' });
+    res.json({
+      success: true,
+      message: 'Suscripción cancelada. Mantienes acceso hasta el final del periodo pagado.',
+      accesoHasta: resultado.planVence ? resultado.planVence.toDate().toISOString() : null,
+    });
   } catch (error) {
     console.error('❌ Error cancelando:', error);
     res.status(500).json({ error: error.message });
@@ -399,10 +531,9 @@ app.post('/cancel-subscription', express.json(), async (req, res) => {
 // ── Endpoint para reactivar suscripción ──
 app.post('/reactivate-subscription', express.json(), async (req, res) => {
   try {
-    const { firebaseUID } = req.body;
-    if (!firebaseUID) {
-      return res.status(400).json({ error: 'Falta firebaseUID' });
-    }
+    const decoded = await autenticarFirebase(req, res);
+    if (!decoded) return;
+    const firebaseUID = decoded.uid;
 
     let subscriptionId = null;
     const miembroDoc = await db.collection('miembros').doc(firebaseUID).get();
@@ -419,19 +550,22 @@ app.post('/reactivate-subscription', express.json(), async (req, res) => {
       return res.status(404).json({ error: 'No se encontró suscripción' });
     }
 
-    await stripe.subscriptions.update(subscriptionId, {
+    const subscriptionActual = await stripe.subscriptions.retrieve(subscriptionId);
+    if (!subscriptionPerteneceAUid(subscriptionActual, firebaseUID)) {
+      return res.status(403).json({ error: 'La suscripción no pertenece a esta cuenta' });
+    }
+
+    const subscription = await stripe.subscriptions.update(subscriptionId, {
       cancel_at_period_end: false,
     });
 
-    await db.collection('miembros').doc(firebaseUID).update({
-      planActivo: true,
-      planCancelado: false,
+    const resultado = await sincronizarSubscription(firebaseUID, subscription);
+    if (!resultado.planActivo) {
+      return res.status(409).json({ error: 'La suscripción ya no puede reanudarse; inicia un nuevo pago.' });
+    }
+    await db.collection('miembros').doc(firebaseUID).set({
       reanudadoEn: admin.firestore.FieldValue.serverTimestamp(),
-    }).catch(() => {});
-    await db.collection('usuarios').doc(firebaseUID).update({
-      planActivo: true,
-      planCancelado: false,
-    }).catch(() => {});
+    }, { merge: true });
 
     console.log(`✅ Suscripción reactivada para ${firebaseUID}`);
     res.json({ success: true, message: 'Suscripción reactivada exitosamente.' });

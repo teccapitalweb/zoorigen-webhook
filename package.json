@@ -4,7 +4,8 @@
   "description": "Webhook Stripe para Club VIP Zoorigen",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "audit:memberships": "node audit-memberships.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
