@@ -9,6 +9,8 @@ const Stripe = require('stripe');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
 const bunnyCatalog = require('./data/zoorigen-bunny-catalog.json');
+const { buildPreviewPolicy, canWatchPreview } = require('./course-preview');
+const coursePreview = buildPreviewPolicy(bunnyCatalog);
 
 // ── Config ──────────────────────────────────────────────
 const rawKey = (process.env.STRIPE_SECRET_KEY || '').trim().replace(/^["']|["']$/g, '');
@@ -25,8 +27,8 @@ const BUNNY_TOKEN_TTL_SECONDS = Math.min(900, Math.max(60, Number(process.env.BU
 const BUNNY_VIDEO_IDS = new Set(
   bunnyCatalog.flatMap(course => (course.lecciones || []).map(lesson => String(lesson.videoId || ''))).filter(Boolean)
 );
-// Única clase gratuita de toda la plataforma: primera clase del primer curso.
-const BUNNY_FREE_VIDEO_IDS = new Set(['befd1641-850a-4099-88a8-047a1badc703']);
+// Solo el curso inicial, excluida su última clase, incluye acceso gratuito.
+const BUNNY_FREE_VIDEO_IDS = new Set(coursePreview.freeVideoIds);
 
 // Firebase Admin — usa FIREBASE_SERVICE_ACCOUNT (JSON completo)
 if (!admin.apps.length) {
@@ -366,6 +368,12 @@ function tieneAccesoVigente(data = {}) {
   return data.planActivo === true && noHaVencido;
 }
 
+// Metadatos públicos de acceso; no contiene URLs firmadas ni claves.
+app.get('/api/course-preview', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(coursePreview);
+});
+
 // Reproductor privado: el navegador nunca recibe la clave secreta de Bunny.
 app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
   res.set('Cache-Control', 'no-store');
@@ -398,7 +406,7 @@ app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
     const esAdmin = adminDoc.exists || miembroDoc.data()?.role === 'admin';
     const tienePlan = (miembroDoc.exists && tieneAccesoVigente(miembroDoc.data())) ||
       (usuarioDoc.exists && tieneAccesoVigente(usuarioDoc.data()));
-    const esClaseGratis = BUNNY_FREE_VIDEO_IDS.has(videoId);
+    const esClaseGratis = canWatchPreview(coursePreview, req.body?.courseKey, videoId);
 
     if (!esClaseGratis && !esAdmin && !tienePlan) {
       return res.status(403).json({ error: 'Necesitas una membresía activa para ver esta clase' });
@@ -578,5 +586,5 @@ app.post('/reactivate-subscription', express.json(), async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Webhook Stripe corriendo en puerto ${PORT}`);
   console.log(`🐰 Bunny Stream: ${BUNNY_VIDEO_IDS.size} videos permitidos · biblioteca ${BUNNY_STREAM_LIBRARY_ID}`);
-  console.log(`🎁 Vista gratuita: ${BUNNY_FREE_VIDEO_IDS.size} clase`);
+  console.log(`🎁 Curso inicial: ${BUNNY_FREE_VIDEO_IDS.size} clases gratuitas; última con membresía`);
 });
