@@ -27,6 +27,11 @@ const BUNNY_VIDEO_IDS = new Set(
 );
 // Única clase gratuita de toda la plataforma: primera clase del primer curso.
 const BUNNY_FREE_VIDEO_IDS = new Set(['befd1641-850a-4099-88a8-047a1badc703']);
+// Los videos que el panel admin agrega a los cursos (colección `cursos` de Firestore)
+// se suman al catálogo estático. Solo se lee; nunca se escribe.
+const VIDEO_ID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const INDICE_VIDEOS_TTL_MS = 60 * 1000;          // vigencia del caché del índice
+const INDICE_VIDEOS_REFRESCO_MIN_MS = 10 * 1000; // mínimo entre lecturas a Firestore
 
 // Firebase Admin — usa FIREBASE_SERVICE_ACCOUNT (JSON completo)
 if (!admin.apps.length) {
@@ -369,6 +374,70 @@ function tieneAccesoVigente(data = {}) {
   return data.planActivo === true && noHaVencido;
 }
 
+// ── Índice de videos desde Firestore (caché en memoria) ──
+// conocidos: videoId de cualquier lección de `cursos`.
+// gratis: videoId de lecciones con gratis === true dentro de un curso con cursoMuestraGratis === true.
+let indiceVideos = null;         // último índice leído con éxito: { conocidos, gratis, cargadoEn }
+let ultimaLecturaVideos = 0;     // momento del último intento de lectura (éxito o fallo)
+let lecturaVideosEnCurso = null; // evita lecturas simultáneas duplicadas
+
+function indiceVacio() {
+  return { conocidos: new Set(), gratis: new Set(), cargadoEn: 0 };
+}
+
+async function leerIndiceVideosDeFirestore() {
+  const snapshot = await db.collection('cursos').get();
+  const conocidos = new Set();
+  const gratis = new Set();
+  for (const doc of snapshot.docs) {
+    const curso = doc.data() || {};
+    if (!Array.isArray(curso.lecciones)) continue;
+    for (const leccion of curso.lecciones) {
+      const id = leccion && typeof leccion.videoId === 'string' ? leccion.videoId.trim() : '';
+      if (!VIDEO_ID_REGEX.test(id)) continue;
+      conocidos.add(id);
+      // Una lección gratis solo cuenta si el curso permite muestra gratis.
+      if (curso.cursoMuestraGratis === true && leccion.gratis === true) gratis.add(id);
+    }
+  }
+  return { conocidos, gratis, cargadoEn: Date.now() };
+}
+
+// Devuelve siempre un índice (vacío si Firestore nunca respondió): jamás lanza, para que un
+// fallo de Firestore deje funcionando solo los conjuntos estáticos, como antes.
+// `forzar` pide refrescar aunque el caché sea reciente, pero respetando el mínimo entre lecturas.
+async function obtenerIndiceVideos({ forzar = false } = {}) {
+  const ahora = Date.now();
+  const vigente = indiceVideos && ahora - indiceVideos.cargadoEn < INDICE_VIDEOS_TTL_MS;
+  if (vigente && !forzar) return indiceVideos;
+  if (lecturaVideosEnCurso) return lecturaVideosEnCurso;
+  // Tope de lecturas: ráfagas de IDs falsos o una caída de Firestore no generan lectura por petición.
+  if (ahora - ultimaLecturaVideos < INDICE_VIDEOS_REFRESCO_MIN_MS) return indiceVideos || indiceVacio();
+  ultimaLecturaVideos = ahora;
+  lecturaVideosEnCurso = leerIndiceVideosDeFirestore()
+    .then(indice => { indiceVideos = indice; return indice; })
+    .catch(error => {
+      console.error('[Bunny embed-token] No se pudo leer el índice de videos de Firestore:', error);
+      return indiceVideos || indiceVacio();
+    })
+    .finally(() => { lecturaVideosEnCurso = null; });
+  return lecturaVideosEnCurso;
+}
+
+async function videoEsConocido(videoId) {
+  if (BUNNY_VIDEO_IDS.has(videoId)) return true;
+  if ((await obtenerIndiceVideos()).conocidos.has(videoId)) return true;
+  // Puede ser un video recién agregado: un refresco (limitado) antes de decir que no existe.
+  return (await obtenerIndiceVideos({ forzar: true })).conocidos.has(videoId);
+}
+
+async function videoEsGratis(videoId, { refrescar = false } = {}) {
+  if (BUNNY_FREE_VIDEO_IDS.has(videoId)) return true;
+  if ((await obtenerIndiceVideos()).gratis.has(videoId)) return true;
+  if (!refrescar) return false;
+  return (await obtenerIndiceVideos({ forzar: true })).gratis.has(videoId);
+}
+
 // Reproductor privado: el navegador nunca recibe la clave secreta de Bunny.
 app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
   res.set('Cache-Control', 'no-store');
@@ -378,7 +447,7 @@ app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
     }
 
     const videoId = String(req.body?.videoId || '').trim();
-    if (!videoId || !BUNNY_VIDEO_IDS.has(videoId)) {
+    if (!VIDEO_ID_REGEX.test(videoId) || !(await videoEsConocido(videoId))) {
       return res.status(404).json({ error: 'Video no reconocido en el catálogo de Zoorigen' });
     }
 
@@ -401,7 +470,8 @@ app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
     const esAdmin = adminDoc.exists || miembroDoc.data()?.role === 'admin';
     const tienePlan = (miembroDoc.exists && tieneAccesoVigente(miembroDoc.data())) ||
       (usuarioDoc.exists && tieneAccesoVigente(usuarioDoc.data()));
-    const esClaseGratis = BUNNY_FREE_VIDEO_IDS.has(videoId);
+    // A quien ya tiene acceso no le hace falta forzar un refresco solo para saber si es gratis.
+    const esClaseGratis = await videoEsGratis(videoId, { refrescar: !esAdmin && !tienePlan });
 
     if (!esClaseGratis && !esAdmin && !tienePlan) {
       return res.status(403).json({ error: 'Necesitas una membresía activa para ver esta clase' });
@@ -620,3 +690,10 @@ if (require.main === module) {
 }
 
 module.exports = app;
+// Para pruebas: acceso al índice de videos y sus constantes (no altera el export de `app`).
+app.videosFirestore = {
+  obtenerIndiceVideos,
+  VIDEO_ID_REGEX,
+  INDICE_VIDEOS_TTL_MS,
+  INDICE_VIDEOS_REFRESCO_MIN_MS,
+};

@@ -17,6 +17,16 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `POST /api/referidos` | Invitados del miembro (solo nombre de pila) | Token de Firebase |
 | `GET /` | Health check | — |
 
+### Videos y clases gratis desde Firestore
+
+`POST /api/bunny/embed-token` reconoce un `videoId` (debe tener forma de UUID) si está en el catálogo
+estático (`data/zoorigen-bunny-catalog.json`) o en alguna lección (`lecciones[].videoId`) de la colección
+`cursos` de Firestore. Es gratis para quien no es miembro el video gratis fijo de siempre o una lección con
+`gratis: true` dentro de un curso con `cursoMuestraGratis: true` (sin ese campo en el curso, la marca de la
+lección no cuenta). El índice se guarda en memoria 60 s; si un video no aparece y el caché tiene más de 10 s se
+refresca una vez (nunca más de una lectura cada 10 s). Solo lee Firestore; si la lectura falla se registra el
+error y siguen funcionando el catálogo estático y el video gratis fijo.
+
 ## Variables de entorno (Railway)
 
 `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FIREBASE_SERVICE_ACCOUNT` (JSON completo),
