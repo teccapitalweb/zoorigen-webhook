@@ -470,6 +470,38 @@ app.post('/verify-membership', express.json(), async (req, res) => {
   }
 });
 
+// Referidos: las reglas de Firestore limitan list en miembros a admins, así que el
+// navegador no puede consultar por referredBy. Se hace aquí con Admin SDK y solo se
+// devuelven datos mínimos (nunca correo ni teléfono de otros miembros).
+app.post('/api/referidos', express.json(), async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    const decoded = await autenticarFirebase(req, res);
+    if (!decoded) return;
+    // Mismo código que genera club-referidos.html; sale del uid autenticado, no del body.
+    const refCode = 'ZOO-' + decoded.uid.substring(0, 6).toUpperCase();
+    const snapshot = await db.collection('miembros').where('referredBy', '==', refCode).limit(500).get();
+    const invitados = snapshot.docs
+      .filter(doc => doc.id !== decoded.uid)
+      .map(doc => {
+        const d = doc.data() || {};
+        const nombre = String(d.name || d.nombreCompleto || '').trim().split(/\s+/)[0] || 'Miembro';
+        return { nombre, fechaRegistro: d.createdAt || null, pagado: tieneAccesoVigente(d) };
+      });
+    const totalPagados = invitados.filter(i => i.pagado).length;
+    return res.json({
+      refCode,
+      totalInvitados: invitados.length,
+      totalPagados,
+      mesesGanados: Math.floor(totalPagados / 3),
+      invitados,
+    });
+  } catch (error) {
+    console.error('❌ Error consultando referidos:', error);
+    return res.status(500).json({ error: 'No se pudieron cargar los referidos' });
+  }
+});
+
 // ── Health check ──
 app.get('/', (req, res) => {
   res.json({
