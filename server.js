@@ -575,8 +575,13 @@ app.post('/reactivate-subscription', express.json(), async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Webhook Stripe corriendo en puerto ${PORT}`);
-  console.log(`🐰 Bunny Stream: ${BUNNY_VIDEO_IDS.size} videos permitidos · biblioteca ${BUNNY_STREAM_LIBRARY_ID}`);
-  console.log(`🎁 Vista gratuita: ${BUNNY_FREE_VIDEO_IDS.size} clase`);
-});
+// Solo escucha al ejecutarse directamente (node server.js); las pruebas importan `app`.
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Webhook Stripe corriendo en puerto ${PORT}`);
+    console.log(`🐰 Bunny Stream: ${BUNNY_VIDEO_IDS.size} videos permitidos · biblioteca ${BUNNY_STREAM_LIBRARY_ID}`);
+    console.log(`🎁 Vista gratuita: ${BUNNY_FREE_VIDEO_IDS.size} clase`);
+  });
+}
+
+module.exports = app;

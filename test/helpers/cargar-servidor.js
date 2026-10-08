@@ -1,0 +1,114 @@
+'use strict';
+
+const proxyquire = require('proxyquire').noCallThru();
+const { FakeFirestore, FakeTimestamp } = require('./fake-firestore');
+
+const PRICE_MENSUAL = 'price_1TRcJnA7If2CqXs9dMBGRmDF';
+const PRICE_ANUAL = 'price_1TRcJlA7If2CqXs97WQNmKFq';
+const VIDEO_GRATIS = 'befd1641-850a-4099-88a8-047a1badc703';
+const VIDEO_PREMIUM = 'b9b4a50a-9cec-45c2-b66f-e965eb97aebe';
+
+const dias = n => Date.now() + n * 24 * 60 * 60 * 1000;
+const ts = ms => new FakeTimestamp(ms);
+const unix = ms => Math.floor(ms / 1000);
+
+function suscripcion({ id, uid, precio = PRICE_MENSUAL, status = 'active', terminaEn = dias(20), cancelAlFinal = false, customer = 'cus_1', sinMetadata = false }) {
+  return {
+    id,
+    customer,
+    status,
+    cancel_at_period_end: cancelAlFinal,
+    current_period_end: unix(terminaEn),
+    items: { data: [{ price: { id: precio } }] },
+    metadata: sinMetadata ? {} : { firebaseUID: uid, planType: precio === PRICE_ANUAL ? 'anual' : 'mensual' }
+  };
+}
+
+/**
+ * Carga server.js con todo simulado.
+ * @param {object} opciones
+ *  - seed: documentos de Firestore { 'miembros/uid': {...} }
+ *  - tokens: { token: { uid, email } } para Firebase Auth
+ *  - suscripciones: lista de objetos creados con suscripcion()
+ *  - env: variables de entorno extra (p. ej. BUNNY_TOKEN_AUTH_KEY)
+ */
+function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {} } = {}) {
+  const guardado = {};
+  const entorno = {
+    STRIPE_SECRET_KEY: 'sk_test_falsa',
+    STRIPE_WEBHOOK_SECRET: 'whsec_falsa',
+    BUNNY_TOKEN_AUTH_KEY: 'clave-bunny-de-prueba',
+    ...env
+  };
+  for (const [k, v] of Object.entries(entorno)) { guardado[k] = process.env[k]; process.env[k] = v; }
+  // Evita que variables reales del equipo contaminen las pruebas.
+  for (const k of ['STRIPE_PRICE_MENSUAL', 'STRIPE_PRICE_ANUAL', 'FIREBASE_SERVICE_ACCOUNT', 'BUNNY_STREAM_LIBRARY_ID']) {
+    guardado[k] = process.env[k]; delete process.env[k];
+  }
+
+  const db = new FakeFirestore(seed);
+  const mapaSuscripciones = new Map(suscripciones.map(s => [s.id, { ...s }]));
+  const registro = { sesionesCreadas: [], actualizaciones: [] };
+
+  const firestore = () => db;
+  firestore.FieldValue = { serverTimestamp: () => ts(Date.now()) };
+  firestore.Timestamp = FakeTimestamp;
+
+  const admin = {
+    apps: [],
+    credential: { cert: v => v },
+    initializeApp() {},
+    firestore,
+    auth: () => ({
+      verifyIdToken: async token => {
+        if (!tokens[token]) throw new Error('token inválido');
+        return tokens[token];
+      }
+    })
+  };
+
+  const noExiste = id => Object.assign(new Error(`No such subscription: ${id}`), { code: 'resource_missing' });
+  const stripe = {
+    webhooks: {
+      constructEvent: (body, firma) => {
+        if (firma !== 'firma-valida') throw new Error('No signatures found matching the expected signature');
+        return JSON.parse(Buffer.from(body).toString('utf8'));
+      }
+    },
+    checkout: { sessions: { create: async config => {
+      registro.sesionesCreadas.push(config);
+      return { id: 'cs_test', url: 'https://checkout.stripe.test/pay', client_secret: 'cs_secret_test' };
+    } } },
+    subscriptions: {
+      retrieve: async id => {
+        if (!mapaSuscripciones.has(id)) throw noExiste(id);
+        return { ...mapaSuscripciones.get(id) };
+      },
+      update: async (id, cambios) => {
+        if (!mapaSuscripciones.has(id)) throw noExiste(id);
+        registro.actualizaciones.push({ id, cambios });
+        const actual = { ...mapaSuscripciones.get(id), ...cambios };
+        mapaSuscripciones.set(id, actual);
+        return { ...actual };
+      }
+    }
+  };
+
+  let app;
+  try {
+    app = proxyquire('../../server.js', {
+      stripe: () => stripe,
+      'firebase-admin': admin
+    });
+  } finally {
+    for (const [k, v] of Object.entries(guardado)) {
+      if (v === undefined) delete process.env[k]; else process.env[k] = v;
+    }
+  }
+  return { app, db, registro, stripe, suscripciones: mapaSuscripciones };
+}
+
+module.exports = {
+  cargarServidor, suscripcion, ts, dias, unix,
+  PRICE_MENSUAL, PRICE_ANUAL, VIDEO_GRATIS, VIDEO_PREMIUM
+};
