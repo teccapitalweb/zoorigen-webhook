@@ -360,7 +360,10 @@ function fechaComoDate(valor) {
 function tieneAccesoVigente(data = {}) {
   const vence = fechaComoDate(data.planVence || data.fechaExpiracion);
   const noHaVencido = Boolean(vence && vence.getTime() > Date.now());
-  if (['past_due', 'unpaid', 'incomplete', 'expired', 'cancelled', 'pending_payment'].includes(data.planStatus)) return false;
+  if (['past_due', 'unpaid', 'incomplete', 'expired', 'pending_payment'].includes(data.planStatus)) return false;
+  // 'cancelled' lo escribía el servidor anterior (Shopify): el miembro conserva el
+  // acceso hasta planVence. Es la misma regla que calculateStatus() en club.js.
+  if (data.planStatus === 'cancelled') return data.planActivo !== false && noHaVencido;
   if (data.planStatus === 'cancelled_active') return Boolean(vence && noHaVencido);
   if (data.planStatus === 'active') return noHaVencido;
   return data.planActivo === true && noHaVencido;

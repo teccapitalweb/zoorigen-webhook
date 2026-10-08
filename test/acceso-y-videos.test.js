@@ -65,15 +65,43 @@ test('planActivo=true sin fecha de vencimiento NO da acceso', async () => {
   assert.equal((await verificar(app)).body.active, false);
 });
 
-// HALLAZGO: el servidor viejo de Shopify guardaba las cancelaciones como
-// planStatus:'cancelled' con acceso hasta planVence. El código actual trata
-// 'cancelled' como sin acceso, así que esos miembros pierden los días que ya pagaron.
-test('cancelación heredada de Shopify conserva el acceso hasta planVence', { todo: 'HALLAZGO: hoy se les corta el acceso antes de tiempo' }, async () => {
-  const { app } = cargarServidor({
-    tokens,
-    seed: { 'miembros/u1': { planActivo: true, planStatus: 'cancelled', planCancelado: true, planVence: ts(dias(15)), accesoHasta: ts(dias(15)) } }
-  });
+// El servidor anterior (Shopify) guardaba las cancelaciones como planStatus:'cancelled'
+// sin tocar planActivo. El miembro conserva el acceso hasta planVence (igual que el frontend).
+const cancelacionHeredada = (extra = {}) => ({
+  planActivo: true, planStatus: 'cancelled', planCancelado: true,
+  planVence: ts(dias(15)), accesoHasta: ts(dias(15)), ...extra
+});
+
+test('cancelación heredada de Shopify conserva el acceso hasta planVence', async () => {
+  const { app } = cargarServidor({ tokens, seed: { 'miembros/u1': cancelacionHeredada() } });
+  const res = await verificar(app);
+  assert.equal(res.body.active, true);
+  assert.equal(res.body.status, 'cancelled_active');
+});
+
+test('cancelación heredada con fecha en texto ISO también conserva el acceso', async () => {
+  const { app } = cargarServidor({ tokens, seed: { 'miembros/u1': cancelacionHeredada({ planVence: new Date(dias(15)).toISOString() }) } });
   assert.equal((await verificar(app)).body.active, true);
+});
+
+test('cancelación heredada YA VENCIDA no da acceso', async () => {
+  const { app } = cargarServidor({ tokens, seed: { 'miembros/u1': cancelacionHeredada({ planVence: ts(dias(-2)) }) } });
+  assert.equal((await verificar(app)).body.active, false);
+});
+
+test('cancelación heredada con planActivo=false (desactivado a mano) no da acceso', async () => {
+  const { app } = cargarServidor({ tokens, seed: { 'miembros/u1': cancelacionHeredada({ planActivo: false }) } });
+  assert.equal((await verificar(app)).body.active, false);
+});
+
+test('cancelación heredada vigente puede ver videos (antes se le negaba)', async () => {
+  const { app } = cargarServidor({ tokens, seed: { 'miembros/u1': cancelacionHeredada() } });
+  assert.equal((await embed(app, VIDEO_PREMIUM)).status, 200);
+});
+
+test('cancelación heredada vencida NO puede ver videos', async () => {
+  const { app } = cargarServidor({ tokens, seed: { 'miembros/u1': cancelacionHeredada({ planVence: ts(dias(-2)) }) } });
+  assert.equal((await embed(app, VIDEO_PREMIUM)).status, 403);
 });
 
 // ── /verify-membership: miembros con Stripe (fuente de verdad) ──
