@@ -1,0 +1,13 @@
+[
+  {
+    "id": "guia-prueba",
+    "titulo": "Guía de prueba",
+    "tipo": "guia",
+    "area": "Pruebas",
+    "descripcion": "PDF mínimo para probar el acceso por membresía.",
+    "archivo": "guia-prueba.pdf",
+    "paginas": 1,
+    "acceso": "miembros",
+    "licencia": "Uso interno de pruebas"
+  }
+]
