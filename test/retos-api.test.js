@@ -173,6 +173,7 @@ test('resultado: el XP que informa el servidor coincide con GET /api/premios y /
 
 test('resultado: dos solicitudes simultáneas del mismo reto dan XP una sola vez (transacción)', async () => {
   const { app, db } = cargarServidor({ tokens, seed: baseSeed() });
+  db.lenta = true;   // lecturas lentas: las dos solicitudes ven el mismo estado viejo
   const [a, b] = await Promise.all([resultado(app, quiz(5, 5)), resultado(app, quiz(5, 5))]);
   assert.deepEqual([a.body.xpGanado, b.body.xpGanado].sort((x, y) => x - y), [0, 10]);
   assert.equal(db.value('retosUsuario/ana').xp, 10);
@@ -261,6 +262,7 @@ test('camino: no hay XP después del último reto que existe (quiz 22)', async (
 
 test('camino: dos solicitudes simultáneas del mismo índice avanzan una sola vez (transacción)', async () => {
   const { app, db } = cargarServidor({ tokens, seed: baseSeed() });
+  db.lenta = true;   // lecturas lentas: las dos solicitudes ven el mismo estado viejo
   const cuerpo = { modo: 'quiz', indice: 0, puntaje: 5, total: 5 };
   const [a, b] = await Promise.all([camino(app, cuerpo), camino(app, cuerpo)]);
   assert.deepEqual([a.body.aceptado, b.body.aceptado].sort(), [false, true]);

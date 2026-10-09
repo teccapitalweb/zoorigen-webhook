@@ -143,6 +143,7 @@ test('usar: el nivel alcanzado ese mismo momento ya cuenta (no hace falta abrir 
 
 test('usar: doble canje simultáneo con UN premio gasta uno solo (el otro recibe 403)', async () => {
   const { app, db } = cargarServidor({ tokens, seed: baseSeed(ganados('profesional')) });
+  db.lenta = true;   // lecturas lentas: las dos solicitudes ven el mismo estado viejo
   const [a, b] = await Promise.all([usar(app, 'c1'), usar(app, 'c2')]);
   assert.deepEqual([a.status, b.status].sort(), [200, 403]);
   assert.equal(db.value('premiosUsuario/ana').usados.length, 1);
@@ -150,6 +151,7 @@ test('usar: doble canje simultáneo con UN premio gasta uno solo (el otro recibe
 
 test('usar: doble canje simultáneo del MISMO curso con dos premios gasta uno solo (409 al otro)', async () => {
   const { app, db } = cargarServidor({ tokens, seed: baseSeed(ganados('profesional', 'maestro')) });
+  db.lenta = true;   // lecturas lentas: las dos solicitudes ven el mismo estado viejo
   const [a, b] = await Promise.all([usar(app, 'c1'), usar(app, 'c1')]);
   assert.deepEqual([a.status, b.status].sort(), [200, 409]);
   assert.equal(db.value('premiosUsuario/ana').usados.length, 1);
@@ -158,6 +160,7 @@ test('usar: doble canje simultáneo del MISMO curso con dos premios gasta uno so
 
 test('usar: seis canjes simultáneos con dos premios gastan exactamente dos', async () => {
   const { app, db } = cargarServidor({ tokens, seed: baseSeed(ganados('profesional', 'maestro')) });
+  db.lenta = true;   // lecturas lentas: las dos solicitudes ven el mismo estado viejo
   const resultados = await Promise.all(['c1', 'c2', 'c3', 'c4', 'c5', 'c6'].map(c => usar(app, c)));
   assert.equal(resultados.filter(r => r.status === 200).length, 2);
   assert.equal(resultados.filter(r => r.status === 403).length, 4);

@@ -129,8 +129,11 @@ test('registrar: IDEMPOTENTE — repetir la llamada no crea otro invitado ni cam
 
 test('registrar: IDEMPOTENTE también en simultáneo — dos llamadas a la vez dejan un solo registro', async () => {
   const { app, db } = montar();
-  const [a, b] = await Promise.all([registrar(app, 'i1', cuerpo(1)), registrar(app, 'i1', cuerpo(1))]);
+  db.lenta = true;   // lecturas lentas: las dos solicitudes ven el mismo estado viejo
+  const [a, b] = await Promise.all([registrar(app, 'i1', cuerpo(1)), registrar(app, 'i1', cuerpo(5), '203.0.113.77')]);
   assert.deepEqual(a.body, b.body);
+  assert.equal(db._version('referidos/i1'), 1, 'el registro se escribe una sola vez (la segunda llamada ve el documento y no lo pisa)');
+  assert.ok([DEV(1), DEV(5)].includes(db.value('referidos/i1').deviceId));
   const docs = [...db._data.keys()].filter(k => k.startsWith('referidos/'));
   assert.deepEqual(docs, ['referidos/i1']);
   assert.equal((await estado(app)).body.validos, 1);
@@ -263,7 +266,8 @@ test('dispositivos: dos pendientes con el mismo dispositivo — el primero que c
 });
 
 test('dispositivos: dos registros SIMULTÁNEOS desde el mismo dispositivo dejan un solo válido', async () => {
-  const { app } = montar();
+  const { app, db } = montar();
+  db.lenta = true;   // lecturas lentas: las dos solicitudes ven el mismo estado viejo
   const [a, b] = await Promise.all([
     registrar(app, 'i1', cuerpo(1, { deviceId: DEV(7) }), '198.51.100.1'),
     registrar(app, 'i2', cuerpo(2, { deviceId: DEV(7) }), '198.51.100.2')

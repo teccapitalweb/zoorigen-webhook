@@ -40,7 +40,14 @@ class FakeDocumentReference {
     this.path = path;
     this.id = path.split('/').at(-1);
   }
-  async get() { return new FakeDocumentSnapshot(this, this._db._data.get(this.path)); }
+  // Con `db.lenta = true` la lectura toma su foto y TARDA un turno del reloj en entregarla: así dos
+  // solicitudes simultáneas leen el mismo estado viejo, como pasa en producción, y solo una transacción
+  // real evita el doble guardado.
+  async get() {
+    const foto = new FakeDocumentSnapshot(this, this._db._data.get(this.path));
+    if (this._db.lenta) await new Promise(resolver => setImmediate(resolver));
+    return foto;
+  }
   async set(value, options) {
     const current = this._db._data.get(this.path);
     const next = options && options.merge ? { ...(current || {}), ...clone(value) } : clone(value);
