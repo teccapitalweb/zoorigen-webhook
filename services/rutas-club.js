@@ -280,12 +280,13 @@ function montarRutasClub(app, deps) {
   // ── Cálculo completo (nivel, XP, logros, premios) de una persona con membresía ──
   async function calcularResumen(ctx, { estadoRetos } = {}) {
     const uid = ctx.uid;
-    const [dias, estado, referidosInfo] = await Promise.all([
+    const [dias, estado, referidosInfo, previo] = await Promise.all([
       registrarDiaActivo(uid),
       estadoRetos ? Promise.resolve(estadoRetos) : leerEstadoRetos(uid),
-      resumenReferidos(uid)
+      resumenReferidos(uid),
+      leerPremiosGuardados(uid)
     ]);
-    const datos = await datosParaLogros(ctx, dias, referidosInfo.validos);
+    const datos = { ...(await datosParaLogros(ctx, dias, referidosInfo.validos)), bienvenida: Boolean(previo.bienvenida) };
     const ev = logros.evaluar(datos, estado, referidosInfo.xp);
     const claves = premios.clavesQueCumple({ nivelId: ev.nivel.id, invitadosValidos: referidosInfo.validos });
     const guardado = await guardarProgreso(uid, { claves, xpTotal: ev.xp.total, conRanking: !ctx.esAdmin });
@@ -298,6 +299,31 @@ function montarRutasClub(app, deps) {
   }
 
   const NIVEL_VISTA_PREVIA = logros.infoNivel(0);
+
+  // ── Premio de bienvenida: la fecha de creación de la cuenta la da Firebase Auth (no el navegador) ──
+  // Nunca cambia, así que se recuerda en memoria para no consultar Auth en cada GET.
+  const creaciones = new Map();
+  async function creacionDeCuenta(uid) {
+    if (creaciones.has(uid)) return creaciones.get(uid);
+    let info;
+    try { info = await auth.getUser(uid); } catch (error) {
+      if (error && error.code === 'auth/user-not-found') return null;
+      throw error;
+    }
+    const t = (info && info.metadata && info.metadata.creationTime) || null;
+    if (t) { if (creaciones.size > 5000) creaciones.clear(); creaciones.set(uid, t); }
+    return t;
+  }
+
+  // ¿Se le puede ofrecer el premio de bienvenida? (cuenta nueva, sin reclamar y no administrador).
+  // Si Auth no responde, simplemente no se ofrece: no debe tumbar la pantalla de premios.
+  async function bienvenidaOfrecida(ctx, reclamado) {
+    if (ctx.esAdmin || reclamado) return false;
+    try { return premios.bienvenidaDisponible(await creacionDeCuenta(ctx.uid)); } catch (error) {
+      console.error('[Club premios] No se pudo consultar la fecha de creación de la cuenta:', error && error.message);
+      return false;
+    }
+  }
 
   // ════════════════════════════════════════════════════════════
   // GET /api/premios — nivel, XP, logros y premios
@@ -314,21 +340,72 @@ function montarRutasClub(app, deps) {
       if (!ctx.membresia) {
         const guardado = await leerPremiosGuardados(decoded.uid);
         const lista = premios.armarPremios({ ...guardado, membresia: false });
+        const disponible = await bienvenidaOfrecida(ctx, Boolean(guardado.bienvenida));
         return res.json({
-          ok: true, membresia: false, nivel: NIVEL_VISTA_PREVIA,
-          xp: { total: 0, logros: 0, retos: 0, referidos: 0, cursos: 0 }, cursos: { terminados: 0, lista: [] },
+          ok: true, membresia: false, nivel: NIVEL_VISTA_PREVIA, niveles: logros.listaNiveles(),
+          xp: { total: 0, logros: 0, retos: 0, referidos: 0, cursos: 0, bienvenida: 0 }, cursos: { terminados: 0, lista: [] },
+          bienvenida: { disponible, xp: logros.XP_BIENVENIDA },
           racha: 0, diasActivos: 0, logros: logros.logrosVistaPrevia(), premios: lista, disponibles: 0
         });
       }
 
       const { ev, guardado } = await calcularResumen(ctx);
       const lista = premios.armarPremios({ ganados: guardado.ganados, usados: guardado.usados, membresia: ctx.tienePlan });
+      const reclamado = ev.xp.bienvenida > 0;
+      const disponible = await bienvenidaOfrecida(ctx, reclamado);
       return res.json({
-        ok: true, membresia: true, nivel: ev.nivel, xp: ev.xp, cursos: ev.cursos, racha: ev.racha, diasActivos: ev.diasActivos,
+        ok: true, membresia: true, nivel: ev.nivel, niveles: logros.listaNiveles(), xp: ev.xp, cursos: ev.cursos,
+        bienvenida: { disponible, xp: logros.XP_BIENVENIDA, reclamado }, racha: ev.racha, diasActivos: ev.diasActivos,
         logros: ev.logros, premios: lista, disponibles: lista.filter(p => p.disponible).length
       });
     } catch (error) {
       return responderError(res, error, 'No se pudieron cargar tus logros y premios', 'premios');
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // POST /api/premios/bienvenida — +100 XP por ser una cuenta nueva (una sola vez)
+  // ════════════════════════════════════════════════════════════
+  // Sin membresía se permite (el XP queda guardado y cuenta cuando se suscriba). Solo cuentas creadas
+  // hace 14 días o menos según Firebase Auth. Idempotente: se guarda en premiosUsuario/{uid}.bienvenida
+  // dentro de una transacción, así dos solicitudes a la vez pagan una sola vez.
+  app.post('/api/premios/bienvenida', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarFirebase(req, res);
+      if (!decoded) return;
+      const uid = decoded.uid;
+      limitar(limites.premios, uid, CANJES_POR_MINUTO);
+      const ctx = await leerContexto(uid);
+      if (ctx.esAdmin) throw errorHttp(403, 'Las cuentas de administrador no reciben el premio de bienvenida');
+
+      const ref = db.collection('premiosUsuario').doc(uid);
+      if (!(await leerPremiosGuardados(uid)).bienvenida) {
+        let creacion;
+        try { creacion = await creacionDeCuenta(uid); } catch (error) {
+          console.error('[Club premios] No se pudo consultar Firebase Auth:', error && error.message);
+          throw errorHttp(503, 'No pudimos verificar tu cuenta. Intenta de nuevo en un momento');
+        }
+        if (!premios.bienvenidaDisponible(creacion)) {
+          throw errorHttp(403, 'El premio de bienvenida es solo para cuentas nuevas (hasta ' + premios.DIAS_CUENTA_NUEVA + ' días después de registrarte)');
+        }
+      }
+      const yaReclamado = await db.runTransaction(async tx => {
+        const snap = await tx.get(ref);
+        const actual = snap.exists ? (snap.data() || {}) : {};
+        if (premios.normalizarGuardado(actual).bienvenida) return true;
+        const inicio = snap.exists ? {} : { ganados: [], usados: [] };
+        tx.set(ref, { uid, ...inicio, bienvenida: { fecha: new Date().toISOString() }, actualizadoEn: FieldValue.serverTimestamp() }, { merge: true });
+        return false;
+      });
+
+      // Con membresía se devuelve el XP total real; sin ella solo cuenta lo guardado (los 100 de bienvenida)
+      let xpTotal = logros.XP_BIENVENIDA;
+      let nivel = logros.infoNivel(xpTotal);
+      if (ctx.membresia) { const { ev } = await calcularResumen(ctx); xpTotal = ev.xp.total; nivel = ev.nivel; }
+      return res.json({ ok: true, xp: logros.XP_BIENVENIDA, yaReclamado, xpTotal, nivel });
+    } catch (error) {
+      return responderError(res, error, 'No se pudo darte el premio de bienvenida', 'premios');
     }
   });
 

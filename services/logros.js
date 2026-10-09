@@ -5,7 +5,7 @@
 // solo en el navegador. El nivel NO se guarda: se recalcula en cada consulta.
 //
 // XP total = logros (l1..l26) + insignias de retos (r1..r10) + XP de retos + XP por referidos
-//          + XP por cursos terminados (fórmula fija, ver xpDeCurso).
+//          + XP por cursos terminados (fórmula fija, ver xpDeCurso) + premio de bienvenida (+100, una vez).
 // La tabla de abajo es la fuente única: el README la documenta y una prueba verifica el balance.
 
 const retos = require('./retos');
@@ -21,6 +21,7 @@ const NIVELES = [
 
 const CATEGORIAS = ['Inicio', 'Cursos', 'Constancia', 'Comunidad', 'Retos', 'Maestría'];
 const TOTAL_CURSOS = 15;
+const XP_BIENVENIDA = 100;   // premio único para cuentas nuevas (POST /api/premios/bienvenida)
 
 // d = { esVIP, completados, areas, diasActivos, racha, tarjetaDir, foroPosts, foroRespuestas,
 //       foroLikes, invitadosValidos }
@@ -109,6 +110,9 @@ function calcularRacha(dias, ahora = new Date()) {
   return racha;
 }
 
+// Los 5 niveles tal como los pinta el sitio (así no los copia)
+function listaNiveles() { return NIVELES.map(n => ({ id: n.id, nombre: n.nombre, desde: n.desde, hasta: n.hasta })); }
+
 function nivelPorXp(xp) {
   return NIVELES.find(n => xp >= n.desde && xp < n.hasta) || NIVELES[NIVELES.length - 1];
 }
@@ -139,14 +143,15 @@ function evaluar(datos, estadoRetos, xpReferidos = 0, ahora = new Date()) {
   const xpRef = Math.max(0, Number(xpReferidos) || 0);
   const lista = Array.isArray(datos.cursosLista) ? datos.cursosLista : [];
   const xpCursos = lista.reduce((t, c) => t + c.xp, 0);
-  const total = xpLogros + xpRetos + xpRef + xpCursos;
+  const xpBienvenida = datos.bienvenida === true ? XP_BIENVENIDA : 0;
+  const total = xpLogros + xpRetos + xpRef + xpCursos + xpBienvenida;
   const ganados = new Set([...ganadosL.map(l => l.id), ...insigniasGanadas.map(i => i.id)]);
   const logros = [
     ...LOGROS.map(l => ({ id: l.id, nombre: l.nombre, descripcion: l.descripcion, categoria: l.categoria, xp: l.xp, ganado: ganados.has(l.id) })),
     ...retos.INSIGNIAS.map(i => ({ id: i.id, nombre: i.nombre, descripcion: i.desc, categoria: 'Retos', xp: i.xp, ganado: ganados.has(i.id) }))
   ];
   return {
-    xp: { total, logros: xpLogros, retos: xpRetos, referidos: xpRef, cursos: xpCursos },
+    xp: { total, logros: xpLogros, retos: xpRetos, referidos: xpRef, cursos: xpCursos, bienvenida: xpBienvenida },
     nivel: infoNivel(total),
     cursos: { terminados: lista.length, lista },
     logros,
@@ -162,13 +167,14 @@ function xpMaximo() {
     insignias: retos.INSIGNIAS.reduce((t, i) => t + i.xp, 0),
     retos: retos.XP_MAXIMO_RETOS,
     referidos: referidos.XP_MAXIMO_REFERIDOS,
-    cursos: Array.from({ length: TOTAL_CURSOS }, (_, i) => xpDeCurso(i + 1)).reduce((t, x) => t + x, 0)
+    cursos: Array.from({ length: TOTAL_CURSOS }, (_, i) => xpDeCurso(i + 1)).reduce((t, x) => t + x, 0),
+    bienvenida: XP_BIENVENIDA
   };
-  m.total = m.logros + m.insignias + m.retos + m.referidos + m.cursos;
+  m.total = m.logros + m.insignias + m.retos + m.referidos + m.cursos + m.bienvenida;
   return m;
 }
 
 module.exports = {
-  NIVELES, CATEGORIAS, LOGROS, TOTAL_CURSOS,
-  fechaMexico, xpDeCurso, cursosTerminados, calcularRacha, nivelPorXp, infoNivel, logrosVistaPrevia, evaluar, xpMaximo
+  NIVELES, CATEGORIAS, LOGROS, TOTAL_CURSOS, XP_BIENVENIDA,
+  fechaMexico, xpDeCurso, cursosTerminados, calcularRacha, nivelPorXp, infoNivel, listaNiveles, logrosVistaPrevia, evaluar, xpMaximo
 };

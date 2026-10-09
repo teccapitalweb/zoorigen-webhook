@@ -34,6 +34,16 @@ function clavesQueCumple(ctx) {
   return PREMIOS.filter(p => p.cumple(ctx)).map(p => p.clave);
 }
 
+// ── Premio de bienvenida (+100 XP, una sola vez, solo cuentas nuevas) ──
+// "Nueva" = la cuenta de Firebase Auth se creó hace 14 días o menos. Si no se puede saber cuándo se creó,
+// NO se da el premio (a diferencia de los referidos, aquí hay XP de por medio).
+const DIAS_CUENTA_NUEVA = 14;
+function bienvenidaDisponible(creationTime, ahora = Date.now()) {
+  const t = Date.parse(creationTime);
+  if (Number.isNaN(t)) return false;
+  return ahora - t <= DIAS_CUENTA_NUEVA * 86400000;
+}
+
 function normalizarGuardado(guardado) {
   const g = guardado && typeof guardado === 'object' ? guardado : {};
   const claves = PREMIOS.map(p => p.clave);
@@ -42,7 +52,9 @@ function normalizarGuardado(guardado) {
     ? g.usados.filter(u => u && claves.includes(u.clave) && typeof u.cursoId === 'string')
       .map(u => ({ clave: u.clave, cursoId: u.cursoId, fecha: String(u.fecha || '') }))
     : [];
-  return { ganados: [...new Set(ganados)], usados };
+  const b = g.bienvenida;
+  const bienvenida = b && typeof b === 'object' ? { fecha: String(b.fecha || '') } : null;
+  return { ganados: [...new Set(ganados)], usados, bienvenida };
 }
 
 // Lista de premios para el sitio. `disponible` = ganado, sin usar y con membresía para canjearlo.
@@ -63,4 +75,4 @@ function premioLibre(ganados, usados) {
   return ganados.find(clave => !usados.some(u => u.clave === clave)) || null;
 }
 
-module.exports = { PREMIOS, INVITADOS_PARA_PREMIO, clavesQueCumple, normalizarGuardado, armarPremios, premioLibre };
+module.exports = { PREMIOS, INVITADOS_PARA_PREMIO, DIAS_CUENTA_NUEVA, bienvenidaDisponible, clavesQueCumple, normalizarGuardado, armarPremios, premioLibre };

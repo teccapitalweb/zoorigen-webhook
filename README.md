@@ -18,6 +18,7 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `POST /api/prueba-gratuita` | Elige UN curso como prueba (`{ cursoId }`); no se puede cambiar | Token de Firebase |
 | `GET /api/premios` | Nivel, XP, logros y premios (vista previa sin membresía) | Token de Firebase |
 | `POST /api/premios/usar` | Canjea UN premio por UN curso adelantado (`{ cursoId }`) | Token de Firebase + membresía |
+| `POST /api/premios/bienvenida` | +100 XP una sola vez, solo cuentas nuevas (14 días) | Token de Firebase (sin membresía también) |
 | `GET /api/retos` | Progreso de retos, camino y nivel (vista previa sin membresía) | Token de Firebase |
 | `POST /api/retos/resultado` | Resultado de un reto de práctica (`{ retoId, puntaje, total }`) | Token de Firebase + membresía |
 | `POST /api/retos/camino` | Resultado de un reto del camino (`{ modo, indice, puntaje, total }`) | Token de Firebase + membresía |
@@ -173,6 +174,21 @@ techo de por vida de 600 XP en práctica + el camino: 22 quiz + 13 detective + 1
 * **Maestro (4,500 XP)** es el 66 % de todo el XP posible. Sin invitados el máximo es 5,210: hay que hacer casi todo (los 15 cursos = 1,820, 60 días seguidos y 30 más
   en total = 1,000, foro = 650, los 53 retos del camino y la práctica al tope + todas las insignias = 1,630, y lo básico = 110). Estudiar todo NO alcanza ni Líder (1,930), jugar todos los retos tampoco (1,630),
   y sin ningún curso ni invitado el techo es 3,390. Una prueba (`test/logros.test.js`) lo verifica con la tabla.
+
+### XP por cursos terminados y premio de bienvenida
+
+* **XP por curso terminado** (fuente nueva, aparte de los logros). El n-ésimo curso terminado paga `n % 10 === 0 ? 180 : 10 + 10 * (n % 10)`:
+  20, 30, 40, 50, 60, 70, 80, 90, 100 y **180 el décimo**; luego el ciclo se repite (11 = 20 ... 19 = 100, 20 = 180). Los 15 cursos del club suman 920 XP.
+  Solo cuentan **cursos distintos que existan en `cursos`**, ordenados por la fecha del certificado (`issuedAt`; con la misma fecha, por folio); si hay certificados repetidos de un curso,
+  vale el más antiguo y el curso paga una sola vez. Los certificados de cursos inexistentes no cuentan ni ocupan lugar en la fórmula. Va incluido en el XP total y en `xp.cursos`.
+* **Premio de bienvenida**: `POST /api/premios/bienvenida` (sin cuerpo; token de Firebase; se permite sin membresía; 10 por minuto) → `{ ok, xp: 100, yaReclamado, xpTotal, nivel }`.
+  Solo cuentas cuyo `creationTime` en **Firebase Auth** sea de hace 14 días o menos (si Auth no conoce la cuenta o la fecha no se entiende: 403; si Auth no responde: 503). Administradores: 403.
+  Es **idempotente**: se guarda en `premiosUsuario/{uid}.bienvenida = { fecha }` dentro de una transacción (dos solicitudes a la vez pagan una sola vez; quien ya reclamó recibe `yaReclamado: true` aunque su cuenta ya sea vieja).
+  Sin membresía el XP queda guardado y cuenta al suscribirse; `xpTotal` sin membresía es solo los 100 de bienvenida y `GET /api/premios` sigue mostrando vista previa a cero.
+* **`GET /api/premios`** → `{ ok, membresia, nivel:{id,nombre,xp,desde,hasta,faltan}, niveles:[{id,nombre,desde,hasta}] (los 5),
+  xp:{total,logros,retos,referidos,cursos,bienvenida}, cursos:{terminados, lista:[{courseId,n,xp,fecha}]} (orden cronológico),
+  bienvenida:{disponible,xp:100,reclamado}, racha, diasActivos, logros, premios, disponibles }`.
+  Sin membresía: `xp` y `cursos` en cero, `niveles` completo y `bienvenida` solo con `{ disponible, xp }` (sin `reclamado`). `disponible` = cuenta nueva, sin reclamar y no administrador.
 
 ### Premios
 
