@@ -54,6 +54,8 @@ class FakeDocumentReference {
     this._db._data.set(this.path, next);
     this._db._versiones.set(this.path, this._db._version(this.path) + 1);
   }
+  // Subcolección (p. ej. avisos/{uid}/items): en la fake es solo otra ruta con prefijo.
+  collection(name) { return new FakeCollectionReference(this._db, `${this.path}/${name}`); }
   async update(value) {
     if (!this._db._data.has(this.path)) throw new Error(`missing document ${this.path}`);
     await this.set(value, { merge: true });
