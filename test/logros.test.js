@@ -29,13 +29,14 @@ test('la tabla trae 26 logros (l1..l26) y 10 insignias de retos (r1..r10), todos
   assert.deepEqual([...new Set(L.LOGROS.map(l => l.categoria))].sort(), ['Comunidad', 'Constancia', 'Cursos', 'Inicio', 'Maestría']);
 });
 
-test('niveles: 5 niveles con los umbrales del contrato y el nivel se calcula, no se guarda', () => {
+test('niveles: 5 niveles recalibrados (Profesional ~25 % y Maestro ~75 % del máximo) y el nivel se calcula, no se guarda', () => {
   assert.deepEqual(L.NIVELES.map(n => [n.nombre, n.desde, n.hasta]),
-    [['Aprendiz', 0, 300], ['Técnico', 300, 1200], ['Profesional', 1200, 2500], ['Líder', 2500, 4500], ['Maestro', 4500, 99999]]);
-  const casos = [[0, 1], [299, 1], [300, 2], [1199, 2], [1200, 3], [2499, 3], [2500, 4], [4499, 4], [4500, 5], [9000, 5]];
+    [['Aprendiz', 0, 500], ['Técnico', 500, 1700], ['Profesional', 1700, 3500], ['Líder', 3500, 5100], ['Maestro', 5100, 99999]]);
+  const casos = [[0, 1], [499, 1], [500, 2], [1699, 2], [1700, 3], [3499, 3], [3500, 4], [5099, 4], [5100, 5], [9000, 5]];
   for (const [xp, nivel] of casos) assert.equal(L.infoNivel(xp).id, nivel, `${xp} XP`);
-  assert.deepEqual(L.infoNivel(1000), { id: 2, nombre: 'Técnico', xp: 1000, desde: 300, hasta: 1200, faltan: 200 });
+  assert.deepEqual(L.infoNivel(1000), { id: 2, nombre: 'Técnico', xp: 1000, desde: 500, hasta: 1700, faltan: 700 });
   assert.equal(L.infoNivel(6000).faltan, 0, 'el último nivel ya no tiene siguiente');
+  assert.deepEqual(L.listaNiveles().map(n => n.id), [1, 2, 3, 4, 5]);
 });
 
 test('balance: el XP máximo alcanzable en toda la vida de la cuenta queda entre 6000 y 7500', () => {
@@ -55,25 +56,26 @@ test('balance: el XP máximo alcanzable en toda la vida de la cuenta queda entre
   assert.equal(todo.nivel.id, 5);
 });
 
-test('balance: ninguna combinación razonable llega a Maestro fácil', () => {
+test('balance: ninguna combinación razonable llega a Maestro fácil (más rutas en calibracion.test.js)', () => {
   const m = L.xpMaximo();
   const suma = ids => L.LOGROS.filter(l => ids(l)).reduce((t, l) => t + l.xp, 0);
   const deCursos = l => l.categoria === 'Cursos' || l.categoria === 'Maestría';
-  // Solo estudiar (todos los cursos y áreas) NO alcanza ni Líder
-  assert.ok(suma(deCursos) + suma(l => l.categoria === 'Inicio') < 2500);
+  const lider = L.NIVELES[3].desde; const maestro = L.NIVELES[4].desde;
+  // Solo estudiar (todos los cursos, su fórmula, sus logros y la bienvenida) NO alcanza Líder
+  assert.ok(suma(deCursos) + suma(l => l.categoria === 'Inicio') + m.cursos + m.bienvenida < lider);
   // Solo jugar retos (todo el camino, la práctica al tope y todas las insignias) NO alcanza Líder
-  assert.ok(m.insignias + m.retos < 2500, `retos: ${m.insignias + m.retos}`);
-  // Solo invitar gente (6 invitados que pagan y juegan, con sus logros) llega a Profesional pero no a Líder
+  assert.ok(m.insignias + m.retos < lider, `retos: ${m.insignias + m.retos}`);
+  // Solo invitar gente (6 invitados que pagan y juegan, con sus logros) NO alcanza Líder
   const soloReferidos = m.referidos + suma(l => l.id === 'l21' || l.id === 'l22');
-  assert.ok(soloReferidos >= 1200 && soloReferidos < 2500, `referidos: ${soloReferidos}`);
+  assert.ok(soloReferidos < lider, `referidos: ${soloReferidos}`);
   // Sin referidos y sin ningún curso, aunque se haga todo lo demás, no se llega a Maestro
-  const sinReferidosNiCursos = m.total - m.referidos - suma(l => l.id === 'l21' || l.id === 'l22' || deCursos(l));
-  assert.ok(sinReferidosNiCursos < 4500, `sin cursos ni referidos: ${sinReferidosNiCursos}`);
-  // Maestro exige al menos el 65 % de todo el XP posible
-  assert.ok(4500 / m.total > 0.55, `Maestro pide ${Math.round(4500 / m.total * 100)} % del máximo`);
+  const sinReferidosNiCursos = m.total - m.referidos - m.cursos - suma(l => l.id === 'l21' || l.id === 'l22' || deCursos(l));
+  assert.ok(sinReferidosNiCursos < maestro, `sin cursos ni referidos: ${sinReferidosNiCursos}`);
+  // Maestro pide el 70 % o más de todo el XP posible
+  assert.ok(maestro / m.total > 0.7, `Maestro pide ${Math.round(maestro / m.total * 100)} % del máximo`);
 });
 
-test('escenario del contrato: ~4 cursos + 20 retos + foro/directorio rondan ~1200 XP (Profesional es difícil)', () => {
+test('escenario del contrato: ~4 cursos + 20 retos + foro/directorio + 30 días NO alcanzan Profesional (es difícil)', () => {
   // Persona constante: 30 días en el club (los últimos 14 seguidos), 4 cursos de 2 áreas, 20 retos, 1 discusión y su tarjeta
   let e = R.estadoInicial();
   for (let d = 1; d <= 10; d++) {
@@ -83,13 +85,16 @@ test('escenario del contrato: ~4 cursos + 20 retos + foro/directorio rondan ~120
   assert.equal(e.superados, 20);
   const agosto = Array.from({ length: 16 }, (_, i) => `2026-08-${String(i + 1).padStart(2, '0')}`);
   const dias = [...agosto, ...diasSeguidos(17, 30)]; // 30 días en total, los últimos 14 seguidos
-  const constante = evaluar({ esVIP: true, completados: 4, areas: 2, dias, tarjetaDir: true, foroPosts: 1 }, e);
+  const cursosLista = [1, 2, 3, 4].map(n => ({ courseId: `c${n}`, n, xp: L.xpDeCurso(n), fecha: null }));
+  const constante = evaluar({ esVIP: true, completados: 4, areas: 2, dias, tarjetaDir: true, foroPosts: 1, cursosLista, bienvenida: true }, e);
   assert.equal(constante.racha, 14);
-  assert.ok(constante.xp.total >= 1100 && constante.xp.total <= 1400, `constante: ${constante.xp.total}`);
-  // Misma persona pero que solo entró 10 días: se queda en Técnico
-  const corto = evaluar({ esVIP: true, completados: 4, areas: 2, dias: diasSeguidos(1, 10), tarjetaDir: true, foroPosts: 1 }, e, 0, dia(10));
+  assert.equal(constante.xp.cursos, 20 + 30 + 40 + 50);
+  assert.ok(constante.xp.total >= 1200 && constante.xp.total < L.NIVELES[2].desde, `constante: ${constante.xp.total}`);
+  assert.equal(constante.nivel.id, 2, 'sigue en Técnico');
+  // Misma persona pero que solo entró 10 días: se queda más abajo todavía
+  const corto = evaluar({ esVIP: true, completados: 4, areas: 2, dias: diasSeguidos(1, 10), tarjetaDir: true, foroPosts: 1, cursosLista, bienvenida: true }, e, 0, dia(10));
   assert.equal(corto.nivel.id, 2, `corto: ${corto.xp.total}`);
-  assert.ok(corto.xp.total < 1200);
+  assert.ok(corto.xp.total < constante.xp.total);
 });
 
 test('un miembro nuevo sin nada hecho solo tiene el logro de bienvenida y nivel Aprendiz', () => {
@@ -97,7 +102,7 @@ test('un miembro nuevo sin nada hecho solo tiene el logro de bienvenida y nivel 
   assert.deepEqual(ev.logros.filter(l => l.ganado).map(l => l.id), ['l1']);
   assert.equal(ev.xp.total, 20);
   assert.equal(ev.nivel.id, 1);
-  assert.equal(ev.nivel.faltan, 280);
+  assert.equal(ev.nivel.faltan, 480);
 });
 
 test('el XP se desglosa en logros, retos y referidos y el total es su suma', () => {

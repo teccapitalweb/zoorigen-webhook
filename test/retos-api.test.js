@@ -37,7 +37,7 @@ test('GET /api/retos sin membresía: vista previa sin escribir nada', async () =
   const res = await obtener(app, 'token-sinplan');
   assert.equal(res.status, 200);
   assert.deepEqual(res.body, {
-    ok: true, membresia: false, nivel: { id: 1, nombre: 'Aprendiz', xp: 0, desde: 0, hasta: 300, faltan: 300 }, xp: 0, superados: 0,
+    ok: true, membresia: false, nivel: { id: 1, nombre: 'Aprendiz', xp: 0, desde: 0, hasta: 500, faltan: 500 }, xp: 0, superados: 0,
     porReto: {}, camino: { quiz: 0, detective: 0, orden: 0 }, retosHoy: [], totales: { quiz: 22, detective: 13, orden: 18 }
   });
   assert.equal(db.value('actividadUsuario/sinplan'), undefined);

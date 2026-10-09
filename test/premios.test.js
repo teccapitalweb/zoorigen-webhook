@@ -35,7 +35,7 @@ test('sin membresía: vista previa (nivel 1, 0 XP, logros sin XP ni "ganado") y 
   assert.equal(res.status, 200);
   assert.equal(res.body.ok, true);
   assert.equal(res.body.membresia, false);
-  assert.deepEqual(res.body.nivel, { id: 1, nombre: 'Aprendiz', xp: 0, desde: 0, hasta: 300, faltan: 300 });
+  assert.deepEqual(res.body.nivel, { id: 1, nombre: 'Aprendiz', xp: 0, desde: 0, hasta: 500, faltan: 500 });
   assert.deepEqual(res.body.xp, { total: 0, logros: 0, retos: 0, referidos: 0, cursos: 0, bienvenida: 0 });
   assert.deepEqual(res.body.cursos, { terminados: 0, lista: [] });
   assert.equal(res.body.logros.length, 36);
@@ -68,12 +68,12 @@ test('con membresía vigente: forma completa de la respuesta del contrato', asyn
   assert.equal(b.disponibles, 0);
 });
 
-test('un miembro nuevo: registra el día de hoy, gana la bienvenida (20 XP) y sigue como Aprendiz', async () => {
+test('un miembro nuevo: registra el día de hoy, gana la bienvenida (20 XP del logro) y sigue como Aprendiz', async () => {
   const { app, db } = cargarServidor({ tokens, seed: baseSeed() });
   const res = await premiosDe(app);
   assert.equal(res.body.xp.total, 20);
   assert.equal(res.body.nivel.id, 1);
-  assert.equal(res.body.nivel.faltan, 280);
+  assert.equal(res.body.nivel.faltan, 480);
   assert.deepEqual(res.body.logros.filter(l => l.ganado).map(l => l.id), ['l1']);
   assert.equal(res.body.racha, 1);
   assert.equal(res.body.diasActivos, 1);
@@ -118,7 +118,9 @@ test('cursos terminados: cuentan los certificados de cursos que existen, una vez
   assert.ok(ganados.includes('l6'), '4 cursos distintos');
   assert.ok(!ganados.includes('l7'), 'no llegan a 6');
   assert.ok(ganados.includes('l8') && ganados.includes('l25'), 'los 4 cursos son de 4 áreas distintas');
-  assert.equal(res.body.xp.logros, 20 + 60 + 80 + 140 + 50 + 150);
+  assert.equal(res.body.cursos.terminados, 4);
+  assert.equal(res.body.xp.cursos, 20 + 30 + 40 + 50, 'fórmula por curso terminado');
+  assert.equal(res.body.xp.logros, 20 + 20 + 30 + 50 + 30 + 80, 'l1 + l4 + l5 + l6 + l8 + l25');
 });
 
 test('un certificado de un curso retirado de Firestore ya no cuenta (se exige que el curso exista)', async () => {
@@ -164,15 +166,15 @@ test('referidos: sin invitados no suman XP y el premio por invitar no se gana', 
   assert.ok(res.body.premios.filter(p => p.clave.startsWith('referidos')).every(p => !p.ganado));
 });
 
-test('al llegar a Profesional (1200 XP) se gana el premio, queda guardado y está disponible', async () => {
+test('al llegar a Profesional (1,700 XP) se gana el premio, queda guardado y está disponible', async () => {
   const seed = baseSeed();
-  sembrarCertificados(seed, 'ana', Array.from({ length: 15 }, (_, i) => `c${i + 1}`)); // todos los cursos: 1900+ XP en cursos y maestría
+  sembrarCertificados(seed, 'ana', Array.from({ length: 15 }, (_, i) => `c${i + 1}`)); // todos los cursos: 920 de la fórmula + 790 de logros de cursos + 20 de bienvenida al club
   const { app, db } = cargarServidor({ tokens, seed });
   const res = await premiosDe(app);
   assert.ok(res.body.nivel.id >= 3, `nivel ${res.body.nivel.nombre} con ${res.body.xp.total} XP`);
   const profesional = res.body.premios.find(p => p.clave === 'profesional');
   assert.deepEqual([profesional.ganado, profesional.disponible, profesional.usado], [true, true, null]);
-  assert.ok(!res.body.premios.find(p => p.clave === 'maestro').ganado, 'Maestro exige 4500');
+  assert.ok(!res.body.premios.find(p => p.clave === 'maestro').ganado, 'Maestro exige 5100');
   assert.equal(res.body.disponibles, 1);
   assert.deepEqual(db.value('premiosUsuario/ana').ganados, ['profesional']);
 });

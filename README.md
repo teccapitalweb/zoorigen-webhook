@@ -1,4 +1,4 @@
-# zoorigen-webhook
+# zoorigen-webhook20 |30 |30 ||80 |100 |80 ||250 |
 
 Backend del Club VIP de Zoorigen. Corre en Railway y conecta **Stripe → Firebase (Firestore) → Bunny Stream**.
 
@@ -103,15 +103,21 @@ y `miembros` por rango de id (solo para códigos viejos que nadie ha abierto). R
 
 ### Niveles
 
-XP total = logros (l1..l26) + insignias de retos (r1..r10) + XP de los retos + XP por referidos. **El nivel no se guarda: se recalcula en cada consulta.**
+XP total = logros (l1..l26) + insignias de retos (r1..r10) + XP de los retos + XP por referidos + XP por cursos terminados + premio de bienvenida. **El nivel no se guarda: se recalcula en cada consulta.**
+
+**Los umbrales se recalibraron** al agregar las fuentes nuevas de XP (cursos y bienvenida): Profesional queda en ~25 % del XP máximo posible y Maestro en ~75 % (y Maestro sigue siendo alcanzable: pide menos del 90 %). El sitio no copia esta tabla: la lee de `niveles` en `GET /api/premios`.
 
 | Nivel | Desde | Hasta |
 |---|---|---|
-| 1 Aprendiz | 0 | 300 |
-| 2 Técnico | 300 | 1,200 |
-| 3 Profesional | 1,200 | 2,500 |
-| 4 Líder | 2,500 | 4,500 |
-| 5 Maestro | 4,500 | — |
+| Nivel | Desde | Hasta | % del XP máximo (6,850) |
+|---|---|---|---|
+| 1 Aprendiz | 0 | 500 | 0 % |
+| 2 Técnico | 500 | 1,700 | 7 % |
+| 3 Profesional | 1,700 | 3,500 | 25 % |
+| 4 Líder | 3,500 | 5,100 | 51 % |
+| 5 Maestro | 5,100 | — | 74.5 % |
+
+(Antes: 300 / 1,200 / 2,500 / 4,500 con un máximo de 6,860 XP.)
 
 ### Tabla de logros (fuente: `services/logros.js` y `services/retos.js`)
 
@@ -160,35 +166,40 @@ techo de por vida de 600 XP en práctica + el camino: 22 quiz + 13 detective + 1
 
 | Fuente | XP máximo |
 |---|---|
-| Logros l1..l26 | 3,790 |
+| Logros l1..l26 (los 9 de cursos suman solo 790) | 2,760 |
 | Insignias r1..r10 | 500 |
 | XP de retos (práctica 600 + camino 530) | 1,130 |
 | XP por referidos (6 invitados × 240) | 1,440 |
-| **Total alcanzable en toda la vida** | **6,860** (dentro de 6,000 a 7,500) |
+| XP por cursos terminados (los 15 cursos: 20 a 100, el décimo 180) | 920 |
+| Premio de bienvenida | 100 |
+| **Total alcanzable en toda la vida** | **6,850** (dentro de 6,000 a 7,500) |
 
-### Cuánto cuesta llegar a Profesional y a Maestro
+**Por qué se bajó el XP de los logros de cursos (l4-l8, l23-l26).** Cada curso terminado ya paga con la fórmula (920 XP por los 15), así que esos 9 logros pasaron de 1,820 a 790 XP: ahora son un bono por hito y no se paga dos veces lo mismo.
+Sus valores nuevos: l4 20, l5 30, l6 50, l7 80, l8 30, l23 100, l24 150, l25 80, l26 250. Los demás logros no cambiaron.
 
-* **Profesional (1,200 XP)**, el escenario del contrato: 4 cursos de 2 áreas (280 + 50), 20 retos (140 de XP + insignias r1, r2, r4, r5, r8 = 200), tarjeta
-  en el directorio (60), una discusión (50), bienvenida (20) y unos 30 días en el club con 14 seguidos (400) da **1,230 XP**. Con la misma actividad pero solo 10 días en el club se
-  queda en **930 XP (Técnico)**. Otra ruta: 8 cursos (740 + 200 por las áreas) + tarjeta + 20 retos. Otra: invitar a 6 personas que confirman y pagan suma 1,440 + 210 = 1,650.
-* **Maestro (4,500 XP)** es el 66 % de todo el XP posible. Sin invitados el máximo es 5,210: hay que hacer casi todo (los 15 cursos = 1,820, 60 días seguidos y 30 más
-  en total = 1,000, foro = 650, los 53 retos del camino y la práctica al tope + todas las insignias = 1,630, y lo básico = 110). Estudiar todo NO alcanza ni Líder (1,930), jugar todos los retos tampoco (1,630),
-  y sin ningún curso ni invitado el techo es 3,390. Una prueba (`test/logros.test.js`) lo verifica con la tabla.
+### Cuánto cuesta llegar a cada nivel (rutas típicas, calculadas con las reglas reales)
 
-### XP por cursos terminados y premio de bienvenida
+Todas incluyen la bienvenida (+100) y membresía vigente. "Racha" = días seguidos hasta hoy. Una prueba (`test/calibracion.test.js`, con el simulador `test/helpers/rutas-xp.js`) verifica estas rutas.
 
-* **XP por curso terminado** (fuente nueva, aparte de los logros). El n-ésimo curso terminado paga `n % 10 === 0 ? 180 : 10 + 10 * (n % 10)`:
-  20, 30, 40, 50, 60, 70, 80, 90, 100 y **180 el décimo**; luego el ciclo se repite (11 = 20 ... 19 = 100, 20 = 180). Los 15 cursos del club suman 920 XP.
-  Solo cuentan **cursos distintos que existan en `cursos`**, ordenados por la fecha del certificado (`issuedAt`; con la misma fecha, por folio); si hay certificados repetidos de un curso,
-  vale el más antiguo y el curso paga una sola vez. Los certificados de cursos inexistentes no cuentan ni ocupan lugar en la fórmula. Va incluido en el XP total y en `xp.cursos`.
-* **Premio de bienvenida**: `POST /api/premios/bienvenida` (sin cuerpo; token de Firebase; se permite sin membresía; 10 por minuto) → `{ ok, xp: 100, yaReclamado, xpTotal, nivel }`.
-  Solo cuentas cuyo `creationTime` en **Firebase Auth** sea de hace 14 días o menos (si Auth no conoce la cuenta o la fecha no se entiende: 403; si Auth no responde: 503). Administradores: 403.
-  Es **idempotente**: se guarda en `premiosUsuario/{uid}.bienvenida = { fecha }` dentro de una transacción (dos solicitudes a la vez pagan una sola vez; quien ya reclamó recibe `yaReclamado: true` aunque su cuenta ya sea vieja).
-  Sin membresía el XP queda guardado y cuenta al suscribirse; `xpTotal` sin membresía es solo los 100 de bienvenida y `GET /api/premios` sigue mostrando vista previa a cero.
-* **`GET /api/premios`** → `{ ok, membresia, nivel:{id,nombre,xp,desde,hasta,faltan}, niveles:[{id,nombre,desde,hasta}] (los 5),
-  xp:{total,logros,retos,referidos,cursos,bienvenida}, cursos:{terminados, lista:[{courseId,n,xp,fecha}]} (orden cronológico),
-  bienvenida:{disponible,xp:100,reclamado}, racha, diasActivos, logros, premios, disponibles }`.
-  Sin membresía: `xp` y `cursos` en cero, `niveles` completo y `bienvenida` solo con `{ disponible, xp }` (sin `reclamado`). `disponible` = cuenta nueva, sin reclamar y no administrador.
+| Ruta | XP | Nivel |
+|---|---|---|
+| Casual: 1 curso, 8 retos, 8 días en el club | 410 | Aprendiz |
+| **Típica del contrato**: 4 cursos de 2 áreas, 20 retos, 30 días (14 seguidos), tarjeta en el directorio, 1 discusión | 1,420 | Técnico (no llega a Profesional) |
+| Lo mismo con 4 áreas y 3 discusiones | 1,600 | Técnico |
+| **Profesional**: 6 cursos de 4 áreas, 20 retos, 30 días (14 seguidos), tarjeta, 3 discusiones | 1,810 | Profesional |
+| Profesional por otro camino: 4 cursos, 40 retos, 60 días (30 seguidos), tarjeta, 1 discusión | 1,870 | Profesional |
+| Solo estudiar: los 15 cursos, 10 días, tarjeta | 1,950 | Profesional |
+| Solo retos: camino completo, práctica al tope, 60 días seguidos | 2,780 | Profesional |
+| Solo invitar: 6 invitados que pagan y juegan | 1,830 | Profesional |
+| Muy completa: 12 cursos, 60 días seguidos, todos los retos, 6 discusiones, tarjeta (sin invitados) | 4,800 | Líder |
+| Los 15 cursos, 60 días seguidos, todos los retos, tarjeta (sin foro ni invitados) | 4,550 | Líder |
+| **Maestro** = lo mismo que "muy completa" + 4 invitados que pagan | 5,970 | Maestro |
+| Todo menos invitados (los 15 cursos, 60 días seguidos, 9 discusiones, 99 me gusta, todos los retos) | 5,200 | Maestro, apenas |
+| Todo | 6,850 | Maestro |
+
+* **Profesional (1,700 XP)** cuesta más que antes: la ruta típica (4 cursos + 20 retos + 30 días) se queda en ~1,400-1,600; hacen falta unos 2 cursos más, o más discusiones, o 60 días en el club (la racha de 30 días vale 250 y la de 60, 350).
+* **Maestro (5,100 XP)** es el 74.5 % del máximo: sin invitados hay que hacer prácticamente todo (el margen sobre Maestro es de ~100 XP: los 15 cursos, las rachas de 30 y 60 días, el foro y todos los retos). Se puede saltar UNA de las dos grandes fuentes
+  (los cursos o los invitados), nunca las dos: sin cursos ni invitados el techo es ~3,500. Solo estudiar, solo jugar retos o solo invitar no alcanza ni Líder (3,500).
 
 ### Premios
 
@@ -196,8 +207,8 @@ Hay solo tres premios (`profesional`, `maestro`, `referidos-1`); cada uno abre U
 
 | Clave | Condición |
 |---|---|
-| `profesional` | nivel ≥ 3 (1,200 XP) |
-| `maestro` | nivel ≥ 5 (4,500 XP) |
+| `profesional` | nivel ≥ 3 (1,700 XP) |
+| `maestro` | nivel ≥ 5 (5,100 XP) |
 | `referidos-1` | 4 invitados válidos (es el único premio por invitar; ya no existe `referidos-2`) |
 
 Un premio ganado **no se pierde** aunque el XP baje (solo se agregan claves a `ganados`, dentro de una transacción). `POST /api/premios/usar` gasta un solo
@@ -245,7 +256,7 @@ Límites: nombre 2-80, profesión 80, sector 60, ciudad 80, bio 400, correo 120,
 
 * **Retos**: el servidor no ve las respuestas, solo el puntaje que informa el navegador; alguien que arme las peticiones a mano puede declarar 100 %. Por eso hay techos duros (práctica 600, camino solo hasta `totales`, una vez por reto por día) y las insignias piden días distintos.
   Solo con retos se llega a unos 1,630 XP como máximo (Técnico).
-* **Cursos** (l4-l8, l23-l26): dependen de `certificados` que escribe el navegador (reglas: lo puede crear cualquier miembro vigente). Cada certificado solo cuenta si su curso existe en `cursos`, un curso cuenta una vez y las áreas salen de `cursos`, no del certificado.
+* **Cursos** (l4-l8, l23-l26 y el XP por curso terminado): dependen de `certificados` que escribe el navegador (reglas: lo puede crear cualquier miembro vigente). Cada certificado solo cuenta si su curso existe en `cursos`, un curso cuenta una vez y las áreas salen de `cursos`, no del certificado.
   Es menos confiable que retos o referidos; el daño máximo es adelantar un curso del calendario dentro de una membresía pagada.
 * **Foro**: discusiones, me gusta recibidos (sin los propios) y respuestas recibidas (`repliesCount`, con tope de 50 por discusión). No se cuentan las respuestas ESCRITAS por la persona: requeriría un índice de grupo de colecciones que no existe.
 * **Constancia**: días en que la persona abrió logros o retos; lo registra el servidor.

@@ -11,12 +11,14 @@
 const retos = require('./retos');
 const referidos = require('./referidos');
 
+// Calibración (ver README): Profesional ≈ 25 % y Maestro ≈ 75 % del XP máximo posible (xpMaximo().total).
+// Si cambia el XP de alguna fuente, una prueba (test/calibracion.test.js) avisa si los umbrales se desajustan.
 const NIVELES = [
-  { id: 1, nombre: 'Aprendiz', desde: 0, hasta: 300 },
-  { id: 2, nombre: 'Técnico', desde: 300, hasta: 1200 },
-  { id: 3, nombre: 'Profesional', desde: 1200, hasta: 2500 },
-  { id: 4, nombre: 'Líder', desde: 2500, hasta: 4500 },
-  { id: 5, nombre: 'Maestro', desde: 4500, hasta: 99999 }
+  { id: 1, nombre: 'Aprendiz', desde: 0, hasta: 500 },
+  { id: 2, nombre: 'Técnico', desde: 500, hasta: 1700 },
+  { id: 3, nombre: 'Profesional', desde: 1700, hasta: 3500 },
+  { id: 4, nombre: 'Líder', desde: 3500, hasta: 5100 },
+  { id: 5, nombre: 'Maestro', desde: 5100, hasta: 99999 }
 ];
 
 const CATEGORIAS = ['Inicio', 'Cursos', 'Constancia', 'Comunidad', 'Retos', 'Maestría'];
@@ -30,12 +32,13 @@ const LOGROS = [
   { id: 'l1', nombre: 'Bienvenido a la manada', descripcion: 'Tu membresía del Club VIP está vigente', categoria: 'Inicio', xp: 20, cumple: d => d.esVIP },
   { id: 'l2', nombre: 'Primeros pasos', descripcion: 'Entra al club en 3 días distintos', categoria: 'Inicio', xp: 30, cumple: d => d.diasActivos >= 3 },
   { id: 'l3', nombre: 'Tarjeta de presentación', descripcion: 'Crea tu tarjeta en el directorio de la comunidad', categoria: 'Inicio', xp: 60, cumple: d => d.tarjetaDir },
-  // Cursos (cada uno pide el certificado de un curso real del club)
-  { id: 'l4', nombre: 'Primer curso', descripcion: 'Termina tu primer curso y obtén tu certificado', categoria: 'Cursos', xp: 60, cumple: d => d.completados >= 1 },
-  { id: 'l5', nombre: 'Curiosidad en marcha', descripcion: 'Termina 2 cursos', categoria: 'Cursos', xp: 80, cumple: d => d.completados >= 2 },
-  { id: 'l6', nombre: 'Estudiante constante', descripcion: 'Termina 4 cursos', categoria: 'Cursos', xp: 140, cumple: d => d.completados >= 4 },
-  { id: 'l7', nombre: 'Biblioteca viva', descripcion: 'Termina 6 cursos', categoria: 'Cursos', xp: 200, cumple: d => d.completados >= 6 },
-  { id: 'l8', nombre: 'Mirada amplia', descripcion: 'Termina cursos de 2 áreas distintas', categoria: 'Cursos', xp: 50, cumple: d => d.areas >= 2 },
+  // Cursos (cada uno pide el certificado de un curso real del club). Su XP es pequeño a propósito: cada curso
+  // terminado ya paga aparte con la fórmula de xpDeCurso, así que estos logros son un bono por hito (no se paga dos veces lo mismo).
+  { id: 'l4', nombre: 'Primer curso', descripcion: 'Termina tu primer curso y obtén tu certificado', categoria: 'Cursos', xp: 20, cumple: d => d.completados >= 1 },
+  { id: 'l5', nombre: 'Curiosidad en marcha', descripcion: 'Termina 2 cursos', categoria: 'Cursos', xp: 30, cumple: d => d.completados >= 2 },
+  { id: 'l6', nombre: 'Estudiante constante', descripcion: 'Termina 4 cursos', categoria: 'Cursos', xp: 50, cumple: d => d.completados >= 4 },
+  { id: 'l7', nombre: 'Biblioteca viva', descripcion: 'Termina 6 cursos', categoria: 'Cursos', xp: 80, cumple: d => d.completados >= 6 },
+  { id: 'l8', nombre: 'Mirada amplia', descripcion: 'Termina cursos de 2 áreas distintas', categoria: 'Cursos', xp: 30, cumple: d => d.areas >= 2 },
   // Constancia (días en que entras al club, hora de México)
   { id: 'l9', nombre: 'Rastro fresco', descripcion: 'Entra 3 días seguidos', categoria: 'Constancia', xp: 30, cumple: d => d.racha >= 3 },
   { id: 'l10', nombre: 'Semana de campo', descripcion: 'Entra 7 días seguidos', categoria: 'Constancia', xp: 70, cumple: d => d.racha >= 7 },
@@ -53,10 +56,10 @@ const LOGROS = [
   { id: 'l21', nombre: 'Embajador', descripcion: 'Invita a 1 persona que confirme su cuenta', categoria: 'Comunidad', xp: 60, cumple: d => d.invitadosValidos >= 1 },
   { id: 'l22', nombre: 'La manada crece', descripcion: 'Invita a 4 personas que confirmen su cuenta', categoria: 'Comunidad', xp: 150, cumple: d => d.invitadosValidos >= 4 },
   // Maestría (los hitos grandes de los cursos)
-  { id: 'l23', nombre: 'Medio camino', descripcion: 'Termina 8 cursos', categoria: 'Maestría', xp: 260, cumple: d => d.completados >= 8 },
-  { id: 'l24', nombre: 'Experto en fauna', descripcion: 'Termina 12 cursos', categoria: 'Maestría', xp: 380, cumple: d => d.completados >= 12 },
-  { id: 'l25', nombre: 'Naturalista completo', descripcion: 'Termina cursos de 4 áreas distintas', categoria: 'Maestría', xp: 150, cumple: d => d.areas >= 4 },
-  { id: 'l26', nombre: 'Maestro de la fauna', descripcion: 'Termina los ' + TOTAL_CURSOS + ' cursos del club', categoria: 'Maestría', xp: 500, cumple: d => d.completados >= TOTAL_CURSOS }
+  { id: 'l23', nombre: 'Medio camino', descripcion: 'Termina 8 cursos', categoria: 'Maestría', xp: 100, cumple: d => d.completados >= 8 },
+  { id: 'l24', nombre: 'Experto en fauna', descripcion: 'Termina 12 cursos', categoria: 'Maestría', xp: 150, cumple: d => d.completados >= 12 },
+  { id: 'l25', nombre: 'Naturalista completo', descripcion: 'Termina cursos de 4 áreas distintas', categoria: 'Maestría', xp: 80, cumple: d => d.areas >= 4 },
+  { id: 'l26', nombre: 'Maestro de la fauna', descripcion: 'Termina los ' + TOTAL_CURSOS + ' cursos del club', categoria: 'Maestría', xp: 250, cumple: d => d.completados >= TOTAL_CURSOS }
 ];
 
 function fechaMexico(ahora = new Date()) { return retos.fechaMexico(ahora); }

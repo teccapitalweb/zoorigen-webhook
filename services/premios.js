@@ -8,17 +8,21 @@
 // Un solo premio por invitar: se gana con 4 invitados válidos.
 const INVITADOS_PARA_PREMIO = 4;
 
+const { NIVELES } = require('./logros');
+const puntos = n => n.toLocaleString('en-US');
+const nivelPorId = id => NIVELES.find(n => n.id === id);
+
 const PREMIOS = Object.freeze([
   {
     clave: 'profesional', titulo: 'Premio Profesional',
     descripcion: 'Abre un curso antes de su fecha del calendario.',
-    requisito: 'Llega al nivel Profesional (1,200 puntos)',
+    requisito: `Llega al nivel Profesional (${puntos(nivelPorId(3).desde)} puntos)`,
     cumple: c => c.nivelId >= 3, faltan: () => null
   },
   {
     clave: 'maestro', titulo: 'Premio Maestro',
     descripcion: 'Abre un curso antes de su fecha del calendario.',
-    requisito: 'Llega al nivel Maestro (4,500 puntos)',
+    requisito: `Llega al nivel Maestro (${puntos(nivelPorId(5).desde)} puntos)`,
     cumple: c => c.nivelId >= 5, faltan: () => null
   },
   {
