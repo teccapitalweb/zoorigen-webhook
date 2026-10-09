@@ -27,6 +27,12 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `GET /api/referidos/estado` | Código, enlace, invitados (solo alias), hitos y premios por invitar | Token de Firebase |
 | `GET/POST/DELETE /api/directorio` | Directorio de la comunidad (tarjeta propia) | Token de Firebase (+ membresía para ver y crear) |
 | `GET /api/admin/bunny-catalogo` | Colecciones y videos listos de Bunny, en vivo (solo lectura) | Token de Firebase + administrador |
+| `GET /api/noticias?limit=7` | Últimas noticias del sector (máx. 30) | Token de Firebase (sin membresía también) |
+| `GET /api/avisos` | La campana: avisos personales (30) + globales (15), máx. 40 | Token de Firebase (sin membresía también) |
+| `GET/POST /api/admin/noticias`, `POST /api/admin/noticias/sync`, `POST /api/admin/noticias/:id/eliminar` | Noticias del equipo, sincronizar ahora, borrar | Token de Firebase + administrador |
+| `GET/POST /api/admin/datos-curiosos`, `POST .../:id/actualizar`, `.../eliminar`, `.../enviar` | Banco de datos curiosos | Token de Firebase + administrador |
+| `GET/POST /api/admin/avisos`, `POST /api/admin/avisos/:id/eliminar` | Avisos globales de la campana | Token de Firebase + administrador |
+| `GET /cron/noticias?key=CRON_KEY` | Corre la tarea diaria a mano (también cabecera `x-cron-key`) | `CRON_KEY` |
 | `GET /` | Health check | — |
 
 ### Videos y clases gratis desde Firestore
@@ -261,11 +267,69 @@ Límites: nombre 2-80, profesión 80, sector 60, ciudad 80, bio 400, correo 120,
 * **Foro**: discusiones, me gusta recibidos (sin los propios) y respuestas recibidas (`repliesCount`, con tope de 50 por discusión). No se cuentan las respuestas ESCRITAS por la persona: requeriría un índice de grupo de colecciones que no existe.
 * **Constancia**: días en que la persona abrió logros o retos; lo registra el servidor.
 
+## Noticias del sector, datos curiosos y avisos (campana)
+
+Código en `services/`: `avisos.js`, `noticias.js`, `datos-curiosos.js`, `tarea-diaria.js` (reglas) y `rutas-noticias.js` (rutas).
+Las colecciones son **solo del servidor** (Admin SDK; las reglas de Firestore ya niegan lo que no listan, así que **no hay cambios de reglas**):
+el sitio usa los endpoints con `Authorization: Bearer <idToken>`. Los textos se guardan tal cual (recortados y sin caracteres de control);
+**el sitio los escapa al mostrarlos**.
+
+| Colección | Qué guarda |
+|---|---|
+| `noticiasSector/{id}` | `titulo, extracto (≤280), link, fuente, imagen (https o ''), categoria, categoriaNombre, color, fecha, origen 'auto'/'admin', plantilla?, resumen?[], idioma, creadoEn` |
+| `avisos/{uid}/items/{id}` | Avisos personales: `tipo, titulo (≤120), texto (≤240), enlace (≤40), creadoEn` |
+| `notificacionesGlobales/{id}` | Avisos para todos: `tipo, icono, color, titulo, descripcion (≤320), enlace, origen, creadoEn` |
+| `datosCuriosos/{id}` | `texto (20..300), tema, fuente, fuenteUrl, activo, veces, ultimoEnvio, origen 'base'/'admin', creadoEn` |
+| `config/noticiasSector`, `config/datosCuriosos` | `ultimaSync` y `ultimoEnvioFecha` (para no repetir el envío del día) |
+
+Tipos personales: `certificado, logro, premio, libro, xp, bienvenida`. Globales: `noticia, dato, sistema, clase, curso, general`.
+Categorías de noticias: `fauna, conservacion, veterinaria, normativa, apicultura, ciencia` (nombre y color en `services/noticias.js`).
+
+### Noticias automáticas
+`data/noticias-fuentes.json` (`[{ id, nombre, url (https), categoria }]`) lista los RSS/Atom en español. `syncNoticias` los lee **en paralelo** (12 s
+de tiempo máximo cada uno; si uno falla se reporta y los demás siguen), se queda con lo que está en español, es relevante (fauna silvestre, conservación,
+veterinaria, CITES, SEMARNAT, PROFEPA, apicultura…) y no es ruido (deportes, farándula, política partidista…), y guarda **como máximo 4 nuevas por corrida
+repartidas entre categorías**. Solo se guarda titular + extracto corto + enlace a la nota original + la imagen que entregue la fuente (solo https), nunca el
+artículo. El id es un hash del enlace (sin parámetros de seguimiento), así que no se duplica. Las `auto` de más de 21 días se borran (lotes de 400);
+las `admin` nunca. Si existe `NEWSDATA_API_KEY` también se consulta NewsData.io (`language=es`).
+
+### Tarea diaria (dentro del propio proceso, sin dependencias)
+13:00 UTC (7:00 a.m. de Ciudad de México) y a los 20 s de arrancar (solo si la última sincronización tiene más de 6 horas, para que un reinicio no
+traiga noticias de más): **1)** `syncNoticias` y, si guardó alguna, aviso global `noticias_<fecha>` "📰 Nuevas noticias del sector" (uno por día);
+**2)** `enviarDatoCuriosoSiToca`: **martes y viernes** (fecha de México, UTC-6 fijo) envía un dato curioso como aviso global `dato_<fecha>_<id>`,
+idempotente por día. Elección: activo con menos `veces`, luego `ultimoEnvio` más antiguo, luego id. Cada paso es independiente: si uno falla, el otro corre.
+Los temporizadores no mantienen vivo el proceso. Se apaga con `NOTICIAS_TAREA=off`; las pruebas nunca la arrancan (solo se inicia al ejecutar `node server.js`).
+Para correrla a mano: `GET /cron/noticias?key=<CRON_KEY>` (o cabecera `x-cron-key`); sin `CRON_KEY` configurada responde 401. La llave se compara con
+`timingSafeEqual`.
+
+### Banco de datos curiosos
+`data/datos-curiosos-banco.json` = `[{ id, tema, texto, fuente, fuenteUrl }]`. Se siembra en `datosCuriosos` **solo si la colección está vacía**.
+Las entradas marcadas `"prueba": true` (las 6 que trae hoy) **no se siembran**: así el banco real no queda bloqueado por datos de ejemplo. Al entregar el banco
+real se reemplaza el archivo (sin `prueba`) y se siembra solo.
+
+### Avisos personales (los crea el servidor cuando ya sabe del evento)
+| Evento | Id del aviso | Título |
+|---|---|---|
+| Insignia o logro nuevo | `logro_<id>` | 🏅 ¡Nueva insignia! |
+| Premio disponible (nivel o 4 invitados) | `premio_<clave>` | 🎁 ¡Ganaste un premio! |
+| +100 XP de bienvenida | `bono_bienvenida` | 👋 ¡Bienvenido al club! |
+| +XP por curso terminado | `bonoxp_<cursoId>` | ⭐ ¡Curso terminado! |
+
+Son idempotentes (id fijo; si existe no se sobrescribe) y nunca rompen la respuesta si fallan. Para no avisar dos veces lo mismo, `premiosUsuario/{uid}` guarda
+`logrosAvisados` y `cursosAvisados`; una cuenta que ya tenía XP calculado antes de esta función toma lo que ya tiene como punto de partida **sin avisar**
+(para no llenarle la campana de cosas viejas). Los administradores y quien no tiene membresía no reciben avisos de insignias.
+Los certificados los emite el navegador (no el servidor), por eso el aviso `cert_<folio>` no existe aquí.
+
 ## Variables de entorno (Railway)
 
 `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FIREBASE_SERVICE_ACCOUNT` (JSON completo),
 `BUNNY_STREAM_LIBRARY_ID`, `BUNNY_TOKEN_AUTH_KEY`, `BUNNY_TOKEN_TTL_SECONDS`.
 Opcionales: `STRIPE_PRICE_MENSUAL`, `STRIPE_PRICE_ANUAL` (si faltan se usan los precios fijos de `server.js`).
+
+Noticias y avisos:
+- `CRON_KEY`: llave para `GET /cron/noticias` (úsala larga y al azar). Sin ella esa ruta responde 401 a todos; el resto del servidor no la necesita.
+- `NEWSDATA_API_KEY` (opcional): activa NewsData.io como fuente extra. Nunca sale en respuestas ni en registros.
+- `NOTICIAS_TAREA=off` (opcional): apaga la tarea diaria dentro del proceso.
 
 ### `BUNNY_API_KEY` (clave de gestión de Bunny)
 
