@@ -360,6 +360,61 @@ function montarRutasClub(app, deps) {
     }
   });
 
+  // ════════════════════════════════════════════════════════════
+  // POST /api/premios/usar — canjea UN premio por UN curso adelantado
+  // ════════════════════════════════════════════════════════════
+  // El adelanto lo pinta el sitio (su calendario de 8 días): considera ABIERTOS los cursos que
+  // estén en premiosUsuario/{uid}.usados[].cursoId. Aquí solo se decide si el canje es válido y
+  // se registra, dentro de una transacción para que un doble clic o dos pestañas no gasten dos premios.
+  app.post('/api/premios/usar', express.json(), async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarFirebase(req, res);
+      if (!decoded) return;
+      const uid = decoded.uid;
+      limitar(limites.premios, uid, CANJES_POR_MINUTO);
+      const cuerpo = req.body && typeof req.body === 'object' ? req.body : {};
+      const cursoId = typeof cuerpo.cursoId === 'string' ? cuerpo.cursoId.trim() : '';
+      if (!cursoId || cursoId.length > 200) throw errorHttp(400, 'Falta el curso que quieres abrir');
+
+      const ctx = await leerContexto(uid);
+      if (ctx.esAdmin) throw errorHttp(400, 'Las cuentas de administrador ya tienen todos los cursos abiertos');
+      if (!ctx.tienePlan) throw sinMembresia('Necesitas una membresía activa para usar tu premio');
+
+      // El curso debe existir de verdad en `cursos` (con un refresco limitado si no aparece)
+      let curso = (await obtenerIndiceVideos()).datos.get(cursoId);
+      if (!curso) {
+        const fresco = await obtenerIndiceVideos({ forzar: true });
+        if (!fresco.cargadoEn) throw errorHttp(503, 'No pudimos cargar los cursos. Intenta de nuevo en un momento');
+        curso = fresco.datos.get(cursoId);
+      }
+      if (!curso) throw errorHttp(404, 'Ese curso no existe');
+      if (curso.disponibleSiempre || curso.cursoMuestraGratis) throw errorHttp(409, 'Ese curso ya está abierto para todos');
+      if ((await leerEleccionPrueba(uid)) === cursoId) throw errorHttp(409, 'Ese curso ya es tu prueba gratuita');
+
+      // Pone al día los premios ganados (por nivel o por invitados) antes de buscar uno libre
+      await calcularResumen(ctx);
+
+      const ref = db.collection('premiosUsuario').doc(uid);
+      const clave = await db.runTransaction(async tx => {
+        const snap = await tx.get(ref);
+        const guardado = premios.normalizarGuardado(snap.exists ? snap.data() : null);
+        if (guardado.usados.some(u => u.cursoId === cursoId)) throw errorHttp(409, 'Ese curso ya fue adelantado con un premio');
+        const libre = premios.premioLibre(guardado.ganados, guardado.usados);
+        if (!libre) throw errorHttp(403, 'No tienes premios disponibles');
+        tx.set(ref, {
+          uid, ganados: guardado.ganados,
+          usados: [...guardado.usados, { clave: libre, cursoId, fecha: new Date().toISOString() }],
+          actualizadoEn: FieldValue.serverTimestamp()
+        }, { merge: true });
+        return libre;
+      });
+      return res.json({ ok: true, cursoId, clave });
+    } catch (error) {
+      return responderError(res, error, 'No se pudo usar el premio', 'premios');
+    }
+  });
+
   return { leerContexto, calcularResumen, leerEstadoRetos, limites, limitar, sinMembresia, responderError, FieldValue };
 }
 
