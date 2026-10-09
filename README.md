@@ -32,6 +32,11 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `GET/POST /api/admin/noticias`, `POST /api/admin/noticias/sync`, `POST /api/admin/noticias/:id/eliminar` | Noticias del equipo, sincronizar ahora, borrar | Token de Firebase + administrador |
 | `GET/POST /api/admin/datos-curiosos`, `POST .../:id/actualizar`, `.../eliminar`, `.../enviar` | Banco de datos curiosos | Token de Firebase + administrador |
 | `GET/POST /api/admin/avisos`, `POST /api/admin/avisos/:id/eliminar` | Avisos globales de la campana | Token de Firebase + administrador |
+| `GET /api/libros` | Libros de lectura (SIN páginas) con `desbloqueado`/`faltan`; avisa en la campana los ya ganados | Token de Firebase (sin membresía: se listan cerrados) |
+| `GET /api/libros/:id` | El libro completo (meta + páginas); 403 `{ error, requiere, superados, faltan }` si sigue bloqueado | Token de Firebase + membresía + retos |
+| `GET /api/materiales` | Catálogo de PDF con su estado (`desbloqueado`, `faltan`, `soloMiembros`) | Token de Firebase (sin membresía: se listan cerrados) |
+| `GET /api/materiales/:id/archivo` | El PDF (`application/pdf`, `inline`, `private, no-store`); 403 igual que los libros | Token de Firebase + membresía (+ retos si el material lo pide) |
+| `GET /api/admin/libros`, `GET /api/admin/materiales` | Qué se cargó del disco y qué se descartó (con el motivo), solo lectura | Token de Firebase + administrador |
 | `GET /cron/noticias?key=CRON_KEY` | Corre la tarea diaria a mano (también cabecera `x-cron-key`) | `CRON_KEY` |
 | `GET /` | Health check | — |
 
@@ -319,6 +324,51 @@ Son idempotentes (id fijo; si existe no se sobrescribe) y nunca rompen la respue
 `logrosAvisados` y `cursosAvisados`; una cuenta que ya tenía XP calculado antes de esta función toma lo que ya tiene como punto de partida **sin avisar**
 (para no llenarle la campana de cosas viejas). Los administradores y quien no tiene membresía no reciben avisos de insignias.
 Los certificados los emite el navegador (no el servidor), por eso el aviso `cert_<folio>` no existe aquí.
+
+## Libros y materiales que se desbloquean con retos
+
+Dos catálogos que se leen del disco **una vez al arrancar** (cambiarlos requiere un nuevo despliegue). Lo que no pasa la
+validación se descarta con un aviso en consola y queda en `errores` de `GET /api/admin/libros` / `/api/admin/materiales`
+(nunca con rutas del disco). Módulos: `services/libros.js`, `services/materiales.js`, `services/rutas-materiales.js`.
+
+**Regla de acceso (la misma para libros y materiales):** administrador, todo abierto · sin membresía vigente, todo se lista
+pero cerrado (`desbloqueado: false`, `soloMiembros: true`) · con membresía, un libro (o un material de `acceso: "retos"`)
+se abre al llegar a `requiereRetos` retos superados; un material de `acceso: "miembros"` abre con la membresía. Los retos
+superados salen de `retosUsuario/{uid}` (el mismo contador `superados` de `services/retos.js` que usa `GET /api/retos`).
+
+### Libros (`data/libros/<id>.json`)
+
+`{ id, titulo, subtitulo, autor, categoria, color, icono, resumen, requiereRetos, actualizado, fuentes:[{nombre,url}], paginas:[{titulo, parrafos:[], lista?:[]}], revision?:[...], prueba? }`
+
+Validación estricta: `id` `[a-z0-9-]` e igual al nombre del archivo, `requiereRetos` entero de 1 a 200, de 3 a 40 páginas, `color`
+`#RRGGBB`, `actualizado` AAAA-MM-DD, fuentes solo `https`, **ningún texto puede llevar etiquetas HTML**, archivos de hasta 1 MB.
+`GET /api/libros` **nunca** devuelve páginas, fuentes ni revisión; `GET /api/libros/:id` entrega el libro solo si está desbloqueado.
+
+- `GET /api/libros` → `{ ok, membresia, superados, libros:[{ id, titulo, subtitulo, autor, categoria, color, icono, resumen, paginasTotal, requiereRetos, desbloqueado, faltan, soloMiembros }] }`.
+  En la misma llamada se crean los **avisos de la campana** de los libros ya ganados (`libro_<id>`, tipo `libro`, enlace
+  `club-pdfs.html`; «¡Desbloqueaste tu primer libro!» el primero, «¡Desbloqueaste un nuevo libro!» los demás). El id es fijo:
+  no se duplican aunque se llame muchas veces, y avisa también a quien ganó sus retos antes de que existiera el libro. Los
+  administradores y quien no tiene membresía no reciben avisos.
+- `POST /api/retos/resultado` y `POST /api/retos/camino` (este último solo cuando el reto se acepta) agregan a su respuesta
+  `libros` (el mismo resumen, sin páginas) y `librosNuevos` (ids de los libros que se cruzaron justo con ese avance, del menor al
+  mayor; `[]` para administradores). El resto del contrato de esos endpoints no cambia.
+
+### Materiales (`data/materiales/catalogo.json` + `data/materiales/<archivo>.pdf`)
+
+`[{ id, titulo, tipo: guia|plantilla|checklist|glosario|infografia|presentacion, area, descripcion, archivo: "<id>.pdf", paginas, acceso: miembros|retos, requiereRetos?, licencia, fuentes? }]`
+
+El `archivo` solo puede ser `<nombre>.pdf` en minúsculas (sin carpetas, sin `..`); debe existir **dentro** de `data/materiales`
+(también tras resolver enlaces simbólicos), empezar con `%PDF-` y pesar hasta 30 MB. `GET /api/materiales/:id/archivo` busca el
+`:id` **exacto** en el catálogo validado y lee únicamente la ruta que se comprobó al arrancar: no existe forma de pedir otra
+ruta (`../`, `%2e%2e`, ids raros o nombres de archivo dan 404). El navegador lo pide con `fetch` + `Authorization: Bearer` y lo
+muestra con una URL de blob.
+
+Respuestas: `GET /api/materiales` → `{ ok, membresia, superados, materiales:[{ id, titulo, tipo, area, descripcion, paginas, acceso, requiereRetos, licencia, desbloqueado, faltan, soloMiembros }] }`
+(sin nombre de archivo ni ruta). Bloqueado → 403 `{ error, codigo: 'membresia-requerida' | 'retos-insuficientes', requiere, superados, faltan }`;
+no existe → 404.
+
+Límites por persona: 60 solicitudes por minuto en las lecturas y 20 por minuto en la descarga de PDF (429 «Demasiadas solicitudes»).
+`LIBROS_DIR` y `MATERIALES_DIR` (opcionales) cambian las carpetas; se usan en las pruebas, en producción no hacen falta.
 
 ## Variables de entorno (Railway)
 

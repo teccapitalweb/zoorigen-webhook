@@ -114,7 +114,7 @@ test('resultado: aprobado da 6 XP, perfecto da 10, y devuelve XP total, nivel e 
   const r1 = await resultado(app, quiz(3, 5));
   assert.equal(r1.status, 200);
   assert.equal(r1.headers['cache-control'], 'no-store');
-  assert.deepEqual(Object.keys(r1.body).sort(), ['aprobado', 'insigniasNuevas', 'nivel', 'ok', 'xp', 'xpGanado']);
+  assert.deepEqual(Object.keys(r1.body).sort(), ['aprobado', 'insigniasNuevas', 'libros', 'librosNuevos', 'nivel', 'ok', 'xp', 'xpGanado']); // libros/librosNuevos: paquete de libros con retos
   assert.equal(r1.body.aprobado, true);
   assert.equal(r1.body.xpGanado, 6);
   assert.equal(r1.body.xp, 20 + 6 + 20, 'bienvenida + reto + insignia "Primer reto"');

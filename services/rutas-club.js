@@ -15,6 +15,7 @@ const premios = require('./premios');
 const referidos = require('./referidos');
 const directorio = require('./directorio');
 const avisos = require('./avisos');
+const libros = require('./libros');
 
 // Límite de solicitudes por clave en una ventana (memoria del proceso; suficiente para frenar abusos).
 function permitirSolicitud(mapa, clave, ventanaMs, maximo) {
@@ -31,7 +32,7 @@ function permitirSolicitud(mapa, clave, ventanaMs, maximo) {
 function montarRutasClub(app, deps) {
   const {
     express, db, auth, admin, autenticarFirebase, esAdminPorDocumentos, tienePlanVigente,
-    obtenerIndiceVideos, leerEleccionPrueba, errorHttp
+    obtenerIndiceVideos, leerEleccionPrueba, errorHttp, catalogoLibros
   } = deps;
   const FieldValue = admin.firestore.FieldValue;
 
@@ -522,6 +523,21 @@ function montarRutasClub(app, deps) {
     return salida;
   }
 
+  // Libros de lectura que se desbloquean con retos: tras un avance se devuelve la lista (sin páginas) y los recién
+  // cruzados, y se crean los avisos de la campana. Nunca lanza; sin catálogo de libros no agrega nada.
+  async function novedadesLibros(ctx, antes, despues) {
+    try {
+      if (!catalogoLibros) return {};
+      const estado = { superados: despues.superados, membresia: ctx.membresia, esAdmin: ctx.esAdmin };
+      const nuevos = ctx.esAdmin ? [] : libros.librosNuevos(catalogoLibros.libros, antes, despues);
+      if (despues.superados > antes.superados) await libros.avisarLibros(db, ctx.uid, catalogoLibros.libros, estado);
+      return { libros: libros.resumenLibros(catalogoLibros.libros, estado), librosNuevos: nuevos.map(l => l.id) };
+    } catch (error) {
+      console.error('[Club libros] No se pudieron calcular los libros nuevos:', error && error.message);
+      return {};
+    }
+  }
+
   const resumenInsignias = lista => lista.map(i => ({ id: i.id, nombre: i.nombre }));
 
   // POST /api/retos/resultado — práctica diaria (XP una vez por reto por día)
@@ -542,7 +558,8 @@ function montarRutasClub(app, deps) {
       const { ev } = await calcularResumen(ctx, { estadoRetos: r.estado });
       return res.json({
         ok: true, aprobado: r.aprobado, xpGanado: r.xpGanado, xp: ev.xp.total, nivel: ev.nivel,
-        insigniasNuevas: resumenInsignias(retos.insigniasNuevas(r.antes, r.estado))
+        insigniasNuevas: resumenInsignias(retos.insigniasNuevas(r.antes, r.estado)),
+        ...(await novedadesLibros(ctx, r.antes, r.estado))
       });
     } catch (error) {
       return responderError(res, error, 'No se pudo guardar el resultado del reto', 'retos');
@@ -570,7 +587,8 @@ function montarRutasClub(app, deps) {
       const salida = { ok: true, aceptado: r.aceptado, aprobado: r.aprobado, xpGanado: r.xpGanado, camino: r.estado.camino };
       if (r.aceptado) {
         const { ev } = await calcularResumen(ctx, { estadoRetos: r.estado });
-        Object.assign(salida, { xp: ev.xp.total, nivel: ev.nivel, insigniasNuevas: resumenInsignias(retos.insigniasNuevas(r.antes, r.estado)) });
+        Object.assign(salida, { xp: ev.xp.total, nivel: ev.nivel, insigniasNuevas: resumenInsignias(retos.insigniasNuevas(r.antes, r.estado)),
+          ...(await novedadesLibros(ctx, r.antes, r.estado)) });
       }
       return res.json(salida);
     } catch (error) {

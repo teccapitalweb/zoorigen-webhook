@@ -8,11 +8,15 @@ const cors = require('cors');
 const Stripe = require('stripe');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
+const path = require('path');
 const bunnyCatalog = require('./data/zoorigen-bunny-catalog.json');
 const pruebaGratuita = require('./services/prueba-gratuita');
 const { montarRutasClub } = require('./services/rutas-club');
 const { montarRutasNoticias } = require('./services/rutas-noticias');
 const { iniciarProgramador } = require('./services/tarea-diaria');
+const { montarRutasMateriales } = require('./services/rutas-materiales');
+const libros = require('./services/libros');
+const materiales = require('./services/materiales');
 
 // ── Config ──────────────────────────────────────────────
 const rawKey = (process.env.STRIPE_SECRET_KEY || '').trim().replace(/^["']|["']$/g, '');
@@ -902,10 +906,16 @@ app.post('/reactivate-subscription', express.json(), async (req, res) => {
 // ── Retos, logros, premios, referidos y directorio (services/rutas-club.js) ──
 // Reutiliza la autenticación, las reglas de membresía y el índice de cursos de arriba.
 // No toca las rutas de pago ni /api/bunny/embed-token.
-montarRutasClub(app, {
+// Libros y materiales se leen del disco UNA vez al arrancar (LIBROS_DIR / MATERIALES_DIR solo para pruebas).
+const catalogoLibros = libros.cargarLibros(process.env.LIBROS_DIR || path.join(__dirname, 'data', 'libros'));
+const catalogoMateriales = materiales.cargarMateriales(process.env.MATERIALES_DIR || path.join(__dirname, 'data', 'materiales'));
+const club = montarRutasClub(app, {
   express, db, auth, admin, autenticarFirebase, esAdminPorDocumentos, tienePlanVigente,
-  obtenerIndiceVideos, leerEleccionPrueba, errorHttp
+  obtenerIndiceVideos, leerEleccionPrueba, errorHttp, catalogoLibros
 });
+
+// ── Libros de lectura y materiales PDF que se abren con membresía y retos (services/rutas-materiales.js) ──
+montarRutasMateriales(app, { db, autenticarFirebase, autenticarAdmin, errorHttp, club, catalogoLibros, catalogoMateriales });
 
 // ── Noticias del sector, datos curiosos y avisos (services/rutas-noticias.js) ──
 // CRON_KEY abre GET /cron/noticias (sin ella esa ruta responde 401). La tarea diaria corre en este mismo proceso.
