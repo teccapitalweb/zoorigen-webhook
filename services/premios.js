@@ -5,6 +5,9 @@
 // invitados válidos y se canjean solo con membresía vigente. Un premio ganado no se pierde aunque
 // el XP baje; se usa una sola vez y el curso no se puede cambiar.
 
+// Un solo premio por invitar: se gana con 4 invitados válidos.
+const INVITADOS_PARA_PREMIO = 4;
+
 const PREMIOS = Object.freeze([
   {
     clave: 'profesional', titulo: 'Premio Profesional',
@@ -19,16 +22,10 @@ const PREMIOS = Object.freeze([
     cumple: c => c.nivelId >= 5, faltan: () => null
   },
   {
-    clave: 'referidos-1', titulo: 'Premio por invitar (1)',
+    clave: 'referidos-1', titulo: 'Premio por invitar',
     descripcion: 'Abre un curso antes de su fecha del calendario.',
-    requisito: '3 invitados válidos',
-    cumple: c => c.invitadosValidos >= 3, faltan: c => Math.max(0, 3 - c.invitadosValidos)
-  },
-  {
-    clave: 'referidos-2', titulo: 'Premio por invitar (2)',
-    descripcion: 'Abre un curso antes de su fecha del calendario.',
-    requisito: '6 invitados válidos',
-    cumple: c => c.invitadosValidos >= 6, faltan: c => Math.max(0, 6 - c.invitadosValidos)
+    requisito: '4 invitados válidos',
+    cumple: c => c.invitadosValidos >= INVITADOS_PARA_PREMIO, faltan: c => Math.max(0, INVITADOS_PARA_PREMIO - c.invitadosValidos)
   }
 ]);
 
@@ -66,4 +63,4 @@ function premioLibre(ganados, usados) {
   return ganados.find(clave => !usados.some(u => u.clave === clave)) || null;
 }
 
-module.exports = { PREMIOS, clavesQueCumple, normalizarGuardado, armarPremios, premioLibre };
+module.exports = { PREMIOS, INVITADOS_PARA_PREMIO, clavesQueCumple, normalizarGuardado, armarPremios, premioLibre };

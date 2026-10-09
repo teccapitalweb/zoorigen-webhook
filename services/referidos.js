@@ -20,8 +20,8 @@ const HITOS = Object.freeze([
 ]);
 const RETOS_PARA_HITO = Object.freeze({ retos5: 5, retos15: 15 });
 
-// Solo los primeros invitados válidos suman XP: son los que hacen falta para los dos premios de
-// referidos (3 y 6). Así el XP total de referidos tiene techo y el balance de niveles no se rompe.
+// Solo los primeros invitados válidos suman XP. Así el XP total de referidos tiene techo y el
+// balance de niveles no se rompe (el premio por invitar pide 4 invitados válidos; el techo de XP es 6).
 const MAX_INVITADOS_CON_XP = 6;
 const XP_POR_INVITADO = HITOS.reduce((t, h) => t + h.puntos, 0);
 const XP_MAXIMO_REFERIDOS = MAX_INVITADOS_CON_XP * XP_POR_INVITADO;

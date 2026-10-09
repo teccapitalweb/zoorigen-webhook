@@ -317,7 +317,7 @@ test('estado: 401 sin sesión y no se guarda en caché', async () => {
   assert.equal(r.headers['cache-control'], 'no-store');
 });
 
-test('estado: sin invitados trae el código, el enlace y los dos premios con lo que falta', async () => {
+test('estado: sin invitados trae el código, el enlace y el único premio con lo que falta', async () => {
   const { app, db } = montar();
   const b = (await estado(app)).body;
   assert.equal(b.ok, true);
@@ -326,8 +326,7 @@ test('estado: sin invitados trae el código, el enlace y los dos premios con lo 
   assert.deepEqual([b.validos, b.pendientes, b.rechazados, b.puntosTotales], [0, 0, 0, 0]);
   assert.deepEqual(b.invitados, []);
   assert.deepEqual(b.premios, [
-    { clave: 'referidos-1', requisito: '3 invitados válidos', faltan: 3, ganado: false, usado: null },
-    { clave: 'referidos-2', requisito: '6 invitados válidos', faltan: 6, ganado: false, usado: null }
+    { clave: 'referidos-1', requisito: '4 invitados válidos', faltan: 4, ganado: false, usado: null }
   ]);
   assert.deepEqual(db.value(`codigosReferido/${CODIGO}`).uid, HOST);
 });
@@ -445,11 +444,15 @@ test('los hitos de un invitado pendiente o rechazado no dan puntos', async () =>
 test('el XP de referidos entra al total, al nivel y a la tabla de logros (Embajador / La manada crece)', async () => {
   const { app, db } = montar();
   await registrarValidos(app, 3);
-  for (const u of ['i1', 'i2', 'i3']) db._data.set(`miembros/${u}`, miembroConPlan({ name: NOMBRES[u] }));
-  const p = (await premios(app)).body;
+  for (const u of ['i1', 'i2', 'i3', 'i4']) db._data.set(`miembros/${u}`, miembroConPlan({ name: NOMBRES[u] }));
+  let p = (await premios(app)).body;
   assert.equal(p.xp.referidos, 360);
+  assert.ok(p.logros.find(l => l.id === 'l21').ganado && !p.logros.find(l => l.id === 'l22').ganado, '3 invitados: la manada crece pide 4');
+  await registrarValidos(app, 4);
+  p = (await premios(app)).body;
+  assert.equal(p.xp.referidos, 480);
   assert.ok(p.logros.find(l => l.id === 'l21').ganado && p.logros.find(l => l.id === 'l22').ganado);
-  assert.equal(p.xp.total, 20 + 60 + 150 + 360, 'bienvenida + Embajador + La manada crece + referidos');
+  assert.equal(p.xp.total, 20 + 60 + 150 + 480, 'bienvenida + Embajador + La manada crece + referidos');
   assert.equal(db.value(`premiosUsuario/${HOST}`).xpTotal, p.xp.total);
 });
 
@@ -465,28 +468,29 @@ test('techo: solo los primeros 6 invitados válidos suman XP (máximo 1440) aunq
 });
 
 // ── premios por invitados ──
-test('3 invitados válidos ganan "referidos-1"; 6 ganan "referidos-2"; los pendientes no cuentan', async () => {
-  const au = usuariosAuth(); au.i3.emailVerified = false;
+test('4 invitados válidos ganan el único premio "referidos-1" (no existe "referidos-2"); los pendientes no cuentan', async () => {
+  const au = usuariosAuth(); au.i4.emailVerified = false;
   const { app, db } = montar({ usuariosAuth: au });
   await registrar(app, 'i1', cuerpo(1), '198.51.100.1');
   await registrar(app, 'i2', cuerpo(2), '198.51.100.2');
-  await registrar(app, 'i3', cuerpo(3), '198.51.100.3');                                  // pendiente
+  await registrar(app, 'i3', cuerpo(3), '198.51.100.3');
+  await registrar(app, 'i4', cuerpo(4), '198.51.100.4');                                  // pendiente
   let b = (await estado(app)).body;
-  assert.deepEqual(b.premios.map(p => [p.clave, p.faltan, p.ganado]), [['referidos-1', 1, false], ['referidos-2', 4, false]]);
+  assert.deepEqual(b.premios.map(p => [p.clave, p.faltan, p.ganado]), [['referidos-1', 1, false]]);
   assert.ok(!(await premios(app)).body.premios.find(p => p.clave === 'referidos-1').ganado);
-  au.i3.emailVerified = true;
+  au.i4.emailVerified = true;
   b = (await estado(app)).body;
-  assert.deepEqual(b.premios.map(p => [p.faltan, p.ganado]), [[0, true], [3, false]]);
+  assert.deepEqual(b.premios.map(p => [p.faltan, p.ganado]), [[0, true]]);
   assert.deepEqual(db.value(`premiosUsuario/${HOST}`).ganados, ['referidos-1']);
-  for (let k = 4; k <= 6; k++) await registrar(app, `i${k}`, cuerpo(k), `198.51.100.${k}`);
+  for (let k = 5; k <= 8; k++) await registrar(app, `i${k}`, cuerpo(k), `198.51.100.${k}`);
   b = (await estado(app)).body;
-  assert.deepEqual(b.premios.map(p => [p.faltan, p.ganado]), [[0, true], [0, true]]);
-  assert.deepEqual(db.value(`premiosUsuario/${HOST}`).ganados, ['referidos-1', 'referidos-2']);
+  assert.deepEqual(b.premios.map(p => [p.faltan, p.ganado]), [[0, true]]);
+  assert.deepEqual(db.value(`premiosUsuario/${HOST}`).ganados, ['referidos-1'], 'con 8 invitados sigue habiendo un solo premio por invitar');
 });
 
 test('los premios por invitados se canjean con /api/premios/usar y aparecen como usados en el estado', async () => {
   const { app } = montar();
-  await registrarValidos(app, 3);
+  await registrarValidos(app, 4);
   const g = (await premios(app)).body;
   const p = g.premios.find(x => x.clave === 'referidos-1');
   assert.deepEqual([p.ganado, p.disponible], [true, true]);
@@ -495,18 +499,18 @@ test('los premios por invitados se canjean con /api/premios/usar y aparecen como
   assert.deepEqual(usar.body, { ok: true, cursoId: 'c4', clave: 'referidos-1' });
   const b = (await estado(app)).body;
   assert.equal(b.premios[0].usado.cursoId, 'c4');
-  assert.equal(b.premios[1].usado, null);
+  assert.equal(b.premios.length, 1);
   const otra = await request(app).post('/api/premios/usar').set(auth(`token-${HOST}`)).send({ cursoId: 'c5' });
   assert.equal(otra.status, 403, 'solo había un premio');
 });
 
 test('un premio de referidos ya ganado no se pierde aunque después el invitado se rechace o salga', async () => {
   const { app, db } = montar();
-  await registrarValidos(app, 3);
+  await registrarValidos(app, 4);
   assert.ok((await estado(app)).body.premios[0].ganado);
   db._data.set('referidos/i3', { ...db.value('referidos/i3'), estado: 'rechazado', motivo: 'x' });
   const b = (await estado(app)).body;
-  assert.equal(b.validos, 2);
+  assert.equal(b.validos, 3);
   assert.equal(b.premios[0].ganado, true);
 });
 

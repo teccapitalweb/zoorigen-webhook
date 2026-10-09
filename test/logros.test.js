@@ -141,12 +141,12 @@ test('vista previa: lista todos los logros sin XP ni "ganado"', () => {
 });
 
 // ── Premios (reglas puras) ──
-test('premios: profesional (nivel 3), maestro (nivel 5) y dos por invitados válidos (3 y 6)', () => {
-  assert.deepEqual(P.PREMIOS.map(p => p.clave), ['profesional', 'maestro', 'referidos-1', 'referidos-2']);
-  assert.deepEqual(P.clavesQueCumple({ nivelId: 2, invitadosValidos: 2 }), []);
+test('premios: solo profesional (nivel 3), maestro (nivel 5) y un premio por 4 invitados válidos', () => {
+  assert.deepEqual(P.PREMIOS.map(p => p.clave), ['profesional', 'maestro', 'referidos-1']);
+  assert.deepEqual(P.clavesQueCumple({ nivelId: 2, invitadosValidos: 3 }), []);
   assert.deepEqual(P.clavesQueCumple({ nivelId: 3, invitadosValidos: 0 }), ['profesional']);
-  assert.deepEqual(P.clavesQueCumple({ nivelId: 4, invitadosValidos: 3 }), ['profesional', 'referidos-1']);
-  assert.deepEqual(P.clavesQueCumple({ nivelId: 5, invitadosValidos: 6 }), ['profesional', 'maestro', 'referidos-1', 'referidos-2']);
+  assert.deepEqual(P.clavesQueCumple({ nivelId: 4, invitadosValidos: 4 }), ['profesional', 'referidos-1']);
+  assert.deepEqual(P.clavesQueCumple({ nivelId: 5, invitadosValidos: 40 }), ['profesional', 'maestro', 'referidos-1']);
 });
 
 test('premios: el canje consume el primer premio ganado que no se ha usado', () => {
@@ -155,7 +155,7 @@ test('premios: el canje consume el primer premio ganado que no se ha usado', () 
   assert.equal(P.premioLibre(['profesional'], usados), null);
   assert.equal(P.premioLibre([], []), null);
   const lista = P.armarPremios({ ganados: ['profesional', 'referidos-1'], usados, membresia: true });
-  assert.deepEqual(lista.map(p => [p.clave, p.ganado, p.disponible]), [['profesional', true, false], ['maestro', false, false], ['referidos-1', true, true], ['referidos-2', false, false]]);
+  assert.deepEqual(lista.map(p => [p.clave, p.ganado, p.disponible]), [['profesional', true, false], ['maestro', false, false], ['referidos-1', true, true]]);
   assert.deepEqual(lista[0].usado, { cursoId: 'a', fecha: 'x' });
   assert.ok(P.armarPremios({ ganados: ['maestro'], usados: [], membresia: false }).every(p => !p.disponible), 'sin membresía nada está disponible');
 });

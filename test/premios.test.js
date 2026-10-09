@@ -40,7 +40,7 @@ test('sin membresía: vista previa (nivel 1, 0 XP, logros sin XP ni "ganado") y 
   assert.equal(res.body.logros.length, 36);
   for (const l of res.body.logros) assert.ok(!('ganado' in l) && !('xp' in l), `${l.id} no debe traer XP ni ganado`);
   assert.equal(res.body.disponibles, 0);
-  assert.equal(res.body.premios.length, 4);
+  assert.equal(res.body.premios.length, 3);
   assert.ok(res.body.premios.every(p => !p.ganado && !p.disponible && p.usado === null));
   assert.equal(db.value('actividadUsuario/sinplan'), undefined, 'sin membresía no se registra actividad');
   assert.equal(db.value('premiosUsuario/sinplan'), undefined);
@@ -60,7 +60,7 @@ test('con membresía vigente: forma completa de la respuesta del contrato', asyn
   for (const l of b.logros) {
     assert.deepEqual(Object.keys(l).sort(), ['categoria', 'descripcion', 'ganado', 'id', 'nombre', 'xp']);
   }
-  assert.deepEqual(b.premios.map(p => p.clave), ['profesional', 'maestro', 'referidos-1', 'referidos-2']);
+  assert.deepEqual(b.premios.map(p => p.clave), ['profesional', 'maestro', 'referidos-1']);
   for (const p of b.premios) {
     assert.deepEqual(Object.keys(p).sort(), ['clave', 'descripcion', 'disponible', 'ganado', 'requisito', 'titulo', 'usado']);
   }

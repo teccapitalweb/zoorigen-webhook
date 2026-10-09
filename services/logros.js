@@ -49,7 +49,7 @@ const LOGROS = [
   { id: 'l19', nombre: 'Querido por la manada', descripcion: 'Tus discusiones reciben 10 me gusta', categoria: 'Comunidad', xp: 100, cumple: d => d.foroLikes >= 10 },
   { id: 'l20', nombre: 'Referente del foro', descripcion: 'Tus discusiones reciben 25 me gusta', categoria: 'Comunidad', xp: 150, cumple: d => d.foroLikes >= 25 },
   { id: 'l21', nombre: 'Embajador', descripcion: 'Invita a 1 persona que confirme su cuenta', categoria: 'Comunidad', xp: 60, cumple: d => d.invitadosValidos >= 1 },
-  { id: 'l22', nombre: 'La manada crece', descripcion: 'Invita a 3 personas que confirmen su cuenta', categoria: 'Comunidad', xp: 150, cumple: d => d.invitadosValidos >= 3 },
+  { id: 'l22', nombre: 'La manada crece', descripcion: 'Invita a 4 personas que confirmen su cuenta', categoria: 'Comunidad', xp: 150, cumple: d => d.invitadosValidos >= 4 },
   // Maestría (los hitos grandes de los cursos)
   { id: 'l23', nombre: 'Medio camino', descripcion: 'Termina 8 cursos', categoria: 'Maestría', xp: 260, cumple: d => d.completados >= 8 },
   { id: 'l24', nombre: 'Experto en fauna', descripcion: 'Termina 12 cursos', categoria: 'Maestría', xp: 380, cumple: d => d.completados >= 12 },

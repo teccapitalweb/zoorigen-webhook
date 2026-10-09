@@ -137,7 +137,7 @@ XP total = logros (l1..l26) + insignias de retos (r1..r10) + XP de los retos + X
 | l19 | Comunidad | Querido por la manada | 10 me gusta recibidos | 100 |
 | l20 | Comunidad | Referente del foro | 25 me gusta recibidos | 150 |
 | l21 | Comunidad | Embajador | 1 invitado válido | 60 |
-| l22 | Comunidad | La manada crece | 3 invitados válidos | 150 |
+| l22 | Comunidad | La manada crece | 4 invitados válidos | 150 |
 | l23 | Maestría | Medio camino | terminar 8 cursos | 260 |
 | l24 | Maestría | Experto en fauna | terminar 12 cursos | 380 |
 | l25 | Maestría | Naturalista completo | cursos de 4 áreas | 150 |
@@ -176,14 +176,13 @@ techo de por vida de 600 XP en práctica + el camino: 22 quiz + 13 detective + 1
 
 ### Premios
 
-Cada premio abre UN curso antes de su fecha. Todos exigen membresía vigente para canjearse.
+Hay solo tres premios (`profesional`, `maestro`, `referidos-1`); cada uno abre UN curso antes de su fecha. Todos exigen membresía vigente para canjearse.
 
 | Clave | Condición |
 |---|---|
 | `profesional` | nivel ≥ 3 (1,200 XP) |
 | `maestro` | nivel ≥ 5 (4,500 XP) |
-| `referidos-1` | 3 invitados válidos |
-| `referidos-2` | 6 invitados válidos |
+| `referidos-1` | 4 invitados válidos (es el único premio por invitar; ya no existe `referidos-2`) |
 
 Un premio ganado **no se pierde** aunque el XP baje (solo se agregan claves a `ganados`, dentro de una transacción). `POST /api/premios/usar` gasta un solo
 premio por llamada (el primero ganado sin usar), en una transacción: 400 sin `cursoId` o administrador · 403 sin membresía o sin premio libre · 404 el curso no existe en `cursos` ·
