@@ -36,7 +36,8 @@ test('sin membresía: vista previa (nivel 1, 0 XP, logros sin XP ni "ganado") y 
   assert.equal(res.body.ok, true);
   assert.equal(res.body.membresia, false);
   assert.deepEqual(res.body.nivel, { id: 1, nombre: 'Aprendiz', xp: 0, desde: 0, hasta: 300, faltan: 300 });
-  assert.deepEqual(res.body.xp, { total: 0, logros: 0, retos: 0, referidos: 0 });
+  assert.deepEqual(res.body.xp, { total: 0, logros: 0, retos: 0, referidos: 0, cursos: 0 });
+  assert.deepEqual(res.body.cursos, { terminados: 0, lista: [] });
   assert.equal(res.body.logros.length, 36);
   for (const l of res.body.logros) assert.ok(!('ganado' in l) && !('xp' in l), `${l.id} no debe traer XP ni ganado`);
   assert.equal(res.body.disponibles, 0);
@@ -53,7 +54,7 @@ test('con membresía vigente: forma completa de la respuesta del contrato', asyn
   const b = res.body;
   assert.equal(b.membresia, true);
   assert.deepEqual(Object.keys(b.nivel).sort(), ['desde', 'faltan', 'hasta', 'id', 'nombre', 'xp']);
-  assert.deepEqual(Object.keys(b.xp).sort(), ['logros', 'referidos', 'retos', 'total']);
+  assert.deepEqual(Object.keys(b.xp).sort(), ['cursos', 'logros', 'referidos', 'retos', 'total']);
   assert.equal(typeof b.racha, 'number');
   assert.equal(typeof b.diasActivos, 'number');
   assert.equal(b.logros.length, 36);

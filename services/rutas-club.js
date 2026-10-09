@@ -100,15 +100,12 @@ function montarRutasClub(app, deps) {
       db.collection('foroPosts').where('authorUid', '==', uid).limit(200).get(),
       db.collection('directorio').doc(uid).get()
     ]);
-    const cursosTerminados = new Set();
+    const existe = id => Boolean(indice.datos && indice.datos.get(id));
+    const cursosLista = logros.cursosTerminados(
+      certSnap.docs.map(doc => { const c = doc.data() || {}; return { courseId: c.courseId, folio: c.folio || doc.id, fecha: c.issuedAt }; }),
+      existe);
     const areas = new Set();
-    for (const doc of certSnap.docs) {
-      const cursoId = String((doc.data() || {}).courseId || '');
-      const curso = cursoId && indice.datos ? indice.datos.get(cursoId) : null;
-      if (!curso || cursosTerminados.has(cursoId)) continue;
-      cursosTerminados.add(cursoId);
-      if (curso.area) areas.add(curso.area);
-    }
+    for (const c of cursosLista) { const curso = indice.datos.get(c.courseId); if (curso && curso.area) areas.add(curso.area); }
     let foroRespuestas = 0; let foroLikes = 0;
     for (const doc of postsSnap.docs) {
       const post = doc.data() || {};
@@ -119,7 +116,8 @@ function montarRutasClub(app, deps) {
     }
     return {
       esVIP: ctx.membresia,
-      completados: cursosTerminados.size,
+      completados: cursosLista.length,
+      cursosLista,
       areas: areas.size,
       dias,
       tarjetaDir: dirSnap.exists,
@@ -318,7 +316,7 @@ function montarRutasClub(app, deps) {
         const lista = premios.armarPremios({ ...guardado, membresia: false });
         return res.json({
           ok: true, membresia: false, nivel: NIVEL_VISTA_PREVIA,
-          xp: { total: 0, logros: 0, retos: 0, referidos: 0 },
+          xp: { total: 0, logros: 0, retos: 0, referidos: 0, cursos: 0 }, cursos: { terminados: 0, lista: [] },
           racha: 0, diasActivos: 0, logros: logros.logrosVistaPrevia(), premios: lista, disponibles: 0
         });
       }
@@ -326,7 +324,7 @@ function montarRutasClub(app, deps) {
       const { ev, guardado } = await calcularResumen(ctx);
       const lista = premios.armarPremios({ ganados: guardado.ganados, usados: guardado.usados, membresia: ctx.tienePlan });
       return res.json({
-        ok: true, membresia: true, nivel: ev.nivel, xp: ev.xp, racha: ev.racha, diasActivos: ev.diasActivos,
+        ok: true, membresia: true, nivel: ev.nivel, xp: ev.xp, cursos: ev.cursos, racha: ev.racha, diasActivos: ev.diasActivos,
         logros: ev.logros, premios: lista, disponibles: lista.filter(p => p.disponible).length
       });
     } catch (error) {

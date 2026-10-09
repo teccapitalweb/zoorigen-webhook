@@ -4,7 +4,8 @@
 // El nivel decide premios que abren contenido de pago, así que no depende de datos guardados
 // solo en el navegador. El nivel NO se guarda: se recalcula en cada consulta.
 //
-// XP total = logros (l1..l26) + insignias de retos (r1..r10) + XP de retos + XP por referidos.
+// XP total = logros (l1..l26) + insignias de retos (r1..r10) + XP de retos + XP por referidos
+//          + XP por cursos terminados (fórmula fija, ver xpDeCurso).
 // La tabla de abajo es la fuente única: el README la documenta y una prueba verifica el balance.
 
 const retos = require('./retos');
@@ -59,6 +60,45 @@ const LOGROS = [
 
 function fechaMexico(ahora = new Date()) { return retos.fechaMexico(ahora); }
 
+// ── XP por cursos terminados ──
+// El n-ésimo curso terminado (ordenados por fecha del certificado) paga: 20, 30, 40 ... 100 y el décimo
+// 180; luego el ciclo se repite (11 -> 20 ... 19 -> 100, 20 -> 180...). Cada curso paga UNA sola vez.
+function xpDeCurso(n) {
+  const k = Math.floor(Number(n));
+  if (!(k >= 1)) return 0;
+  return k % 10 === 0 ? 180 : 10 + 10 * (k % 10);
+}
+
+const aMilis = f => {
+  if (f && typeof f.toMillis === 'function') return f.toMillis();
+  if (f && typeof f.toDate === 'function') return f.toDate().getTime();
+  if (f instanceof Date) return f.getTime();
+  if (typeof f === 'number') return f;
+  const t = typeof f === 'string' ? Date.parse(f) : NaN;
+  return Number.isNaN(t) ? null : t;
+};
+
+// certificados: [{ courseId, folio, fecha }] (fecha: texto ISO, Date, Timestamp o número) · existe(courseId) -> bool
+// Solo cuentan cursos DISTINTOS que existan de verdad; de cada curso vale su certificado más antiguo
+// (con la misma fecha, el de folio menor). Se ordenan por esa fecha y, en empate, por folio.
+// Devuelve [{ courseId, n, xp, fecha }] en orden cronológico (fecha: texto ISO o null si el certificado no trae una válida).
+function cursosTerminados(certificados, existe) {
+  const clave = c => [c.t === null ? Infinity : c.t, c.folio];
+  const antes = (a, b) => { const [ta, fa] = clave(a); const [tb, fb] = clave(b); return ta !== tb ? (ta < tb ? -1 : 1) : (fa < fb ? -1 : fa > fb ? 1 : 0); };
+  const porCurso = new Map();
+  for (const c of Array.isArray(certificados) ? certificados : []) {
+    const courseId = String((c && c.courseId) || '');
+    if (!courseId || !existe(courseId)) continue;
+    const reg = { courseId, folio: String((c && c.folio) || ''), t: aMilis(c.fecha) };
+    const previo = porCurso.get(courseId);
+    if (!previo || antes(reg, previo) < 0) porCurso.set(courseId, reg);
+  }
+  return [...porCurso.values()].sort(antes).map((c, i) => ({
+    courseId: c.courseId, n: i + 1, xp: xpDeCurso(i + 1), fecha: c.t === null ? null : new Date(c.t).toISOString()
+  }));
+}
+
+
 // Racha = días consecutivos que terminan hoy (hora de México). El servidor registra el día de hoy
 // antes de calcularla, así que quien entra hoy ya cuenta hoy.
 function calcularRacha(dias, ahora = new Date()) {
@@ -87,7 +127,7 @@ function logrosVistaPrevia() {
   return [...base, ...ins];
 }
 
-// datos: ver LOGROS · estadoRetos: estado guardado de retos (o null) · xpReferidos: número
+// datos: ver LOGROS (+ cursosLista: resultado de cursosTerminados) · estadoRetos: estado guardado de retos (o null) · xpReferidos: número
 function evaluar(datos, estadoRetos, xpReferidos = 0, ahora = new Date()) {
   const dias = Array.isArray(datos.dias) ? datos.dias : [];
   const d = { ...datos, dias, racha: calcularRacha(dias, ahora), diasActivos: dias.length };
@@ -97,15 +137,18 @@ function evaluar(datos, estadoRetos, xpReferidos = 0, ahora = new Date()) {
   const xpLogros = ganadosL.reduce((t, l) => t + l.xp, 0);
   const xpRetos = insigniasGanadas.reduce((t, i) => t + i.xp, 0) + estado.xp;
   const xpRef = Math.max(0, Number(xpReferidos) || 0);
-  const total = xpLogros + xpRetos + xpRef;
+  const lista = Array.isArray(datos.cursosLista) ? datos.cursosLista : [];
+  const xpCursos = lista.reduce((t, c) => t + c.xp, 0);
+  const total = xpLogros + xpRetos + xpRef + xpCursos;
   const ganados = new Set([...ganadosL.map(l => l.id), ...insigniasGanadas.map(i => i.id)]);
   const logros = [
     ...LOGROS.map(l => ({ id: l.id, nombre: l.nombre, descripcion: l.descripcion, categoria: l.categoria, xp: l.xp, ganado: ganados.has(l.id) })),
     ...retos.INSIGNIAS.map(i => ({ id: i.id, nombre: i.nombre, descripcion: i.desc, categoria: 'Retos', xp: i.xp, ganado: ganados.has(i.id) }))
   ];
   return {
-    xp: { total, logros: xpLogros, retos: xpRetos, referidos: xpRef },
+    xp: { total, logros: xpLogros, retos: xpRetos, referidos: xpRef, cursos: xpCursos },
     nivel: infoNivel(total),
+    cursos: { terminados: lista.length, lista },
     logros,
     racha: d.racha,
     diasActivos: dias.length
@@ -118,13 +161,14 @@ function xpMaximo() {
     logros: LOGROS.reduce((t, l) => t + l.xp, 0),
     insignias: retos.INSIGNIAS.reduce((t, i) => t + i.xp, 0),
     retos: retos.XP_MAXIMO_RETOS,
-    referidos: referidos.XP_MAXIMO_REFERIDOS
+    referidos: referidos.XP_MAXIMO_REFERIDOS,
+    cursos: Array.from({ length: TOTAL_CURSOS }, (_, i) => xpDeCurso(i + 1)).reduce((t, x) => t + x, 0)
   };
-  m.total = m.logros + m.insignias + m.retos + m.referidos;
+  m.total = m.logros + m.insignias + m.retos + m.referidos + m.cursos;
   return m;
 }
 
 module.exports = {
   NIVELES, CATEGORIAS, LOGROS, TOTAL_CURSOS,
-  fechaMexico, calcularRacha, nivelPorXp, infoNivel, logrosVistaPrevia, evaluar, xpMaximo
+  fechaMexico, xpDeCurso, cursosTerminados, calcularRacha, nivelPorXp, infoNivel, logrosVistaPrevia, evaluar, xpMaximo
 };
