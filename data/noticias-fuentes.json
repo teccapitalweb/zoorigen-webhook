@@ -1,0 +1,6 @@
+[
+  { "id": "mongabay-latam", "nombre": "Mongabay Latam", "url": "https://es.mongabay.com/feed/", "categoria": "conservacion" },
+  { "id": "dw-ambiente", "nombre": "DW Ambiente", "url": "https://rss.dw.com/rdf/rss-sp-eco", "categoria": "ciencia" },
+  { "id": "natgeo-animales", "nombre": "National Geographic ES", "url": "https://www.nationalgeographic.com.es/rss/animales", "categoria": "fauna" },
+  { "id": "scidev-latam", "nombre": "SciDev.Net América Latina", "url": "https://www.scidev.net/america-latina/feed/", "categoria": "ciencia" }
+]

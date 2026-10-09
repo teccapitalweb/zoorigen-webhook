@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>National Geographic ES - Animales (prueba)</title>
+    <link>https://www.nationalgeographic.com.es</link>
+    <description>Animales</description>
+    <item>
+      <title>El águila arpía, la reina de las aves, anida de nuevo en México</title>
+      <link>https://www.nationalgeographic.com.es/animales/aguila-arpia-mexico</link>
+      <pubDate>Thu, 08 Oct 2026 12:00:00 GMT</pubDate>
+      <description>Biólogos confirmaron un nido activo de águila arpía en la selva Lacandona, algo que no se veía desde hace décadas en el país.</description>
+      <enclosure url="https://www.nationalgeographic.com.es/img/aguila.jpg" type="image/jpeg" length="9999"/>
+    </item>
+    <item>
+      <title>Los lobos grises recolonizan los bosques de Europa Central</title>
+      <link>https://www.nationalgeographic.com.es/animales/lobos-europa</link>
+      <pubDate>Wed, 07 Oct 2026 12:00:00 GMT</pubDate>
+      <description>La población de lobos crece en varios países y plantea retos para los ganaderos y la conservación de la especie.</description>
+    </item>
+    <item>
+      <title>Los guepardos y su increíble velocidad explicada por la ciencia</title>
+      <link>https://www.nationalgeographic.com.es/animales/guepardos-velocidad</link>
+      <pubDate>Tue, 06 Oct 2026 12:00:00 GMT</pubDate>
+      <description>Un estudio sobre el felino más veloz del planeta revela cómo sus músculos y su columna le permiten alcanzar velocidades extraordinarias.</description>
+    </item>
+    <item>
+      <title>Las ballenas jorobadas cantan canciones nuevas cada temporada</title>
+      <link>https://www.nationalgeographic.com.es/animales/ballenas-canciones</link>
+      <pubDate>Mon, 05 Oct 2026 12:00:00 GMT</pubDate>
+      <description>Los científicos descubrieron que las ballenas cambian sus cantos y que las canciones se difunden entre poblaciones del océano.</description>
+    </item>
+    <item>
+      <title>El lince ibérico supera los dos mil ejemplares en libertad</title>
+      <link>https://www.nationalgeographic.com.es/animales/lince-iberico</link>
+      <pubDate>Sun, 04 Oct 2026 12:00:00 GMT</pubDate>
+      <description>Los programas de cría en cautiverio y de reintroducción permiten que el lince recupere territorio en la península.</description>
+    </item>
+  </channel>
+</rss>

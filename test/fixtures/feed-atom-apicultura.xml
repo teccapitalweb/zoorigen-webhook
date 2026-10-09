@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+  <title>Apicultura al día (prueba)</title>
+  <link href="https://apicultura.example.org/" rel="alternate"/>
+  <updated>2026-10-08T12:00:00Z</updated>
+  <id>https://apicultura.example.org/</id>
+  <entry>
+    <title type="html">Abejas melíferas en riesgo por plaguicidas, alertan apicultores</title>
+    <link rel="self" href="https://apicultura.example.org/feed/abejas-plaguicidas"/>
+    <link rel="alternate" type="text/html" href="https://apicultura.example.org/abejas-plaguicidas"/>
+    <link rel="enclosure" type="image/jpeg" href="https://apicultura.example.org/img/abejas.jpg"/>
+    <id>tag:apicultura.example.org,2026:1</id>
+    <published>2026-10-06T07:00:00Z</published>
+    <updated>2026-10-08T08:00:00Z</updated>
+    <summary type="html">&lt;p&gt;Las colmenas pierden poblaci&amp;oacute;n cada temporada y los apicultores piden regular el uso de plaguicidas cerca de los cultivos.&lt;/p&gt;</summary>
+  </entry>
+  <entry>
+    <title>Receta de pastel de miel para el domingo</title>
+    <link href="https://apicultura.example.org/receta-pastel"/>
+    <id>tag:apicultura.example.org,2026:2</id>
+    <updated>2026-10-08T09:00:00Z</updated>
+    <summary>Una receta de pastel con miel de abeja que le encanta a toda la familia en las celebraciones.</summary>
+    <media:thumbnail url="https://apicultura.example.org/img/pastel.jpg"/>
+  </entry>
+  <entry>
+    <title>Productores de miel obtienen certificación orgánica para sus colmenas</title>
+    <link href="https://apicultura.example.org/certificacion-organica"/>
+    <id>tag:apicultura.example.org,2026:3</id>
+    <updated>2026-10-05T09:00:00Z</updated>
+    <summary>La cooperativa de apicultores logró la certificación para exportar su miel a Europa con trazabilidad completa.</summary>
+    <media:thumbnail url="https://apicultura.example.org/img/miel.jpg"/>
+  </entry>
+</feed>

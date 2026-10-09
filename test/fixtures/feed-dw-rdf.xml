@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel rdf:about="https://rss.dw.com/rdf/rss-sp-eco">
+    <title>DW Ambiente (prueba)</title>
+    <link>https://www.dw.com/es/medio-ambiente</link>
+    <description>Medio ambiente</description>
+    <items>
+      <rdf:Seq>
+        <rdf:li rdf:resource="https://www.dw.com/es/nueva-especie-rana-ecuador/a-100000001"/>
+        <rdf:li rdf:resource="https://www.dw.com/es/bolsa-valores/a-100000002"/>
+      </rdf:Seq>
+    </items>
+  </channel>
+  <item rdf:about="https://www.dw.com/es/nueva-especie-rana-ecuador/a-100000001">
+    <title>Descubren una nueva especie de rana en los Andes de Ecuador</title>
+    <link>https://www.dw.com/es/nueva-especie-rana-ecuador/a-100000001</link>
+    <description>&lt;p&gt;Hallazgo en el bosque nublado: una rana de color intenso que solo vive all&amp;iacute; &amp;mdash; seg&amp;uacute;n bi&amp;oacute;logos &amp;quot;ya est&amp;aacute; amenazada&amp;quot;.&lt;/p&gt;</description>
+    <dc:date>2026-10-08T09:00:00Z</dc:date>
+  </item>
+  <item rdf:about="https://www.dw.com/es/bolsa-valores/a-100000002">
+    <title>La bolsa de valores cierra la semana con ganancias moderadas</title>
+    <link>https://www.dw.com/es/bolsa-valores/a-100000002</link>
+    <description>Los mercados cerraron al alza tras los datos de inflación en la región y el dólar se mantuvo estable.</description>
+    <dc:date>2026-10-08T10:00:00Z</dc:date>
+  </item>
+</rdf:RDF>
