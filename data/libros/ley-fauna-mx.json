@@ -1,0 +1,341 @@
+{
+  "id": "ley-fauna-mx",
+  "titulo": "Fauna silvestre y ley en México",
+  "subtitulo": "Guía de bolsillo para profesionales y estudiantes",
+  "autor": "Equipo Zoorigen",
+  "categoria": "Normatividad",
+  "color": "#1F5F3A",
+  "icono": "scale",
+  "resumen": "Guía breve sobre la Ley General de Vida Silvestre, la NOM-059, las UMA y PIMVS, CITES, los delitos ambientales y la legal procedencia, con pasos claros si encuentras fauna silvestre.",
+  "requiereRetos": 5,
+  "actualizado": "2026-10-09",
+  "fuentes": [
+    {
+      "nombre": "Ley General de Vida Silvestre, texto vigente (última reforma DOF 16-07-2025), Cámara de Diputados",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+    },
+    {
+      "nombre": "Ley General de Vida Silvestre, historial de reformas, Cámara de Diputados",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/ref/lgvs.htm"
+    },
+    {
+      "nombre": "Reglamento de la Ley General de Vida Silvestre (última reforma DOF 09-05-2014), Cámara de Diputados",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/regley/Reg_LGVS.pdf"
+    },
+    {
+      "nombre": "Código Penal Federal, Título Vigésimo Quinto (última reforma DOF 13-03-2026), Cámara de Diputados",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/CPF.pdf"
+    },
+    {
+      "nombre": "NOM-059-SEMARNAT-2010, Diario Oficial de la Federación, 30-12-2010",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5173091&fecha=30/12/2010"
+    },
+    {
+      "nombre": "Modificación del Anexo Normativo III de la NOM-059-SEMARNAT-2010, DOF 14-11-2019",
+      "url": "https://sidof.segob.gob.mx/notas/5578808"
+    },
+    {
+      "nombre": "Proyecto de NOM PROY-NOM-059-SEMARNAT-2025, DOF 14-04-2025 (copia en PLATIICA)",
+      "url": "https://platiica.economia.gob.mx/wp-content/uploads/sites/2/historialdocumental/PROY-NOM-059-SEMARNAT-2025.pdf"
+    },
+    {
+      "nombre": "Catálogo Mexicano de Normas, ficha de la NOM-059-SEMARNAT-2010 (estado: vigente)",
+      "url": "https://platiica.economia.gob.mx/normalizacion/nom-059-semarnat-2010/"
+    },
+    {
+      "nombre": "Convención sobre el Comercio Internacional de Especies Amenazadas de Fauna y Flora Silvestres, texto publicado en el DOF el 06-03-1992",
+      "url": "https://pjetam.gob.mx/195.-Convencion-sobre-el-Comercio-Internacional-de-Especies-Amenazadas-de-Fauna-y-Flora-Silvestres-CITES"
+    },
+    {
+      "nombre": "Procuración de justicia ambiental, misión de la Profepa (gob.mx/semarnat)",
+      "url": "https://www.gob.mx/semarnat/articulos/procuracion-de-justicia-ambiental-mision-de-la-profepa"
+    },
+    {
+      "nombre": "CONABIO, qué hacemos",
+      "url": "https://www.biodiversidad.gob.mx/conabio/que-hacemos"
+    },
+    {
+      "nombre": "CONANP, qué hacemos (gob.mx)",
+      "url": "https://www.gob.mx/conanp/que-hacemos"
+    }
+  ],
+  "paginas": [
+    {
+      "titulo": "Vida silvestre: qué es y quién la regula",
+      "parrafos": [
+        "Para la Ley General de Vida Silvestre (LGVS), vida silvestre son los organismos que subsisten sujetos a los procesos de evolución natural y que se desarrollan libremente en su hábitat. También incluye a los individuos que están bajo control humano y a los ferales (art. 3). Un jaguar en la selva y uno en un zoológico siguen siendo vida silvestre.",
+        "La LGVS es de orden público e interés social. Su objeto es establecer la concurrencia del Gobierno Federal, los estados y los municipios en la conservación y el aprovechamiento sustentable de la vida silvestre y su hábitat (art. 1).",
+        "El artículo 4 dice que es deber de todos los habitantes conservarla. Los recursos forestales y las especies cuyo medio de vida total es el agua se rigen por las leyes forestal y de pesca, salvo que sean especies o poblaciones en riesgo (art. 1)."
+      ]
+    },
+    {
+      "titulo": "Conceptos clave de la LGVS",
+      "parrafos": [
+        "El artículo 3 de la LGVS reúne las definiciones que más se usan en la práctica. Estas son algunas, explicadas con palabras sencillas:"
+      ],
+      "lista": [
+        "Aprovechamiento extractivo: utilizar ejemplares, partes o derivados mediante colecta, captura o caza. El no extractivo ocurre en el hábitat sin remover ejemplares.",
+        "Hábitat: sitio específico, con su medio físico, donde vive un organismo, una población o una comunidad de especies.",
+        "Partes y derivados: la parte es una porción del ejemplar; el derivado es material que genera un ejemplar sin destruirse.",
+        "Manejo en vida libre o manejo intensivo (en cautiverio o confinamiento).",
+        "UMA: predios e instalaciones registrados que operan con un plan de manejo aprobado y seguimiento permanente.",
+        "Marca: método de identificación aprobado que puede demostrar la legal procedencia.",
+        "PIMVS no aparece en la ley: es un término del Reglamento (página 6)."
+      ]
+    },
+    {
+      "titulo": "Autoridades y qué hace cada una",
+      "parrafos": [
+        "La LGVS reparte competencias entre la Federación, los estados y los municipios (arts. 9 a 13). Las instituciones que verás con más frecuencia son estas:"
+      ],
+      "lista": [
+        "SEMARNAT: conduce la política nacional, identifica especies en riesgo, emite normas, registra UMA y otorga autorizaciones de aprovechamiento, traslado, importación y exportación (art. 9).",
+        "PROFEPA: órgano desconcentrado de SEMARNAT, creado el 4 de junio de 1992, que inspecciona, vigila y atiende denuncias.",
+        "CONANP: administra las áreas naturales protegidas federales y trabaja con las comunidades que viven en ellas.",
+        "CONABIO: comisión intersecretarial creada en 1992; opera el Sistema Nacional de Información sobre Biodiversidad.",
+        "SENASICA: autoridad sanitaria agroalimentaria; el control sanitario de ejemplares sigue las leyes federales de sanidad animal y vegetal (art. 25).",
+        "Estados y municipios: ejercen las facultades que la ley o un convenio de coordinación les asignan (arts. 10 a 13)."
+      ]
+    },
+    {
+      "titulo": "NOM-059-SEMARNAT-2010: categorías de riesgo",
+      "parrafos": [
+        "La NOM-059-SEMARNAT-2010 se publicó en el Diario Oficial de la Federación el 30 de diciembre de 2010. Identifica especies nativas de flora y fauna silvestres en riesgo y fija las reglas para incluir, excluir o cambiar una especie de categoría. Su base legal está en los artículos 56 a 58 de la LGVS.",
+        "La norma reconoce cuatro categorías:"
+      ],
+      "lista": [
+        "Probablemente extinta en el medio silvestre (E): ya no hay ejemplares en vida libre en el país, aunque sí en cautiverio o fuera de México.",
+        "En peligro de extinción (P): su distribución o sus poblaciones han disminuido de forma drástica.",
+        "Amenazada (A): podría desaparecer a corto o mediano plazo si siguen los factores que la afectan.",
+        "Sujeta a protección especial (Pr): podría llegar a estar amenazada y requiere medidas de recuperación y conservación."
+      ]
+    },
+    {
+      "titulo": "La lista de especies y el método de evaluación",
+      "parrafos": [
+        "La lista de especies en riesgo es el Anexo Normativo III de la norma. Ordena cada especie por grupo taxonómico e indica familia, género, especie, nombre común, distribución, categoría y método de evaluación. Se consulta en el Diario Oficial y en el sitio de SEMARNAT; la modificación más reciente que localicé es la publicada el 14 de noviembre de 2019.",
+        "El método de evaluación del riesgo de extinción (MER) está en los Anexos I (anfibios, aves, hongos, invertebrados, mamíferos, peces y reptiles) y II (plantas). Califica cuatro criterios: amplitud de la distribución en México, estado del hábitat, vulnerabilidad biológica intrínseca e impacto de la actividad humana.",
+        "La LGVS pide revisar las listas cada 3 años o antes (art. 56) y permite que cualquier persona proponga cambios (art. 57). En abril de 2025 se publicó un proyecto de norma que propone sacar la lista de la NOM y publicarla por acuerdo. Al redactar esta guía no encontré versión definitiva; consulta el Diario Oficial antes de citar la lista."
+      ]
+    },
+    {
+      "titulo": "UMA y PIMVS: diferencias y para qué sirven",
+      "parrafos": [
+        "Las UMA son predios o instalaciones registrados que operan con plan de manejo aprobado. Su objetivo general es conservar el hábitat, las poblaciones y los ejemplares; pueden sumar objetivos como restauración, investigación, rescate, exhibición, educación ambiental o aprovechamiento sustentable (art. 39). Pueden manejarse en vida libre o de forma intensiva, y su aprovechamiento puede ser extractivo, no extractivo o mixto (Reglamento, arts. 24 y 25).",
+        "Los PIMVS son predios o instalaciones que manejan vida silvestre en forma confinada fuera de su hábitat natural. El Reglamento los define como criaderos intensivos, viveros, jardines botánicos o similares con reproducción controlada para aprovechamiento comercial (art. 2, fr. XV Bis).",
+        "Zoológicos, espectáculos públicos y colecciones privadas deben tener plan de manejo autorizado y registrarse en el padrón correspondiente (LGVS, art. 78)."
+      ]
+    },
+    {
+      "titulo": "Registro: etapas generales",
+      "parrafos": [
+        "Esta página describe la lógica general del registro; los formatos, requisitos y plazos cambian, así que consulta la ventanilla vigente de SEMARNAT.",
+        "UMA solo de conservación: se da aviso a SEMARNAT y el predio se incorpora al sistema de UMA (art. 39). UMA con aprovechamiento: se solicita el registro con un expediente que incluye datos generales, documentos de propiedad o legítima posesión, ubicación, superficie, colindancias y un plan de manejo elaborado por un responsable técnico (art. 40).",
+        "En fauna silvestre también se exige un estudio de población y un responsable técnico registrado (arts. 47 Bis y 47 Bis 1). SEMARNAT puede registrar y aprobar el plan, condicionarlo a cambios o negar el registro por las causas del artículo 41.",
+        "Colecciones y PIMVS: se solicita el registro en el padrón con prueba de legal procedencia, plan de manejo e inventario de ejemplares (Reglamento, arts. 131 y 131 Bis)."
+      ]
+    },
+    {
+      "titulo": "Informes y obligaciones de seguimiento",
+      "parrafos": [
+        "Quien titula una UMA debe presentar informes periódicos sobre actividades, incidencias, contingencias y logros según los indicadores de éxito del plan (LGVS, art. 42). Sin esos informes pueden negarse nuevas autorizaciones.",
+        "El Reglamento (art. 50) fija tres momentos:"
+      ],
+      "lista": [
+        "Informe anual de actividades, en los meses de abril a junio.",
+        "Informe de contingencias o emergencias, dentro de los tres días hábiles siguientes.",
+        "Informe de fugas o enfermedades, dentro de cinco días naturales.",
+        "Omitir el informe anual puede traer amonestación y negativa de autorizaciones; dos años seguidos de omisión permiten revocar el registro (art. 52)."
+      ]
+    },
+    {
+      "titulo": "CITES: comercio internacional de especies",
+      "parrafos": [
+        "La Convención CITES se adoptó en Washington el 3 de marzo de 1973. México depositó su adhesión el 2 de julio de 1991 y el texto se publicó en el DOF el 6 de marzo de 1992. Regula el comercio internacional: exportación, reexportación, importación e introducción procedente del mar.",
+        "Los apéndices funcionan así:"
+      ],
+      "lista": [
+        "Apéndice I: especies en peligro de extinción afectadas por el comercio; solo se autoriza en circunstancias excepcionales y requiere permiso de importación y de exportación (o certificado de reexportación).",
+        "Apéndice II: especies que podrían llegar a estar en peligro si el comercio no se controla; requiere permiso de exportación o certificado de reexportación.",
+        "Apéndice III: especies que un país regula y para las que pide cooperación; requiere permiso de exportación o certificado de origen.",
+        "En México, importar o exportar especies CITES exige cumplir la Convención y la LGVS (art. 55). Revisa los apéndices vigentes en cites.org."
+      ]
+    },
+    {
+      "titulo": "Tráfico ilegal, infracciones y delitos",
+      "parrafos": [
+        "En el plano administrativo, el artículo 122 de la LGVS enumera infracciones, como aprovechar sin autorización, trasladar sin autorización, poseer ejemplares sin demostrar su legal procedencia, alterar marcas o facturas, presentar información falsa u omitir informes. El artículo 123 prevé sanciones que van de la amonestación y la multa hasta la clausura, el arresto administrativo y el decomiso.",
+        "En el plano penal, el Código Penal Federal contiene el Título Vigésimo Quinto, «Delitos contra el Ambiente y la Gestión Ambiental» (arts. 414 a 423). El artículo 420 castiga, entre otras conductas, el tráfico, la captura, la posesión, el transporte o el acopio de ejemplares de especies endémicas, amenazadas, en peligro, sujetas a protección especial o reguladas por tratados internacionales.",
+        "El artículo 420 Bis sanciona liberar fauna exótica que perjudique un ecosistema. El 420 Quáter sanciona asentar datos falsos en registros o bitácoras ambientales. El artículo 421 prevé reparar el daño y reincorporar los ejemplares a su hábitat cuando sea seguro."
+      ]
+    },
+    {
+      "titulo": "Marcaje, procedencia legal y documentos",
+      "parrafos": [
+        "La legal procedencia es la pieza central del cumplimiento. Para registros y autorizaciones sobre ejemplares fuera de su hábitat, la autoridad debe verificarla (LGVS, art. 50).",
+        "Se demuestra con la marca que acredite un aprovechamiento sustentable y la tasa autorizada, o con una nota de remisión o factura foliada. Esa factura debe indicar el oficio de autorización, los datos del predio, la especie o género, la tasa autorizada y el titular (art. 51).",
+        "Quien adquiere ejemplares, partes o derivados debe exigir la documentación al comprar y conservarla mientras los posea (Reglamento, art. 53). SEMARNAT puede definir por norma las características de las marcas (art. 54).",
+        "El traslado de ejemplares vivos requiere autorización, con excepciones como las mascotas y aves de presa acompañadas de su marca y documentación (LGVS, art. 52)."
+      ]
+    },
+    {
+      "titulo": "Si encuentras fauna silvestre",
+      "parrafos": [
+        "Observa a distancia y evita capturarla. El artículo 4 de la LGVS prohíbe actos que impliquen destrucción, daño o perturbación de la vida silvestre, y poseer ejemplares sin demostrar su legal procedencia es una infracción (art. 122). No la lleves a casa ni la conviertas en mascota.",
+        "Reporta. Cualquier persona puede denunciar ante la PROFEPA los daños a la vida silvestre (art. 107). Usa los canales vigentes que publica la PROFEPA y anota lugar, fecha, descripción y fotografías.",
+        "Si ya tienes un ejemplar, acércate a la autoridad: los Centros para la Conservación e Investigación de la Vida Silvestre reciben ejemplares de rescate, entregas voluntarias y aseguramientos (art. 38).",
+        "No lo liberes por tu cuenta: liberar sin autorización es infracción (art. 122) y, tratándose de fauna exótica, puede ser delito (CPF, art. 420 Bis)."
+      ]
+    },
+    {
+      "titulo": "Buenas prácticas para una UMA o colección",
+      "parrafos": [
+        "Cumplir no es un trámite único, sino una rutina. Estas prácticas se derivan de lo que exigen la ley y el Reglamento:"
+      ],
+      "lista": [
+        "Operar siempre conforme al plan de manejo aprobado y actualizar datos cuando cambien especies, superficie o instalaciones.",
+        "Contar con un responsable técnico registrado y con experiencia comprobable.",
+        "Guardar la documentación de legal procedencia de cada ejemplar mientras lo tengas.",
+        "Mantener un inventario con nombre común y científico, sexo y tipo y número de marca.",
+        "Presentar los informes a tiempo y reportar contingencias, fugas o enfermedades.",
+        "Garantizar trato digno y respetuoso en manejo, traslado y exhibición.",
+        "Llevar registros y bitácoras veraces; falsearlos puede ser delito.",
+        "Dar facilidades a las visitas de inspección y supervisión técnica (arts. 43 y 110)."
+      ]
+    },
+    {
+      "titulo": "Glosario breve",
+      "parrafos": [
+        "Estos términos aparecen con frecuencia en la ley, en las normas y en los trámites de fauna silvestre. Conocerlos facilita leer los documentos oficiales."
+      ],
+      "lista": [
+        "Aprovechamiento: uso de ejemplares, partes o derivados, extractivo o no extractivo.",
+        "CITES: convención que regula el comercio internacional de especies.",
+        "Derivado: material que genera un ejemplar sin destruirlo.",
+        "Ejemplar exótico: el que está fuera de su ámbito de distribución natural.",
+        "Ferales: ejemplares de especies domésticas que se establecen en el hábitat silvestre.",
+        "Legal procedencia: prueba de que un ejemplar fue obtenido conforme a la ley.",
+        "Marca: identificador aprobado por la autoridad.",
+        "NOM-059: norma de las categorías de riesgo de especies nativas.",
+        "PIMVS: instalaciones que manejan vida silvestre confinada fuera de su hábitat.",
+        "Plan de manejo: documento técnico que programa actividades y metas.",
+        "UMA: Unidad de Manejo para la Conservación de Vida Silvestre."
+      ]
+    },
+    {
+      "titulo": "Lista de verificación final",
+      "parrafos": [
+        "Antes de manejar, adquirir o trasladar fauna silvestre, revisa estos puntos y consulta la normatividad vigente:"
+      ],
+      "lista": [
+        "¿Sé si la especie está en la NOM-059 o en los apéndices CITES vigentes?",
+        "¿Tengo registro o autorización para la actividad que realizo?",
+        "¿Mi plan de manejo está aprobado y actualizado?",
+        "¿Cada ejemplar tiene marca y documentos de legal procedencia?",
+        "¿Mi inventario coincide con los ejemplares que tengo?",
+        "¿Los traslados cuentan con la autorización que corresponde?",
+        "¿Presenté los informes en su fecha?",
+        "¿Garantizo trato digno y respetuoso?",
+        "¿Sé a quién denunciar o a quién entregar un ejemplar?"
+      ]
+    },
+    {
+      "titulo": "Fuentes y cómo mantenerte al día",
+      "parrafos": [
+        "Esta guía se basó en los textos oficiales consultados en octubre de 2026: la LGVS (última reforma DOF 16-07-2025), su Reglamento (última reforma DOF 09-05-2014), el Código Penal Federal (última reforma DOF 13-03-2026), la NOM-059-SEMARNAT-2010 (DOF 30-12-2010, con modificación del Anexo III del 14-11-2019), el proyecto PROY-NOM-059-SEMARNAT-2025 (DOF 14-04-2025) y la Convención CITES (DOF 06-03-1992).",
+        "Las leyes y normas cambian. Antes de actuar, revisa la versión vigente en diputados.gob.mx, dof.gob.mx, gob.mx/semarnat y cites.org, y consulta la ventanilla de SEMARNAT para trámites."
+      ],
+      "lista": [
+        "Cámara de Diputados: LeyesBiblio (LGVS, Reglamento, Código Penal Federal).",
+        "Diario Oficial de la Federación: normas oficiales y sus modificaciones.",
+        "SEMARNAT, PROFEPA, CONABIO y CONANP en gob.mx.",
+        "CITES: cites.org (apéndices vigentes)."
+      ]
+    },
+    {
+      "titulo": "Aviso importante",
+      "parrafos": [
+        "Este libro es informativo y educativo. No constituye asesoría legal individual ni sustituye la consulta de la normatividad vigente, de las autoridades competentes o de un profesional del derecho.",
+        "La información se basa en textos oficiales consultados en octubre de 2026. Leyes, reglamentos, normas, listas de especies, trámites y requisitos pueden reformarse o actualizarse; algunos documentos citados, como el Reglamento de la LGVS, tienen reformas antiguas y conviene confirmar su vigencia.",
+        "Antes de realizar cualquier trámite o actividad con fauna silvestre, verifica la versión vigente de la norma aplicable y consulta a SEMARNAT, PROFEPA o a la autoridad de tu estado. Zoorigen no se hace responsable de decisiones tomadas únicamente con base en este material."
+      ]
+    }
+  ],
+  "revision": [
+    {
+      "afirmacion": "La LGVS tiene última reforma DOF 16-07-2025; define vida silvestre y su objeto de concurrencia (arts. 1 y 3).",
+      "fuente": "Texto vigente LGVS, diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf y página de reformas",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "SEMARNAT otorga registros y autorizaciones de aprovechamiento, traslado, importación y exportación; la inspección y vigilancia se atribuye a la Secretaría y en la práctica la ejerce PROFEPA como órgano desconcentrado.",
+      "fuente": "LGVS arts. 9 y 104; gob.mx/semarnat artículo sobre misión de la Profepa",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Categorías de riesgo de la NOM-059-SEMARNAT-2010 (E, P, A, Pr) y estructura de anexos (I y II MER, III lista).",
+      "fuente": "DOF 30-12-2010 (nota 5173091) y LGVS art. 58",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Los cuatro criterios del MER son distribución, hábitat, vulnerabilidad biológica intrínseca e impacto humano; los verifiqué en el texto del proyecto 2025 y en la descripción de la norma de 2010, no revisé el Anexo I de 2010 completo.",
+      "fuente": "DOF 30-12-2010 y PROY-NOM-059-SEMARNAT-2025",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Estado de la NOM-059: la norma de 2010 figura como vigente; el PROY-NOM-059-SEMARNAT-2025 (DOF 14-04-2025) propone excluir la lista de la norma y publicarla por acuerdo. No encontré versión definitiva a octubre de 2026. Conviene que un abogado confirme en el DOF.",
+      "fuente": "Catálogo Mexicano de Normas (PLATIICA); texto del proyecto en DOF 14-04-2025",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Definición de UMA, objetivos, expediente de registro y causas para negar el registro (LGVS arts. 3, 39 a 41, 47 Bis y 47 Bis 1).",
+      "fuente": "LGVS texto vigente",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "PIMVS se define en el Reglamento (art. 2, fr. XV Bis) como criaderos intensivos, viveros, jardines botánicos o similares con reproducción controlada con fines comerciales; zoológicos, espectáculos y colecciones privadas se registran en el mismo padrón (LGVS art. 78; Reglamento arts. 26, 27, 131 y 131 Bis). El uso práctico de PIMVS como categoría general puede variar según la ventanilla.",
+      "fuente": "Reglamento de la LGVS y LGVS art. 78",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Plazos de informes de UMA: anual de abril a junio, contingencias en tres días hábiles y fugas o enfermedades en cinco días naturales; consecuencias por omisión (Reglamento arts. 50 y 52). El Reglamento tiene última reforma de 2014; confirmar si se modificó o si la ventanilla fija otras fechas.",
+      "fuente": "Reglamento de la LGVS, diputados.gob.mx",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Legal procedencia: forma de acreditarla con marca o nota de remisión o factura foliada, contenido de la factura y obligación de exigir y conservar documentos (LGVS arts. 50 a 52; Reglamento arts. 53 y 54).",
+      "fuente": "LGVS y Reglamento",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Infracciones y sanciones administrativas citadas (LGVS arts. 122 y 123); no cito fracciones numéricas porque la numeración del PDF no pudo confirmarse línea por línea.",
+      "fuente": "LGVS texto vigente",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Código Penal Federal, Título Vigésimo Quinto (arts. 414 a 423), con el art. 420 (biodiversidad), 420 Bis, 420 Quáter y 421; última reforma del Código DOF 13-03-2026. Se omitieron penas por no ser necesarias para una guía.",
+      "fuente": "CPF texto vigente, diputados.gob.mx/LeyesBiblio/pdf/CPF.pdf",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "CITES: fechas de adopción, adhesión de México (2 de julio de 1991) y publicación en el DOF (6 de marzo de 1992), definiciones de apéndices y permisos (arts. I a V, IX y XV).",
+      "fuente": "Texto de la Convención publicado en el DOF 06-03-1992 (copia en pjetam.gob.mx)",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Designación en México de la Autoridad Administrativa CITES (SEMARNAT, Dirección General de Vida Silvestre) y la Autoridad Científica (CONABIO): no la incluí en el libro como afirmación categórica porque cites.org bloqueó la consulta directa; solo se apoya en resultados de búsqueda. Verificar antes de agregarla.",
+      "fuente": "Resultados de búsqueda sobre documentos de cites.org (no abiertos)",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Qué hacer si encuentras fauna: denuncia ante PROFEPA (art. 107), Centros de conservación reciben entregas voluntarias (art. 38) y liberar sin autorización es infracción. No incluí teléfonos ni correos de PROFEPA por no haberlos confirmado en una página oficial vigente; el consejo de no mantener fauna en casa es recomendación de buena práctica anclada en arts. 4 y 122.",
+      "fuente": "LGVS arts. 4, 38, 107 y 122; gob.mx/semarnat (misión de la Profepa)",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "SENASICA: se menciona como autoridad sanitaria agroalimentaria con base en LGVS art. 25 (leyes federales de sanidad animal y vegetal); no verifiqué en fuente oficial sus requisitos específicos para fauna silvestre.",
+      "fuente": "LGVS art. 25",
+      "confianza": "medio"
+    }
+  ]
+}

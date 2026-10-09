@@ -1,0 +1,378 @@
+{
+  "id": "bienestar-cautiverio",
+  "titulo": "Bienestar animal en cautiverio",
+  "subtitulo": "Cinco dominios, enriquecimiento y manejo cotidiano",
+  "autor": "Equipo Zoorigen",
+  "categoria": "Bienestar animal",
+  "color": "#C75402",
+  "icono": "heartpulse",
+  "resumen": "Principios para cuidar el bienestar de la fauna silvestre bajo cuidado humano: Cinco Dominios, señales, recintos, enriquecimiento, manejo, bioseguridad y registros.",
+  "requiereRetos": 15,
+  "actualizado": "2026-10-09",
+  "fuentes": [
+    {
+      "nombre": "Mellor DJ, Beausoleil NJ, Littlewood KE, McLean AN, McGreevy PD, Jones B, Wilkins C. The 2020 Five Domains Model: Including Human-Animal Interactions in Assessments of Animal Welfare. Animals (Basel), 2020; 10(10):1870",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7602120/"
+    },
+    {
+      "nombre": "Mellor DJ. Updating Animal Welfare Thinking: Moving beyond the Five Freedoms towards A Life Worth Living. Animals (Basel), 2016; 6(3):21",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4810049/"
+    },
+    {
+      "nombre": "WAZA (Asociación Mundial de Zoos y Acuarios). Caring for Wildlife: The World Zoo and Aquarium Animal Welfare Strategy, 2015 (Mellor, Hunt y Gusset, eds.)",
+      "url": "https://www.waza.org/wp-content/uploads/2019/03/WAZA-Animal-Welfare-Strategy-2015_Portrait.pdf"
+    },
+    {
+      "nombre": "WAZA. Animal Welfare Strategies (página institucional con las estrategias de 2015 y 2025)",
+      "url": "https://www.waza.org/priorities/animal-welfare/animal-welfare-strategies/"
+    },
+    {
+      "nombre": "WOAH (Organización Mundial de Sanidad Animal). Animal welfare (marco de las cinco libertades)",
+      "url": "https://www.woah.org/en/what-we-do/animal-health-and-welfare/animal-welfare/"
+    },
+    {
+      "nombre": "Mason G, Clubb R, Latham N, Vickery S. Why and how should we use environmental enrichment to tackle stereotypic behaviour? Applied Animal Behaviour Science, 2007; 102:163-188",
+      "url": "https://doi.org/10.1016/j.applanim.2006.05.041"
+    },
+    {
+      "nombre": "Yeh HM, Huang CC, Chiang YW. Laying the groundwork for reptile welfare assessment in zoos and private keeping: a literature-based proposal. Animal Welfare, 2025; 34:e70",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12571689/"
+    },
+    {
+      "nombre": "Whittaker AL et al. Identification of Animal-Based Welfare Indicators in Captive Reptiles: A Delphi Consultation Survey. Animals (Basel), 2021; 11(7):2010",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8300299/"
+    },
+    {
+      "nombre": "Benn AL, McLelland DJ, Whittaker AL. A Review of Welfare Assessment Methods in Reptiles. Animals (Basel), 2019; 9(1):27",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6356264/"
+    },
+    {
+      "nombre": "Piseddu A, van Zeeland Y, Hemsworth L, Rault JL. PsittaWel: A welfare assessment tool for companion parrots. Animal Welfare, 2026; 35:e34",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13175777/"
+    },
+    {
+      "nombre": "Ebisawa K et al. Prevalence and risk factors for feather-damaging behavior in psittacine birds. PLoS One, 2021; 16(7):e0254610",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/34260621/"
+    },
+    {
+      "nombre": "van Zeeland YRA et al. Evaluation of a novel feather scoring system for monitoring feather damaging behaviour in parrots. The Veterinary Journal, 2013; 196(2):247-252",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/23098636/"
+    },
+    {
+      "nombre": "Government of India, Department of Animal Husbandry and Dairying. SOPs / Check-list for doing quarantine of imported wild animals in zoo facility, 2021",
+      "url": "https://www.dahd.gov.in/sites/default/files/2023-07/SOPsforquarantineofwildanimalsinZoofacility.pdf"
+    },
+    {
+      "nombre": "Wallace C et al. Lessons from a retrospective analysis of a 5-yr period of quarantine at San Diego Zoo. Journal of Zoo and Wildlife Medicine, 2016; 47(1):291-296",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/27010290/"
+    },
+    {
+      "nombre": "Comparison of 2 behavioral sampling methods to establish a time budget in a captive female cheetah (Acinonyx jubatus). Journal of Veterinary Behavior, 2016 (Repositorio Universidad de Chile)",
+      "url": "https://repositorio.uchile.cl/handle/2250/141361"
+    },
+    {
+      "nombre": "Wikipedia. Behavioral enrichment (clasificación general de tipos de enriquecimiento; fuente de apoyo)",
+      "url": "https://en.wikipedia.org/wiki/Behavioral_enrichment"
+    },
+    {
+      "nombre": "Cámara de Diputados de México. Ley General de Vida Silvestre (texto vigente, última reforma DOF 16-07-2025)",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+    }
+  ],
+  "paginas": [
+    {
+      "titulo": "Por qué importa el bienestar",
+      "parrafos": [
+        "El bienestar animal describe cómo vive un animal su situación: no solo si está vivo y sin enfermedades, sino también cómo se siente. En un lugar de cautiverio, el alimento, el espacio, la compañía y el contacto con las personas dependen de decisiones humanas. Por eso la responsabilidad del equipo de cuidado es enorme.",
+        "Cuidar el bienestar no es un lujo. Un animal que vive bien suele mostrar conductas variadas, descansa con tranquilidad y responde mejor al manejo. Si vive mal, aparecen conductas anormales que además restan valor educativo y de conservación al ejemplar.",
+        "En México también es una obligación legal: la Ley General de Vida Silvestre exige medidas de trato digno y respetuoso para evitar o disminuir la tensión, el sufrimiento, el traumatismo y el dolor de los ejemplares durante su exhibición, traslado, cuarentena y otras situaciones, y prohíbe todo acto de crueldad.",
+        "Este libro presenta principios generales, no recetas por especie."
+      ]
+    },
+    {
+      "titulo": "De las cinco libertades a los Cinco Dominios",
+      "parrafos": [
+        "En los años sesenta, un informe británico sobre ganadería intensiva puso el espacio y el movimiento en el centro del debate. De ahí surgió el marco de las cinco libertades: libertad de hambre y sed, de incomodidad, de dolor, lesión y enfermedad, de miedo y angustia, y para expresar la conducta normal. Hoy lo usan organizaciones como la WOAH.",
+        "El modelo de los Cinco Dominios, actualizado en 2020 por Mellor y colaboradores, da un paso más: además de evitar el sufrimiento, busca ofrecer experiencias positivas. Sus dominios son:"
+      ],
+      "lista": [
+        "Nutrición: acceso a agua y alimento adecuados y variados.",
+        "Ambiente físico: espacio, temperatura, luz, ruido y condiciones de las que el animal no puede escapar.",
+        "Salud: lesiones, enfermedad, dolor y condición física.",
+        "Interacciones conductuales: lo que el animal elige hacer con su entorno, con otros animales y con las personas.",
+        "Estado mental: la experiencia global del animal, que resume los efectos de los otros cuatro."
+      ]
+    },
+    {
+      "titulo": "Señales de bienestar en la conducta",
+      "parrafos": [
+        "Observar la conducta es la forma más rápida de saber cómo está un animal. Un ejemplar con buen bienestar suele descansar sin vigilancia exagerada, explorar su entorno, mostrar un repertorio variado de actividades y reaccionar sin sobresaltos desmedidos.",
+        "Las señales de alerta incluyen cambios de apetito, aislamiento, inactividad o agitación fuera de lo habitual, agresión durante la alimentación y miedo excesivo. Cualquier cambio respecto a lo normal para ese individuo merece atención.",
+        "Las estereotipias son movimientos repetitivos sin función aparente, como caminar siempre por el mismo trayecto. Se explican sobre todo por frustración de motivaciones naturales o por alteraciones del funcionamiento cerebral. Son una alarma, pero no el único indicador: algunas persisten aunque las condiciones mejoren, y su ausencia no garantiza que todo esté bien. La respuesta preferida es mejorar el entorno con enriquecimiento, no castigar."
+      ]
+    },
+    {
+      "titulo": "Señales del cuerpo: condición, plumaje y piel",
+      "parrafos": [
+        "El cuerpo también comunica. Los cambios de peso y la condición corporal ayudan a detectar problemas de nutrición; las lesiones, el modo de moverse y el aspecto general son señales de salud y del ambiente. Conviene comparar siempre con el estado habitual de cada individuo.",
+        "En las aves, el plumaje es un indicador importante. El deterioro puede deberse a conductas de daño de plumas, que dependen de la especie, la edad y el entorno social, o a otras causas, por lo que lo adecuado es registrar y consultar al veterinario. Las plumas tardan semanas o meses en regenerarse, así que los cambios se evalúan con paciencia. Otros indicadores en aves son el aspecto de las excretas y la masa muscular del pecho.",
+        "En reptiles, expertos consideran señales útiles las heridas, las secreciones por ojos o nariz, y el interés y la alerta propios de la especie. Una muda difícil puede relacionarse con una humedad inadecuada del recinto."
+      ]
+    },
+    {
+      "titulo": "Diseño de recintos: espacio y complejidad",
+      "parrafos": [
+        "Un buen recinto no se juzga por parecer natural, sino por lo que permite hacer al animal. Importan las características propias de la especie, la cantidad de opciones y la posibilidad de expresar conductas naturales.",
+        "Antes de diseñar, hay que conocer cómo usa su espacio la especie: si necesita altura, suelo para cavar, agua, o compañía de otros individuos. El recinto debe permitir formar grupos naturales y, cuando haga falta, separar animales por razones de bienestar.",
+        "Son principios clave:"
+      ],
+      "lista": [
+        "Variedad de condiciones: sol y sombra, zonas altas y bajas, áreas expuestas y protegidas.",
+        "Refugios donde el animal pueda esconderse de la vista del público.",
+        "Barreras visuales y control de ruidos y vibraciones.",
+        "Posibilidad de elegir: dónde comer, descansar o con quién estar.",
+        "Acceso seguro para el personal, para limpiar, observar y enriquecer sin perturbar.",
+        "Cuidado con las especies mixtas, que pueden provocar agresiones si no se manejan bien."
+      ]
+    },
+    {
+      "titulo": "Temperatura y luz según el grupo",
+      "parrafos": [
+        "Las necesidades de temperatura y luz cambian mucho entre especies. Este libro no da cifras: confirme los valores de cada especie con literatura especializada y con su veterinario.",
+        "Reptiles: dependen del ambiente para regular su temperatura. El recinto debe ofrecer un gradiente, es decir, zonas más cálidas y zonas más frescas entre las que el animal elija, además de humedad apropiada, luz y radiación ultravioleta según la especie, un ciclo de luz definido y refugios.",
+        "Aves: necesitan perchas y ramas variadas, un lugar de retiro, espacio para volar si su especie lo requiere, oportunidades de bañarse y arreglar su plumaje, y horarios regulares de descanso y sueño.",
+        "Mamíferos: conviene elegir especies cómodas en el clima local o proporcionar ambientes climatizados, y ofrecer acceso a luz natural, sombra y rangos de temperatura entre los que el animal pueda elegir, sin ruido excesivo."
+      ]
+    },
+    {
+      "titulo": "Enriquecimiento ambiental: tipos y ejemplos",
+      "parrafos": [
+        "El enriquecimiento ofrece retos y opciones propios de la especie para que el animal exprese conductas naturales, y mantiene el ambiente dinámico e interesante. En zoológicos, los animales enriquecidos muestran más conductas normales y menos anormales. Una clasificación práctica distingue cinco tipos:"
+      ],
+      "lista": [
+        "Alimenticio: variar horarios y lugares de entrega, esconder el alimento o presentarlo en estructuras de las que deba extraerse.",
+        "Sensorial: introducir olores, sonidos o texturas apropiados, observando la reacción de cada individuo.",
+        "Cognitivo: rompecabezas y sesiones de entrenamiento con refuerzo positivo, siempre con retos que el animal pueda resolver para evitar frustración.",
+        "Físico: perchas, troncos, sustratos y estructuras para trepar, que se cambian o rotan con el tiempo.",
+        "Social: compañía de ejemplares de su especie o de especies compatibles, según su biología."
+      ]
+    },
+    {
+      "titulo": "Cómo evaluar el enriquecimiento",
+      "parrafos": [
+        "Un enriquecimiento no sirve solo por parecer ingenioso: hay que comprobar que funciona. Un método práctico consiste en fijar una meta, planear, aplicar, documentar los resultados, compararlos con la meta y ajustar.",
+        "La herramienta básica es la observación sistemática. Primero se observa libremente para describir qué hace el animal y se arma un etograma, un catálogo de conductas con su definición. Después se registran esas conductas de forma ordenada: siguiendo a un solo individuo (muestreo focal) o anotando a intervalos qué hace cada animal del grupo (muestreo de barrido).",
+        "Conviene observar en distintos momentos, porque muchos animales cambian su conducta cuando aparece el personal. También es útil modificar una sola característica a la vez para saber qué produjo el cambio, y comparar la conducta antes y después. Las observaciones deben ser breves, constantes y registradas por escrito."
+      ]
+    },
+    {
+      "titulo": "Manejo y contención con mínimo estrés",
+      "parrafos": [
+        "Toda interacción con una persona deja una huella en el animal, buena o mala. Las experiencias negativas ocurren cuando el animal ha tenido poco contacto con humanos, cuando el trato es desagradable o amenazante, o cuando la presencia humana aumenta el miedo. Las positivas aparecen cuando la presencia de la persona aporta seguridad, alimento preferido o refuerzos durante el entrenamiento.",
+        "Principios generales de un manejo de bajo estrés:"
+      ],
+      "lista": [
+        "Planear antes de actuar y mantener rutinas predecibles.",
+        "Mover y manipular al animal solo lo necesario y por el menor tiempo posible.",
+        "Trabajar con personal capacitado, con calma y sin ruidos innecesarios.",
+        "Entrenar con refuerzo positivo para que el animal participe de forma voluntaria en revisiones; esto reduce el estrés.",
+        "Evitar técnicas aversivas que causen dolor o miedo."
+      ]
+    },
+    {
+      "titulo": "Nutrición responsable",
+      "parrafos": [
+        "Una buena nutrición va más allá de evitar el hambre. Comprende acceso constante a agua, alimento de calidad y suficiente variedad. Dar siempre lo mismo a un animal que en la naturaleza come alimentos diversos reduce su bienestar, aunque el alimento sea nutritivo.",
+        "La dieta de cada especie debe diseñarla o validarla un profesional veterinario o de nutrición animal. Dar alimento de otra especie, como alimento procesado para un animal que no lo requiere, puede dañar su salud.",
+        "Al alimentar conviene considerar la conducta natural: la forma de presentar el alimento puede promover la búsqueda y la manipulación. Se vigilan indicadores como el peso, la condición corporal, el consumo de agua y alimento, y la agresión a la hora de comer, que puede indicar hambre.",
+        "Si se usa alimento vivo como enriquecimiento, su objetivo y el bienestar de la presa deben evaluarse con cuidado; siempre que sea posible, se buscan alternativas."
+      ]
+    },
+    {
+      "titulo": "Higiene, bioseguridad y cuarentena",
+      "parrafos": [
+        "La bioseguridad reúne las medidas para reducir el riesgo de que entren y se propaguen enfermedades: limpieza y desinfección regulares con los productos que indique el veterinario, manejo ordenado de residuos y control del paso de personas y equipo.",
+        "Para animales recién llegados o enfermos, las guías consultadas recomiendan una cuarentena con estas características:"
+      ],
+      "lista": [
+        "Área separada, de acceso restringido y con personal designado, o atendida al final de la jornada para no llevar gérmenes a otras áreas.",
+        "Vestidor, equipo de protección y paso con desinfectante, renovado a diario.",
+        "Equipo propio de limpieza y alimentación, y un espacio de aislamiento para quien requiera vigilancia.",
+        "Observación y registro diarios de cada animal.",
+        "Refugios y enriquecimiento, y duración solo la mínima necesaria, porque la cuarentena estresa."
+      ]
+    },
+    {
+      "titulo": "Registros y monitoreo",
+      "parrafos": [
+        "Lo que no se registra se olvida. Los registros permiten detectar cambios, comparar con el estado habitual de cada animal y comprobar si una decisión de manejo mejoró o empeoró las cosas.",
+        "Una ficha individual reúne los datos que no cambian o cambian poco: identificación, origen, fecha de ingreso, dieta general, antecedentes de salud, conductas habituales y observaciones del veterinario.",
+        "Una bitácora diaria recoge lo que ocurre cada día. Sirven como ejemplo:"
+      ],
+      "lista": [
+        "Apetito y consumo de alimento y agua.",
+        "Conducta, descanso y actividad.",
+        "Aspecto general, heridas o cambios en piel, pelo o plumas.",
+        "Enriquecimiento utilizado y respuesta del animal.",
+        "Limpieza y desinfección realizadas.",
+        "Incidentes y avisos al veterinario."
+      ]
+    },
+    {
+      "titulo": "Salud preventiva y cuándo llamar al veterinario",
+      "parrafos": [
+        "La mejor medicina es la prevención: buena alimentación, ambiente adecuado, higiene, cuarentena y observación diaria. El personal que convive con los animales es el primero en notar que algo cambió, y esa observación vale mucho.",
+        "Hay que avisar al veterinario ante cualquier cambio en el aspecto, la voz, el apetito, la conducta o la forma de moverse. También ante heridas, secreciones de ojos o nariz, presencia de parásitos externos o conductas anormales nuevas. No hay que esperar a que el problema empeore.",
+        "El personal de cuidado nunca debe diagnosticar, medicar ni realizar procedimientos clínicos. Su papel es observar, registrar y avisar a tiempo; el diagnóstico y el tratamiento corresponden solo al médico veterinario. Un buen plan de salud incluye revisiones periódicas y el entrenamiento para que los animales colaboren de forma voluntaria."
+      ]
+    },
+    {
+      "titulo": "Ética, propósito y mejora continua",
+      "parrafos": [
+        "Mantener animales silvestres bajo cuidado humano solo se justifica si tiene un propósito claro: educación, conservación, investigación, rescate o rehabilitación. Los ejemplares deben provenir de fuentes legales y confiables que no dañen las poblaciones silvestres.",
+        "En rescate y rehabilitación, el cautiverio es una etapa. La Ley General de Vida Silvestre establece que la liberación debe hacerse a la brevedad posible, salvo que el ejemplar requiera rehabilitación, y que la autoridad decide el destino cuando liberar no es conveniente.",
+        "El bienestar no se alcanza una vez para siempre. La mejora continua consiste en evaluar, documentar, compartir lo que funcionó y lo que no, capacitar al personal y ajustar. Los zoológicos recomiendan contar con planes para animales jóvenes, enfermos o de edad avanzada y con una política clara para decisiones difíciles, tomadas siempre por profesionales."
+      ]
+    },
+    {
+      "titulo": "Lista de verificación",
+      "parrafos": [
+        "Use esta lista como recordatorio general, no como evaluación oficial:"
+      ],
+      "lista": [
+        "Hay agua limpia y alimento adecuado y variado cada día.",
+        "El recinto ofrece refugios, zonas distintas y posibilidad de elegir.",
+        "La temperatura, la luz y la humedad se revisan y corresponden a la especie.",
+        "Se observa a cada animal todos los días.",
+        "Existe ficha individual y bitácora actualizada.",
+        "Hay un programa de enriquecimiento con metas y evaluación.",
+        "El manejo es calmo, breve y con personal capacitado.",
+        "Las áreas de cuarentena y aislamiento están separadas y tienen equipo propio.",
+        "Hay un veterinario responsable y un aviso rápido ante cambios.",
+        "Se cumple la normatividad vigente y se revisa la mejora continua."
+      ]
+    },
+    {
+      "titulo": "Glosario breve",
+      "parrafos": [
+        "Términos usados en este libro:"
+      ],
+      "lista": [
+        "Bienestar animal: estado de un animal en cuanto a cómo vive y cómo se siente su situación.",
+        "Cinco Dominios: modelo que evalúa nutrición, ambiente, salud, interacciones conductuales y estado mental.",
+        "Enriquecimiento ambiental: retos y opciones propios de la especie que favorecen conductas naturales.",
+        "Estereotipia: conducta repetitiva sin función aparente.",
+        "Etograma: catálogo de las conductas de una especie, con su definición.",
+        "Gradiente térmico: zonas cálidas y frescas disponibles para que el animal elija.",
+        "Bioseguridad: medidas para reducir el ingreso y la propagación de enfermedades.",
+        "Cuarentena: separación temporal de animales para vigilar su salud.",
+        "Refuerzo positivo: entrenar premiando la conducta deseada."
+      ]
+    },
+    {
+      "titulo": "Aviso importante",
+      "parrafos": [
+        "Este libro es informativo y educativo. No sustituye la opinión, el diagnóstico ni la supervisión de un médico veterinario, ni el cumplimiento de la normatividad vigente.",
+        "No contiene dietas, dosis, tratamientos ni procedimientos clínicos, y no debe usarse para decidir sobre la salud de un animal. Ante cualquier duda sobre un ejemplar, consulte a un médico veterinario zootecnista.",
+        "El manejo de fauna silvestre está regulado en México, entre otros ordenamientos, por la Ley General de Vida Silvestre y sus disposiciones derivadas; antes de tener, trasladar, exhibir o liberar ejemplares, verifique los permisos y requisitos con la autoridad ambiental competente."
+      ]
+    }
+  ],
+  "revision": [
+    {
+      "afirmacion": "El modelo de los Cinco Dominios (versión 2020) comprende nutrición, ambiente físico, salud, interacciones conductuales y estado mental; el dominio 4 incorpora explícitamente las interacciones humano-animal.",
+      "fuente": "Mellor et al. 2020, Animals 10(10):1870 (resumen y texto completo en PMC)",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Las cinco libertades se originan en el informe Brambell (años sesenta, Reino Unido), se difundieron mediante el FAWC y hoy las usa la WOAH como marco.",
+      "fuente": "Mellor 2016 (PMC4810049); página de WOAH. Las fechas exactas (1965/1979) varían entre fuentes, por eso el texto no las precisa.",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "La Ley General de Vida Silvestre exige trato digno y respetuoso (art. 29) y prohíbe la crueldad (art. 30); la liberación debe hacerse a la brevedad salvo que se requiera rehabilitación (art. 79).",
+      "fuente": "Texto vigente en diputados.gob.mx (última reforma DOF 16-07-2025), leído completo",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Las estereotipias se explican principalmente por frustración motivacional y/o disfunción cerebral; no son un indicador fiable por sí solas y el enriquecimiento no las elimina siempre.",
+      "fuente": "Mason et al. 2007 (resumen y texto); Mason y Latham 2004 citado en WAZA 2015",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Los animales enriquecidos muestran más conductas normales y menos anormales; los retos deben ser alcanzables para evitar frustración; conviene evaluar el enriquecimiento (marco SPIDER).",
+      "fuente": "WAZA 2015, capítulo 3",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Clasificación en cinco tipos de enriquecimiento (alimenticio, sensorial, cognitivo, físico, social).",
+      "fuente": "WAZA 2015 describe los mecanismos; la clasificación proviene de literatura general y de la entrada de Wikipedia consultada (no se localizó la página oficial de AZA, bloqueada). Conviene validar la terminología.",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "En reptiles es clave el gradiente térmico, la humedad, la luz/UV, el ciclo de luz y los refugios; la humedad inadecuada se asocia con problemas de muda.",
+      "fuente": "Yeh et al. 2025 (Animal Welfare, PMC12571689); Benn et al. 2019; Whittaker et al. 2021",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Indicadores de bienestar en aves de compañía/cautiverio: plumaje, excretas, masa muscular pectoral, perchas, zona de retiro, posibilidad de volar, baño, aseo y horarios de descanso; las plumas tardan semanas a más de un año en regenerarse.",
+      "fuente": "PsittaWel 2026 (PMC13175777); van Zeeland et al. 2013; Ebisawa et al. 2021",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Para mamíferos se recomienda acceso a luz natural, sombra, rango de temperatura elegible y especies cómodas en el clima local o climatización.",
+      "fuente": "WAZA 2015, capítulo 4 (lista de comprobación de diseño)",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "El entrenamiento con refuerzo positivo reduce el estrés y la necesidad de sedación; las técnicas aversivas que causen dolor o estrés no deben aplicarse.",
+      "fuente": "WAZA 2015, capítulo 2",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Interacciones humano-animal negativas (poco contacto previo, trato desagradable) y positivas (seguridad, alimento preferido, refuerzos).",
+      "fuente": "Mellor et al. 2020",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Nutrición: bajo variedad de alimento y dietas inapropiadas (por ejemplo alimento procesado de otra especie) afectan el bienestar; indicadores: peso, condición corporal, consumo, agresión al comer.",
+      "fuente": "Mellor et al. 2020; WAZA 2015",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Alimento vivo como enriquecimiento: debe evaluarse su finalidad y el bienestar de la presa; buscar alternativas.",
+      "fuente": "WAZA 2015, capítulo 3",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Elementos de una cuarentena: área separada y de acceso restringido, personal designado, vestidor y EPP, paso con desinfectante renovado a diario, equipo exclusivo, aislamiento, observación y registros diarios.",
+      "fuente": "SOP del Departamento de Ganadería de India (DAHD, 2021)",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "La cuarentena debe durar solo el tiempo mínimo necesario e incluir refugios y enriquecimiento porque estresa; con poca información sanitaria, cuarentena con pruebas sigue siendo esencial.",
+      "fuente": "WAZA 2015; Wallace et al. 2016 (J Zoo Wildl Med)",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Práctica de atender las áreas de cuarentena al final de la jornada para evitar arrastrar patógenos (flujo de trabajo).",
+      "fuente": "Principio de bioseguridad de práctica común; las fuentes consultadas exigen personal designado y equipo exclusivo, pero no fijan el orden. Revisar con veterinario zootecnista.",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Señales para avisar al veterinario: cambios en aspecto, voz, apetito, conducta o movimiento; heridas; secreciones oculonasales; ectoparásitos; conductas anormales.",
+      "fuente": "WAZA 2015 (índices de salud); SOP DAHD 2021; Whittaker et al. 2021",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Muestreo focal, de barrido y observación libre para construir un etograma.",
+      "fuente": "Estudio del guepardo (J Vet Behav 2016, repositorio U. de Chile); la terminología general se contrastó solo en esa fuente, revisar con un etólogo o veterinario.",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Procedencia legal de los ejemplares y evitar fuentes que dañen poblaciones silvestres.",
+      "fuente": "WAZA 2015, capítulo 5; LGVS",
+      "confianza": "alto"
+    }
+  ]
+}

@@ -23,9 +23,10 @@ test('el catálogo de los fixtures carga con su PDF de prueba', () => {
   assert.ok(materiales[0].bytes > 100);
 });
 
-test('la carpeta real data/materiales arranca con el catálogo vacío', () => {
+test('la carpeta real data/materiales carga sin errores (el detalle del contenido se prueba en contenido-real.test.js)', () => {
   const r = M.cargarMateriales(path.join(__dirname, '..', 'data', 'materiales'), { avisar: false });
-  assert.deepEqual(r, { materiales: [], errores: [] });
+  assert.deepEqual(r.errores, []);
+  assert.ok(r.materiales.length >= 1);
 });
 
 test('normalizarMaterial: válido pasa; tipo, acceso, id y requiereRetos se validan', () => {

@@ -1,1 +1,342 @@
-[]
+[
+  {
+    "id": "checklist-bioseguridad",
+    "titulo": "Checklist de bioseguridad para unidades de manejo de fauna",
+    "tipo": "checklist",
+    "area": "Sanidad y manejo de fauna silvestre",
+    "descripcion": "Lista de verificación de principios generales de bioseguridad: acceso, limpieza, cuarentena, alimentación y agua, residuos, plagas y registros. Sin productos ni dosis.",
+    "archivo": "checklist-bioseguridad.pdf",
+    "paginas": 3,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "fuentes": [
+      {
+        "nombre": "Ley Federal de Sanidad Animal (Cámara de Diputados; última reforma DOF 21-05-2024): definiciones de bienestar animal, cuarentena y medidas de bioseguridad; arts. 11 y 21",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFSA.pdf"
+      },
+      {
+        "nombre": "Ley General de Vida Silvestre (última reforma DOF 16-07-2025): art. 3 fr. XLVII (trato digno y respetuoso), arts. 29 y 33 (cuarentena), arts. 50-52 (legal procedencia y traslado)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+      },
+      {
+        "nombre": "MSD Veterinary Manual, Developing a Biosecurity Program for Animals (revisión enero 2026)",
+        "url": "https://www.msdvetmanual.com/management-and-nutrition/biosecurity/developing-a-biosecurity-program-for-animals"
+      },
+      {
+        "nombre": "WOAH, Terrestrial Animal Health Code, glosario (ed. 2016): desinfección como aplicación posterior a una limpieza a fondo",
+        "url": "https://woah.org/fileadmin/Home/eng/Health_standards/tahc/2016/en_glossaire.htm"
+      },
+      {
+        "nombre": "Catálogo Mexicano de Normas (Secretaría de Economía): NOM-087-SEMARNAT-SSA1-2002, residuos peligrosos biológico-infecciosos (vigente; DOF 17-02-2003)",
+        "url": "https://platiica.economia.gob.mx/normalizacion/nom-087-semarnat-ssa1-2002/"
+      }
+    ]
+  },
+  {
+    "id": "ficha-registro-ejemplar",
+    "titulo": "Ficha de registro de ejemplar",
+    "tipo": "plantilla",
+    "area": "Registro y trazabilidad de fauna silvestre",
+    "descripcion": "Plantilla imprimible de una página para registrar un ejemplar: identificación, procedencia legal, medidas, estado de salud al ingreso, observaciones y responsable.",
+    "archivo": "ficha-registro-ejemplar.pdf",
+    "paginas": 2,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "fuentes": [
+      {
+        "nombre": "Ley General de Vida Silvestre (última reforma DOF 16-07-2025): art. 3 fr. XXXII (marca), arts. 50 a 52 (legal procedencia y traslado)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+      },
+      {
+        "nombre": "Reglamento de la Ley General de Vida Silvestre (última reforma DOF 09-05-2014): arts. 53 a 55 (legal procedencia, marcas e inventario de ejemplares)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/regley/Reg_LGVS.pdf"
+      }
+    ]
+  },
+  {
+    "id": "fauna-herida",
+    "titulo": "Qué hacer si encuentras fauna silvestre herida",
+    "tipo": "guia",
+    "area": "Rescate y atención de fauna silvestre",
+    "descripcion": "Pasos generales y seguros para la persona y el animal si encuentras fauna silvestre herida en México: qué hacer, qué evitar, a quién avisar y por qué.",
+    "archivo": "fauna-herida.pdf",
+    "paginas": 3,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "fuentes": [
+      {
+        "nombre": "PROFEPA, Denuncia ante la Profepa (gob.mx; publicado 05-11-2025): canales de denuncia, horario y ratificación",
+        "url": "https://www.gob.mx/profepa/articulos/denuncia-ante-la-profepa?state=published"
+      },
+      {
+        "nombre": "PROFEPA, comunicado Profepa invita a convivir responsablemente con la fauna silvestre urbana (27-11-2025)",
+        "url": "https://www.gob.mx/profepa/prensa/profepa-invita-a-convivir-responsablemente-con-la-fauna-silvestre-urbana?tab="
+      },
+      {
+        "nombre": "CENAPRECE (Secretaría de Salud), Cartel Prevención de la Rabia (02-09-2024)",
+        "url": "https://www.gob.mx/salud/cenaprece/documentos/cartel-prevencion-de-la-rabia"
+      },
+      {
+        "nombre": "Ley General de Vida Silvestre (última reforma DOF 16-07-2025): art. 38 (centros de conservación e investigación, rescate y entrega voluntaria) y art. 107 (denuncia ante PROFEPA)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+      },
+      {
+        "nombre": "Ley General del Equilibrio Ecológico y la Protección al Ambiente (última reforma DOF 19-01-2026): art. 189 (denuncia popular)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGEEPA.pdf"
+      },
+      {
+        "nombre": "Cornell University College of Veterinary Medicine, What to do if you find an injured animal (guía de referencia internacional sobre contención, calma y no dar alimento)",
+        "url": "https://www.vet.cornell.edu/hospitals/janet-l-swanson-wildlife-hospital/what-do-if-you-find-injured-animal"
+      }
+    ]
+  },
+  {
+    "id": "calendario-colmenas",
+    "titulo": "Calendario anual de manejo de colmenas",
+    "tipo": "guia",
+    "area": "Apicultura y polinizadores",
+    "descripcion": "Panorama general del año apícola en clima templado de México: revisión, floración, cosecha y preparación para la época de escasez. Varía por región y especie de abeja.",
+    "archivo": "calendario-colmenas.pdf",
+    "paginas": 3,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "fuentes": [
+      {
+        "nombre": "SADER-SENASICA, Manual de Buenas Prácticas Pecuarias en la Producción de Miel, 4.ª ed., 2019 (Programa Nacional para el Control de la Abeja Africana)",
+        "url": "https://www.gob.mx/cms/uploads/attachment/file/859834/Manual_de_BPP_en_la_Producci_n_de_Miel_2019.pdf"
+      },
+      {
+        "nombre": "INIFAP, Revista Mexicana de Ciencias Pecuarias 2020;11(3):757-770, Efecto del tamaño interno de la colmena en la producción de cría, miel y polen en colonias de Apis mellifera en el altiplano central de México",
+        "url": "https://cienciaspecuarias.inifap.gob.mx/index.php/Pecuarias/article/download/5019/4405/16117"
+      },
+      {
+        "nombre": "Universidad Intercultural Maya de Quintana Roo / TNC México, Manual de Apicultura (Corredor Bioalimentario de la Selva Maya): calendario floral y calendario apícola, alimentación en escasez",
+        "url": "https://www.tncmx.org/content/dam/tnc/nature/en/documents/mexico/Manual-de-Apicultura.pdf"
+      },
+      {
+        "nombre": "Penn State Extension, Manejo de abejas de miel a través de las estaciones (actualizado 18-12-2023; referencia general de biología estacional, clima del noreste de EE. UU.)",
+        "url": "https://extension.psu.edu/manejo-de-abejas-de-miel-a-traves-de-las-estaciones"
+      }
+    ]
+  },
+  {
+    "id": "glosario-vida-silvestre",
+    "titulo": "Glosario de vida silvestre y normatividad",
+    "tipo": "glosario",
+    "area": "Normatividad y conceptos de vida silvestre",
+    "descripcion": "40 términos clave de vida silvestre y normatividad en México (LGVS, Reglamento, NOM-059, CITES), con definiciones breves y claras.",
+    "archivo": "glosario-vida-silvestre.pdf",
+    "paginas": 7,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "fuentes": [
+      {
+        "nombre": "Ley General de Vida Silvestre (última reforma DOF 16-07-2025), art. 3 (definiciones), arts. 33, 38 y 51",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+      },
+      {
+        "nombre": "Reglamento de la Ley General de Vida Silvestre (última reforma DOF 09-05-2014), art. 2 (definiciones)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/regley/Reg_LGVS.pdf"
+      },
+      {
+        "nombre": "Ley General del Equilibrio Ecológico y la Protección al Ambiente (última reforma DOF 19-01-2026), art. 3",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGEEPA.pdf"
+      },
+      {
+        "nombre": "Ley Federal de Sanidad Animal (última reforma DOF 21-05-2024), art. 4",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFSA.pdf"
+      },
+      {
+        "nombre": "NOM-059-SEMARNAT-2010 (DOF 30-12-2010), numerales 2.2 y 2.6",
+        "url": "https://dof.gob.mx/nota_detalle.php?codigo=5173091&fecha=30/12/2010"
+      },
+      {
+        "nombre": "DOF 14-11-2019, Modificación del Anexo Normativo III, Lista de especies en riesgo de la NOM-059-SEMARNAT-2010",
+        "url": "https://sidof.segob.gob.mx/notas/5578808"
+      },
+      {
+        "nombre": "Convención sobre el Comercio Internacional de Especies Amenazadas de Fauna y Flora Silvestres (texto con datos de vinculación de México, DOF 06-03-1992), arts. I y II",
+        "url": "https://dsiappsdev.semarnat.gob.mx/inai/I/109/6_Convencion_Sobre_El_Comercio_Internacional_De_Especies_Amenazadas_De_Fauna_Y_Flora_Silvestres.pdf"
+      },
+      {
+        "nombre": "Convenio sobre la Diversidad Biológica, art. 2 (conservación in situ y ex situ)",
+        "url": "https://www.cbd.int/convention/articles/?a=cbd-02&lg=1"
+      },
+      {
+        "nombre": "WOAH, Terrestrial Animal Health Code, glosario (ed. 2016): zoonosis",
+        "url": "https://woah.org/fileadmin/Home/eng/Health_standards/tahc/2016/en_glossaire.htm"
+      }
+    ]
+  },
+  {
+    "id": "marco-normativo-uno",
+    "titulo": "Marco normativo de la vida silvestre en una página",
+    "tipo": "infografia",
+    "area": "Normatividad y cumplimiento",
+    "descripcion": "Mapa de una página de las leyes, reglamento, normas y tratados que rigen la vida silvestre en México, con su nombre oficial, enlace oficial y quién vigila su cumplimiento.",
+    "archivo": "marco-normativo-uno.pdf",
+    "paginas": 2,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "fuentes": [
+      {
+        "nombre": "Ley General de Vida Silvestre, texto vigente (Cámara de Diputados): arts. 1, 3, 10, 104 y 107",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+      },
+      {
+        "nombre": "Reglamento de la Ley General de Vida Silvestre, texto vigente (Cámara de Diputados)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/regley/Reg_LGVS.pdf"
+      },
+      {
+        "nombre": "Ley General del Equilibrio Ecológico y la Protección al Ambiente, texto vigente (Cámara de Diputados): arts. 1, 79 a 87 y 189",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGEEPA.pdf"
+      },
+      {
+        "nombre": "Ley Federal de Sanidad Animal, texto vigente (Cámara de Diputados): arts. 1, 3, 11 y 21",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFSA.pdf"
+      },
+      {
+        "nombre": "NOM-059-SEMARNAT-2010 (DOF 30-12-2010)",
+        "url": "https://dof.gob.mx/nota_detalle.php?codigo=5173091&fecha=30/12/2010"
+      },
+      {
+        "nombre": "SIDOF, Modificación del Anexo Normativo III de la NOM-059-SEMARNAT-2010 (DOF 14-11-2019)",
+        "url": "https://sidof.segob.gob.mx/notas/5578808"
+      },
+      {
+        "nombre": "Catálogo Mexicano de Normas (Secretaría de Economía), fichas de NOM-059-SEMARNAT-2010, NOM-051-ZOO-1995 y NOM-033-SAG/ZOO-2014",
+        "url": "https://platiica.economia.gob.mx/normalizacion/nom-059-semarnat-2010/"
+      },
+      {
+        "nombre": "Convención CITES, texto con datos de vinculación de México (SEMARNAT)",
+        "url": "https://dsiappsdev.semarnat.gob.mx/inai/I/109/6_Convencion_Sobre_El_Comercio_Internacional_De_Especies_Amenazadas_De_Fauna_Y_Flora_Silvestres.pdf"
+      },
+      {
+        "nombre": "CONABIO, Generalidades de CITES y su implementación en México (autoridades CITES en México)",
+        "url": "https://www.biodiversidad.gob.mx/media/1/planeta/cites/files/Generalidades_de_CITES_y_su_implementacion_en_Mexico3Web.pdf"
+      },
+      {
+        "nombre": "PROFEPA, Denuncia ante la Profepa (publicado 05-11-2025)",
+        "url": "https://www.gob.mx/profepa/articulos/denuncia-ante-la-profepa?state=published"
+      },
+      {
+        "nombre": "SEMARNAT, Procuración de justicia ambiental, misión de la Profepa (03-04-2018)",
+        "url": "https://www.gob.mx/semarnat/articulos/procuracion-de-justicia-ambiental-mision-de-la-profepa"
+      }
+    ]
+  },
+  {
+    "id": "intro-nom-059",
+    "titulo": "Introducción a la NOM-059-SEMARNAT-2010",
+    "tipo": "presentacion",
+    "area": "Normatividad y conservación de fauna silvestre",
+    "descripcion": "Qué es la NOM-059-SEMARNAT-2010, sus cuatro categorías de riesgo, cómo consultar la lista y cómo se relaciona con la LGVS, las UMA y CITES.",
+    "archivo": "intro-nom-059.pdf",
+    "paginas": 10,
+    "acceso": "retos",
+    "requiereRetos": 3,
+    "licencia": "Original Zoorigen",
+    "fuentes": [
+      {
+        "nombre": "DOF. NOM-059-SEMARNAT-2010 (30 de diciembre de 2010)",
+        "url": "https://dof.gob.mx/normasOficiales/4254/semarnat/semarnat.htm"
+      },
+      {
+        "nombre": "DOF. Modificación del Anexo Normativo III de la NOM-059-SEMARNAT-2010 (14 de noviembre de 2019)",
+        "url": "https://dof.gob.mx/nota_detalle.php?codigo=5578808&fecha=14/11/2019"
+      },
+      {
+        "nombre": "DOF. Proyecto PROY-NOM-059-SEMARNAT-2025 (14 de abril de 2025), copia en PLATIICA",
+        "url": "https://platiica.economia.gob.mx/wp-content/uploads/sites/2/historialdocumental/PROY-NOM-059-SEMARNAT-2025.pdf"
+      },
+      {
+        "nombre": "PLATIICA, Secretaría de Economía. Ficha de la NOM-059-SEMARNAT-2010",
+        "url": "https://platiica.economia.gob.mx/normalizacion/nom-059-semarnat-2010/"
+      },
+      {
+        "nombre": "Cámara de Diputados. Ley General de Vida Silvestre (última reforma DOF 16-07-2025)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+      },
+      {
+        "nombre": "Profepa. CITES: Convención sobre el Comercio Internacional de Especies Amenazadas de Fauna y Flora Silvestres",
+        "url": "https://www.gob.mx/profepa/articulos/cites-convencion-sobre-el-comercio-internacional-de-especies-amenazadas-de-fauna-y-flora-silvestres"
+      },
+      {
+        "nombre": "Semarnat. Las UMA, sitios dedicados a la conservación de la vida silvestre",
+        "url": "https://www.gob.mx/semarnat/articulos/las-uma-sitios-dedicados-a-la-conservacion-de-la-vida-silvestre"
+      }
+    ]
+  },
+  {
+    "id": "bienestar-cinco-dominios",
+    "titulo": "Bienestar animal: los cinco dominios",
+    "tipo": "presentacion",
+    "area": "Bienestar animal y manejo de fauna",
+    "descripcion": "Del enfoque de las cinco libertades al modelo de los cinco dominios: qué evalúa, cómo se usa, ejemplos por grupo, enriquecimiento y mejora continua.",
+    "archivo": "bienestar-cinco-dominios.pdf",
+    "paginas": 10,
+    "acceso": "retos",
+    "requiereRetos": 10,
+    "licencia": "Original Zoorigen",
+    "fuentes": [
+      {
+        "nombre": "Mellor et al. (2020). The 2020 Five Domains Model: Including Human-Animal Interactions in Assessments of Animal Welfare. Animals 10(10):1870",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7602120/"
+      },
+      {
+        "nombre": "Mellor (2016). Updating Animal Welfare Thinking: Moving beyond the Five Freedoms towards a Life Worth Living. Animals 6(3):21",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4810049/"
+      },
+      {
+        "nombre": "WOAH. Animal welfare",
+        "url": "https://www.woah.org/en/what-we-do/animal-health-and-welfare/animal-welfare/"
+      },
+      {
+        "nombre": "Cámara de Diputados. Ley General de Vida Silvestre, capítulo VI, Trato digno y respetuoso a la fauna silvestre",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+      }
+    ]
+  },
+  {
+    "id": "polinizadores-abejas",
+    "titulo": "Polinizadores: por qué importan las abejas",
+    "tipo": "presentacion",
+    "area": "Biodiversidad y apicultura",
+    "descripcion": "Qué es polinizar, quiénes lo hacen, por qué importa para ecosistemas y alimentos, abejas melíferas y nativas sin aguijón de México, amenazas y cómo ayudar.",
+    "archivo": "polinizadores-abejas.pdf",
+    "paginas": 10,
+    "acceso": "retos",
+    "requiereRetos": 20,
+    "licencia": "Original Zoorigen",
+    "fuentes": [
+      {
+        "nombre": "IPBES (2016). Comunicado de prensa: Pollinators vital to our food supply under threat (26 de febrero de 2016)",
+        "url": "https://ipbes.net/article/press-release-pollinators-vital-our-food-supply-under-threat"
+      },
+      {
+        "nombre": "FAO (2021). Día Mundial de las Abejas 2021, guía Participe",
+        "url": "https://openknowledge.fao.org/server/api/core/bitstreams/0164efad-249c-4999-9aeb-e787e98f5604/content"
+      },
+      {
+        "nombre": "CONABIO. Polinización",
+        "url": "https://www.biodiversidad.gob.mx/ecosistemas/procesose/polinizacion"
+      },
+      {
+        "nombre": "CONABIO (2019). Los polinizadores nos necesitan y nosotros también",
+        "url": "https://www.gob.mx/conabio/prensa/los-polinizadores-nos-necesitan-y-nosotros-tambien"
+      },
+      {
+        "nombre": "CONABIO (2026). Poliniza: iniciativa para convertir espacios públicos en refugios para polinizadores",
+        "url": "https://www.gob.mx/conabio/prensa/poliniza-iniciativa-de-la-conabio-busca-convertir-espacios-publicos-en-refugios-para-polinizadores"
+      },
+      {
+        "nombre": "SEMARNAT (2023). La meliponicultura en México: un acercamiento a las prácticas tradicionales y a las perspectivas de su manejo contemporáneo",
+        "url": "https://biblioteca.semarnat.gob.mx/janium/Documentos/Ciga/libros2023/CD008608.pdf"
+      },
+      {
+        "nombre": "SADER y SENASICA (2019). Manual de Buenas Prácticas Pecuarias en la Producción de Miel, 4.ª edición",
+        "url": "https://www.gob.mx/cms/uploads/attachment/file/859834/Manual_de_BPP_en_la_Producci_n_de_Miel_2019.pdf"
+      }
+    ]
+  }
+]

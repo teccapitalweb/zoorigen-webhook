@@ -1,0 +1,455 @@
+{
+  "presentaciones": [
+    {
+      "id": "intro-nom-059",
+      "titulo": "Introducción a la NOM-059-SEMARNAT-2010",
+      "area": "Normatividad y conservación de fauna silvestre",
+      "descripcion": "Qué es la NOM-059-SEMARNAT-2010, sus cuatro categorías de riesgo, cómo consultar la lista y cómo se relaciona con la LGVS, las UMA y CITES.",
+      "diapositivas": [
+        {
+          "titulo": "Introducción a la NOM-059-SEMARNAT-2010",
+          "puntos": [
+            "La norma mexicana que identifica especies nativas en riesgo de extinción",
+            "Cuatro categorías de riesgo, un método de evaluación y una lista oficial",
+            "Guía básica para quien trabaja con fauna silvestre en México"
+          ],
+          "nota": "Presentación introductoria de Zoorigen. Esta guía resume la norma con fines educativos y no la sustituye: antes de tomar decisiones de manejo o iniciar trámites, revisa siempre el texto vigente en el Diario Oficial de la Federación (DOF).",
+          "visual": "Silueta esquemática de México con un sello o listón de documento oficial"
+        },
+        {
+          "titulo": "Para qué sirve la NOM-059",
+          "puntos": [
+            "Identifica especies o poblaciones silvestres en riesgo en la República Mexicana",
+            "Establece criterios para incluir, excluir o cambiar la categoría de riesgo",
+            "Usa un método de evaluación del riesgo de extinción",
+            "Publicada en el DOF el 30 de diciembre de 2010",
+            "Cualquier persona puede proponer cambios a la lista con sustento técnico"
+          ],
+          "nota": "El objeto de la norma está en su numeral 1. La Ley General de Vida Silvestre (LGVS) permite que cualquier persona presente propuestas de inclusión, exclusión o cambio de categoría, siempre con información que sustente el riesgo.",
+          "visual": "Diagrama sencillo: lupa sobre una lista con tres flechas (incluir, excluir, cambiar)"
+        },
+        {
+          "titulo": "Qué especies cubre",
+          "puntos": [
+            "Solo especies nativas de México, de flora y fauna silvestres",
+            "Ocho grupos: anfibios, aves, hongos, invertebrados, mamíferos, peces, plantas y reptiles",
+            "Se lista por especie o subespecie e incluye todas sus poblaciones",
+            "Las especies exóticas no forman parte de esta lista"
+          ],
+          "nota": "La norma permite, con información que lo sustente, proponer que una población de una especie en peligro o amenazada pase a protección especial, y esa excepción se especifica en la lista. El título oficial habla de especies nativas, por eso las exóticas quedan fuera.",
+          "visual": "Cuadrícula de ocho íconos simples de siluetas: rana, ave, hongo, caracol, mamífero, pez, planta y lagartija"
+        },
+        {
+          "titulo": "Las cuatro categorías de riesgo",
+          "puntos": [
+            "E: Probablemente extinta en el medio silvestre; sin ejemplares libres en México",
+            "P: En peligro de extinción; su viabilidad biológica está en riesgo",
+            "A: Amenazadas; podrían estar en peligro a corto o mediano plazo",
+            "Pr: Sujetas a protección especial; se busca propiciar su recuperación"
+          ],
+          "nota": "Las definiciones están en el numeral 2.2 de la norma y aquí van parafraseadas. La LGVS agrupa estas cuatro categorías como especies y poblaciones en riesgo, de modo que Pr también es una categoría de riesgo y no significa que la especie esté a salvo.",
+          "visual": "Cuatro tarjetas de colores sobrios en fila con las siglas E, P, A y Pr en grande"
+        },
+        {
+          "titulo": "Cómo se evalúa el riesgo",
+          "puntos": [
+            "El método MER califica cada especie con cuatro criterios",
+            "A: amplitud de su distribución en México",
+            "B: estado del hábitat para su desarrollo natural",
+            "C: vulnerabilidad biológica propia de la especie",
+            "D: impacto de la actividad humana sobre la especie"
+          ],
+          "nota": "Esta es solo la idea general del Método de Evaluación del Riesgo de Extinción (Anexo Normativo I). Las plantas cuentan con un método propio (Anexo Normativo II), y el resultado de la evaluación orienta la categoría que se propone.",
+          "visual": "Diagrama de cuatro círculos (A, B, C, D) que convergen en una balanza"
+        },
+        {
+          "titulo": "Cómo se consulta la lista",
+          "puntos": [
+            "La lista oficial es el Anexo Normativo III de la norma",
+            "Cada registro incluye familia, género, especie, sinonimia, nombres comunes y distribución",
+            "La última modificación publicada que verificamos es del 14 de noviembre de 2019",
+            "Busca por nombre científico y revisa sinónimos y subespecies",
+            "Confirma siempre la categoría en el DOF antes de cualquier trámite"
+          ],
+          "nota": "Los nombres científicos cambian con la revisión taxonómica, por eso una especie puede aparecer con un nombre distinto al que usas hoy. El proyecto de actualización de 2025 reporta justamente decenas de nombres sinónimos o con errores de escritura en la lista actual.",
+          "visual": "Ilustración de una tabla con filas y una lupa resaltando una fila"
+        },
+        {
+          "titulo": "Relación con LGVS, UMA y CITES",
+          "puntos": [
+            "LGVS: define especies en riesgo y ordena revisar las listas cada tres años",
+            "UMA: predios registrados que operan con un plan de manejo aprobado",
+            "CITES: regula el comercio internacional; la NOM-059 clasifica el riesgo nacional",
+            "Una especie puede estar en la NOM-059, en CITES, en ambas o en ninguna",
+            "Aprovechar especies en riesgo exige condiciones estrictas según el artículo 85 de la LGVS"
+          ],
+          "nota": "CITES es un acuerdo internacional que regula el comercio de especies con apéndices I, II y III; la NOM-059 solo cubre especies nativas de México y tiene otro propósito. El artículo 85 de la LGVS da prioridad a la colecta y captura para restauración, repoblamiento, reintroducción e investigación científica.",
+          "visual": "Tres círculos que se traslapan parcialmente, rotulados NOM-059, CITES y UMA"
+        },
+        {
+          "titulo": "Por qué importa si trabajas con fauna",
+          "puntos": [
+            "Indica si la autoridad considera en riesgo a la especie que manejas",
+            "El aprovechamiento de especies en riesgo está muy restringido por la LGVS",
+            "Orienta prioridades de conservación, investigación y planes de manejo",
+            "Citar la categoría correcta da solidez técnica a informes y proyectos"
+          ],
+          "nota": "Conocer la categoría de una especie ayuda a decidir cómo documentar, manejar y comunicar un proyecto. Siempre conviene complementar con la LGVS, su reglamento y las condiciones de cada trámite.",
+          "visual": "Silueta de un animal sobre un mapa esquemático con un candado y una lista de verificación"
+        },
+        {
+          "titulo": "Errores comunes y cómo evitarlos",
+          "puntos": [
+            "Confundir la NOM-059 con CITES o con la Lista Roja de la UICN",
+            "Creer que Pr significa que la especie no está en riesgo",
+            "Usar listas viejas o copiadas de sitios no oficiales",
+            "Ignorar sinónimos: el nombre científico pudo haber cambiado",
+            "Asumir que la norma cubre especies exóticas"
+          ],
+          "nota": "Cada lista responde a una autoridad, un propósito y un método distintos, así que una especie puede tener categorías diferentes en cada una. Cuando cites un dato, anota la fuente y la fecha de consulta.",
+          "visual": "Cinco señales de advertencia sencillas, una por cada error, con una paloma de verificación al final"
+        },
+        {
+          "titulo": "Fuentes y siguientes pasos",
+          "puntos": [
+            "Consulta el texto vigente y el Anexo III directamente en el DOF",
+            "La LGVS manda revisar las listas cada tres años",
+            "En abril de 2025 se publicó en el DOF un proyecto de nueva norma",
+            "Antes de citar, verifica si ya se publicó como norma definitiva",
+            "Anota siempre la fecha en que consultaste cada dato"
+          ],
+          "nota": "El proyecto PROY-NOM-059-SEMARNAT-2025 propone sacar el Anexo III del cuerpo de la norma y que la lista la expida la Semarnat por separado; entraría en vigor 180 días naturales después de su publicación definitiva. En el proyecto, un grupo de especialistas propone incluir 65 especies, excluir una y cambiar de categoría 11. Hasta donde pudimos verificar en octubre de 2026 la NOM-059-SEMARNAT-2010 sigue vigente, pero conviene revisar el DOF.",
+          "visual": "Lista de verificación con un calendario y el ícono de un documento oficial"
+        }
+      ],
+      "fuentes": [
+        {"nombre": "DOF. NOM-059-SEMARNAT-2010 (30 de diciembre de 2010)", "url": "https://dof.gob.mx/normasOficiales/4254/semarnat/semarnat.htm"},
+        {"nombre": "DOF. Modificación del Anexo Normativo III de la NOM-059-SEMARNAT-2010 (14 de noviembre de 2019)", "url": "https://dof.gob.mx/nota_detalle.php?codigo=5578808&fecha=14/11/2019"},
+        {"nombre": "DOF. Proyecto PROY-NOM-059-SEMARNAT-2025 (14 de abril de 2025), copia en PLATIICA", "url": "https://platiica.economia.gob.mx/wp-content/uploads/sites/2/historialdocumental/PROY-NOM-059-SEMARNAT-2025.pdf"},
+        {"nombre": "PLATIICA, Secretaría de Economía. Ficha de la NOM-059-SEMARNAT-2010", "url": "https://platiica.economia.gob.mx/normalizacion/nom-059-semarnat-2010/"},
+        {"nombre": "Cámara de Diputados. Ley General de Vida Silvestre (última reforma DOF 16-07-2025)", "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"},
+        {"nombre": "Profepa. CITES: Convención sobre el Comercio Internacional de Especies Amenazadas de Fauna y Flora Silvestres", "url": "https://www.gob.mx/profepa/articulos/cites-convencion-sobre-el-comercio-internacional-de-especies-amenazadas-de-fauna-y-flora-silvestres"},
+        {"nombre": "Semarnat. Las UMA, sitios dedicados a la conservación de la vida silvestre", "url": "https://www.gob.mx/semarnat/articulos/las-uma-sitios-dedicados-a-la-conservacion-de-la-vida-silvestre"}
+      ],
+      "revision": [
+        {"afirmacion": "La norma tiene por objeto identificar las especies o poblaciones de flora y fauna silvestres en riesgo y fijar criterios de inclusión, exclusión o cambio mediante un método de evaluación del riesgo de extinción.", "fuente": "DOF, NOM-059-SEMARNAT-2010, numeral 1", "confianza": "alto"},
+        {"afirmacion": "Se publicó en el DOF el 30 de diciembre de 2010.", "fuente": "DOF, NOM-059-SEMARNAT-2010; considerandos de la modificación de 2019", "confianza": "alto"},
+        {"afirmacion": "Las cuatro categorías y sus siglas son: Probablemente extinta en el medio silvestre (E), En peligro de extinción (P), Amenazadas (A) y Sujetas a protección especial (Pr), con las definiciones parafraseadas del numeral 2.2.", "fuente": "DOF, NOM-059-SEMARNAT-2010, numerales 2.2.1 a 2.2.4 y 5.3; LGVS art. 3 fracc. XX y art. 58", "confianza": "alto"},
+        {"afirmacion": "La lista se divide en anfibios, aves, hongos, invertebrados, mamíferos, peces, plantas y reptiles, y se publica como Anexo Normativo III.", "fuente": "DOF, NOM-059-SEMARNAT-2010, numerales 5.1 y 5.2", "confianza": "alto"},
+        {"afirmacion": "La lista se elabora por especie o subespecie con todas sus poblaciones, con posibilidad de excepción por población para pasar de P o A a Pr.", "fuente": "DOF, NOM-059-SEMARNAT-2010, numeral 5.6", "confianza": "alto"},
+        {"afirmacion": "Las especies exóticas no forman parte de la lista porque la norma se refiere a especies nativas de México.", "fuente": "Título oficial de la norma (DOF 2010) y definición de categoría E como especie nativa", "confianza": "alto"},
+        {"afirmacion": "El método MER usa cuatro criterios: A amplitud de la distribución en México, B estado del hábitat, C vulnerabilidad biológica intrínseca, D impacto de la actividad humana; las plantas tienen un método propio (Anexo II).", "fuente": "DOF, NOM-059-SEMARNAT-2010, Anexo Normativo I y numeral 8.2", "confianza": "alto"},
+        {"afirmacion": "Cualquier persona puede proponer inclusión, exclusión o cambio de categoría ante la Semarnat.", "fuente": "LGVS art. 57; NOM-059-SEMARNAT-2010 numeral 5.7", "confianza": "alto"},
+        {"afirmacion": "La LGVS ordena revisar y, de ser necesario, actualizar las listas cada 3 años, y publicarlas en el DOF.", "fuente": "LGVS art. 56 (texto vigente, última reforma DOF 16-07-2025)", "confianza": "alto"},
+        {"afirmacion": "El Anexo Normativo III se modificó mediante publicación en el DOF del 14 de noviembre de 2019, con entrada en vigor 60 días naturales después.", "fuente": "DOF 14/11/2019", "confianza": "alto"},
+        {"afirmacion": "Las columnas del Anexo III incluyen familia, género, especie, infraespecífica, autor, sinonimia, nombres comunes, distribución y categoría de riesgo.", "fuente": "DOF 14/11/2019, encabezados del Anexo Normativo III", "confianza": "alto"},
+        {"afirmacion": "Una UMA es un predio o instalación registrado que opera con un plan de manejo aprobado y con seguimiento permanente de hábitat y poblaciones.", "fuente": "LGVS art. 3 y art. 39; Semarnat, artículo sobre UMA", "confianza": "alto"},
+        {"afirmacion": "CITES regula el comercio internacional de especies mediante tres apéndices, y la LGVS (art. 55) remite a esa Convención para la importación y exportación de especies incluidas.", "fuente": "LGVS art. 55; Profepa, artículo sobre CITES", "confianza": "alto"},
+        {"afirmacion": "Una especie puede estar en la NOM-059, en CITES, en ambas o en ninguna, porque tienen alcances y propósitos distintos (la NOM-059 solo cubre especies nativas; CITES regula comercio internacional).", "fuente": "Inferencia a partir de DOF 2010 (especies nativas) y Profepa (CITES)", "confianza": "medio"},
+        {"afirmacion": "El aprovechamiento de especies en riesgo solo se autoriza dando prioridad a colecta y captura para restauración, repoblamiento, reintroducción e investigación científica, con condiciones adicionales para otros usos.", "fuente": "LGVS art. 85", "confianza": "alto"},
+        {"afirmacion": "La categoría orienta prioridades de conservación, investigación y planes de manejo.", "fuente": "Inferencia del uso de la lista según NOM-059 numeral 1 y LGVS art. 56; no es cita textual de una fuente", "confianza": "medio"},
+        {"afirmacion": "Existe el proyecto PROY-NOM-059-SEMARNAT-2025 publicado en el DOF el 14 de abril de 2025, con consulta pública de 60 días naturales; entraría en vigor 180 días naturales tras su publicación definitiva y dejaría sin efectos la NOM-059-SEMARNAT-2010. El Anexo III se sustituiría por una lista que expediría la Semarnat.", "fuente": "Texto del proyecto (copia PLATIICA/DOF), considerandos y transitorios", "confianza": "alto"},
+        {"afirmacion": "El proyecto reporta que el grupo de 77 especialistas propone incluir 65 especies, excluir una y cambiar de categoría 11, y que la revisión taxonómica de CONABIO halló 181 nombres sinónimos y 38 con errores de escritura.", "fuente": "Considerandos del PROY-NOM-059-SEMARNAT-2025 (DOF 14/04/2025)", "confianza": "alto"},
+        {"afirmacion": "A octubre de 2026 la NOM-059-SEMARNAT-2010 figura como vigente y no se encontró evidencia de una versión definitiva de la norma 2025.", "fuente": "Ficha PLATIICA (revisión sistemática del 05/02/2026 con resultado Modificación) y búsquedas realizadas en esta sesión; no se pudo consultar el buscador del DOF en tiempo real", "confianza": "medio"},
+        {"afirmacion": "Confundir la NOM-059 con la Lista Roja de la UICN es un error común.", "fuente": "Criterio editorial de Zoorigen: son listas distintas con autoridad y método distintos; no se citó una fuente específica sobre la UICN", "confianza": "medio"}
+      ]
+    },
+    {
+      "id": "bienestar-cinco-dominios",
+      "titulo": "Bienestar animal: los cinco dominios",
+      "area": "Bienestar animal y manejo de fauna",
+      "descripcion": "Del enfoque de las cinco libertades al modelo de los cinco dominios: qué evalúa, cómo se usa, ejemplos por grupo, enriquecimiento y mejora continua.",
+      "diapositivas": [
+        {
+          "titulo": "Bienestar animal: los cinco dominios",
+          "puntos": [
+            "Un modelo para entender cómo vive y cómo se siente un animal",
+            "Va más allá de evitar el sufrimiento: busca experiencias positivas",
+            "Útil para evaluar animales bajo cuidado humano"
+          ],
+          "nota": "El modelo de los cinco dominios es una de las herramientas más usadas hoy para organizar la evaluación del bienestar. Esta presentación no incluye dosis ni tratamientos: ante cualquier problema de salud, la decisión corresponde al médico veterinario responsable.",
+          "visual": "Diagrama de cinco círculos conectados alrededor de una silueta sencilla de animal"
+        },
+        {
+          "titulo": "De las libertades a los dominios",
+          "puntos": [
+            "Las cinco libertades se apoyaron en el informe Brambell sobre animales de granja",
+            "Influyeron en leyes, organizaciones y esquemas de certificación",
+            "La ciencia mostró que no captan toda la complejidad del bienestar",
+            "Hoy se habla de buscar una vida que vale la pena vivirse"
+          ],
+          "nota": "Mellor (2016) explica que la fórmula libre de significaba tan libre como sea posible, pero a veces se tomó como derecho absoluto. Organismos como WOAH todavía citan las cinco libertades como principios guía, y el modelo de dominios las complementa.",
+          "visual": "Línea de tiempo con dos peldaños: cinco libertades y cinco dominios"
+        },
+        {
+          "titulo": "Qué es el modelo y cómo surgió",
+          "puntos": [
+            "Fue formulado en 1994 y se ha actualizado varias veces",
+            "La versión de referencia es Mellor y colaboradores, 2020",
+            "Los dominios 1 a 4 alimentan al dominio 5: el estado mental",
+            "Es una guía para razonar, no un medidor exacto"
+          ],
+          "nota": "El artículo de 2020 se publicó en la revista Animals y su aporte principal fue incluir de forma explícita las interacciones entre personas y animales. Los propios autores lo describen como una ayuda estructurada para el juicio cualitativo.",
+          "visual": "Cuatro cajas pequeñas con flechas que apuntan a una quinta caja más grande"
+        },
+        {
+          "titulo": "Los cinco dominios, uno por uno",
+          "puntos": [
+            "1. Nutrición: acceso a agua y alimento adecuados",
+            "2. Ambiente físico: espacio, refugio y condiciones del entorno",
+            "3. Salud: ausencia de enfermedad, lesión y deterioro funcional",
+            "4. Interacciones conductuales: con el entorno, otros animales y personas",
+            "5. Estado mental: lo que el animal siente como resultado de los demás"
+          ],
+          "nota": "En el artículo original el cuarto dominio se llama interacciones conductuales y es el que aquí llamamos comportamiento. El quinto dominio no se mide por separado: se interpreta a partir de la evidencia de los otros cuatro.",
+          "visual": "Cinco círculos numerados con íconos simples: gota, casa, cruz, flechas de interacción y carita neutra"
+        },
+        {
+          "titulo": "Estado mental y bienestar positivo",
+          "puntos": [
+            "Hambre, sed o dolor generan sensaciones negativas que impulsan conductas",
+            "Frustración, aburrimiento, soledad y miedo aparecen cuando se bloquean metas",
+            "Las experiencias positivas surgen al lograr metas gratificantes",
+            "Un buen bienestar no es solo la ausencia de lo negativo"
+          ],
+          "nota": "Mellor y colaboradores llaman compromiso afectivo positivo al estado en que el animal busca con éxito metas que le resultan gratificantes. La meta es equilibrar las experiencias negativas inevitables con oportunidades reales de experiencias positivas.",
+          "visual": "Balanza con experiencias negativas de un lado y positivas del otro"
+        },
+        {
+          "titulo": "Cómo se evalúa el bienestar",
+          "puntos": [
+            "Se observan evidencias en el animal: conducta, condición corporal y fisiología",
+            "Un factor de riesgo por sí solo no prueba un problema",
+            "El impacto negativo se califica en cinco niveles, de A a E",
+            "Los impactos positivos se califican en una escala de cuatro niveles",
+            "También se valoran actitud, destreza y manejo del personal"
+          ],
+          "nota": "Por ejemplo, un objeto filoso en un recinto es un factor de riesgo, pero solo hay un problema de bienestar si hay evidencia en el animal. Las escalas ayudan a ordenar el juicio de un equipo con experiencia en la especie y sirven para comparar a lo largo del tiempo.",
+          "visual": "Lista de verificación con una lupa y dos escalas graduadas, una negativa y otra positiva"
+        },
+        {
+          "titulo": "Ejemplos por grupo de fauna",
+          "puntos": [
+            "Mamíferos sociales: compañía adecuada y oportunidades de explorar y buscar alimento",
+            "Aves: espacio para desplazarse, perchas variadas y estímulos para forrajear",
+            "Reptiles y anfibios: refugios y variedad de microambientes para elegir",
+            "Peces e invertebrados: calidad del agua y ambiente acorde con su biología"
+          ],
+          "nota": "Son ejemplos ilustrativos del tipo de pregunta que plantea cada dominio, no requisitos técnicos. Las necesidades concretas dependen de cada especie y se definen con literatura especializada y el apoyo de un veterinario o biólogo con experiencia en ella.",
+          "visual": "Cuadrícula de cuatro siluetas sencillas (mamífero, ave, reptil, pez) con un símbolo de refugio"
+        },
+        {
+          "titulo": "Enriquecimiento ambiental",
+          "puntos": [
+            "Enriquecer es ofrecer opciones para que el animal exprese conductas propias",
+            "Pueden ser elementos físicos, sensoriales, alimentarios, cognitivos o sociales",
+            "Ambientes amplios, variados y seguros favorecen estados mentales positivos",
+            "Evalúa si el animal realmente usa y se beneficia de cada elemento",
+            "Planéalo por especie, con asesoría biológica y veterinaria"
+          ],
+          "nota": "Mellor (2016) señala que los estados positivos aparecen cuando los animales viven en ambientes espaciosos, ricos en estímulos y seguros, con oportunidades de explorar, buscar alimento e interactuar con congéneres adecuados. Introduce los cambios de forma gradual y observa si generan efectos no deseados.",
+          "visual": "Recinto esquemático con tres elementos: una percha, un escondite y un comedero con alimento disperso"
+        },
+        {
+          "titulo": "Señales de alerta y mejora continua",
+          "puntos": [
+            "Cambios en el apetito, el peso o la condición corporal",
+            "Conductas repetitivas, apatía, agresión o evitación fuera de lo habitual",
+            "Lesiones, cojera o piel, plumaje o escamas en mal estado",
+            "Registra observaciones con fecha para detectar tendencias",
+            "Ante la duda, avisa pronto al veterinario responsable"
+          ],
+          "nota": "Una señal de alerta no es un diagnóstico: obliga a observar mejor y a pedir apoyo profesional. La mejora continua consiste en evaluar, actuar, registrar y volver a evaluar con una frecuencia definida por el equipo.",
+          "visual": "Ciclo de cuatro flechas con las etiquetas observar, registrar, ajustar y revisar"
+        },
+        {
+          "titulo": "Fuentes y siguientes pasos",
+          "puntos": [
+            "Aplica el modelo a una especie de tu colección o proyecto",
+            "Registra evidencias por dominio y valora de forma cualitativa",
+            "Define acciones de mejora y fechas de revisión",
+            "En México, la LGVS exige trato digno y respetuoso a la fauna silvestre",
+            "Consulta los artículos originales de Mellor y colaboradores"
+          ],
+          "nota": "El capítulo VI de la LGVS establece medidas de trato digno y respetuoso para evitar o disminuir tensión, sufrimiento y dolor de ejemplares de fauna silvestre durante su aprovechamiento, traslado, exhibición y otras actividades. Esta presentación es educativa y no sustituye la asesoría de un médico veterinario.",
+          "visual": "Lista de verificación con un libro abierto y un ícono de ciclo de mejora"
+        }
+      ],
+      "fuentes": [
+        {"nombre": "Mellor et al. (2020). The 2020 Five Domains Model: Including Human-Animal Interactions in Assessments of Animal Welfare. Animals 10(10):1870", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7602120/"},
+        {"nombre": "Mellor (2016). Updating Animal Welfare Thinking: Moving beyond the Five Freedoms towards a Life Worth Living. Animals 6(3):21", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4810049/"},
+        {"nombre": "WOAH. Animal welfare", "url": "https://www.woah.org/en/what-we-do/animal-health-and-welfare/animal-welfare/"},
+        {"nombre": "Cámara de Diputados. Ley General de Vida Silvestre, capítulo VI, Trato digno y respetuoso a la fauna silvestre", "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"}
+      ],
+      "revision": [
+        {"afirmacion": "Los cinco dominios del modelo 2020 son nutrición, ambiente físico, salud, interacciones conductuales y estado mental; los dominios 1 a 4 aportan evidencia para el dominio 5.", "fuente": "Mellor et al. 2020, Animals 10(10):1870", "confianza": "alto"},
+        {"afirmacion": "El modelo se formuló en 1994 y se actualizó en varias ocasiones; la versión de 2020 incluye explícitamente la interacción humano-animal dentro del dominio 4.", "fuente": "Mellor et al. 2020", "confianza": "alto"},
+        {"afirmacion": "Las cinco libertades extienden una versión anterior centrada en el espacio, propia del informe Brambell, y se formularon como se conocen en la década de 1990.", "fuente": "Mellor 2016, Animals 6(3):21", "confianza": "alto"},
+        {"afirmacion": "WOAH cita las cinco libertades entre sus principios guía de bienestar de animales terrestres y define bienestar como el estado físico y mental del animal en relación con las condiciones en que vive y muere. La página fecha las libertades en 1965, lo que difiere de la fecha de formulación de Mellor, por eso la presentación no da año.", "fuente": "WOAH, página de bienestar animal; Mellor 2016", "confianza": "medio"},
+        {"afirmacion": "Mellor 2016 indica que la fórmula libre de pretendía decir tan libre como sea posible y que algunos grupos la trataron como derecho absoluto; propone el concepto de vida que vale la pena vivirse.", "fuente": "Mellor 2016", "confianza": "alto"},
+        {"afirmacion": "Los afectos negativos de dominios 1 a 3 (hambre, sed, dolor) y de dominio 4 (frustración, aburrimiento, soledad, miedo) y los afectos positivos por logro de metas gratificantes (compromiso afectivo positivo) son parte del modelo.", "fuente": "Mellor et al. 2020", "confianza": "alto"},
+        {"afirmacion": "La evaluación debe basarse en evidencia observada en el animal; un factor de riesgo por sí solo no prueba un problema; los impactos negativos se gradúan en cinco niveles (A a E) y los positivos en cuatro (0, +, ++, +++); el modelo es una ayuda para el juicio cualitativo.", "fuente": "Mellor et al. 2020", "confianza": "alto"},
+        {"afirmacion": "El modelo 2020 considera actitud, voz, destreza y manejo del personal como parte de las interacciones humano-animal.", "fuente": "Mellor et al. 2020", "confianza": "alto"},
+        {"afirmacion": "Los estados afectivos positivos se favorecen con congéneres adecuados, ambientes espaciosos, ricos en estímulos y seguros, con oportunidades de conductas gratificantes como explorar y buscar alimento.", "fuente": "Mellor 2016", "confianza": "alto"},
+        {"afirmacion": "Los ejemplos por grupo de fauna (mamíferos, aves, reptiles y anfibios, peces e invertebrados) son ilustrativos y están redactados por Zoorigen a partir de los principios generales de los dominios, no de una fuente específica por especie.", "fuente": "Criterio editorial de Zoorigen apoyado en Mellor 2016 y Mellor et al. 2020; WOAH para el caso de peces", "confianza": "medio"},
+        {"afirmacion": "Los tipos de enriquecimiento (físico, sensorial, alimentario, cognitivo y social) y las señales de alerta generales son clasificaciones de uso común en el manejo de fauna, redactadas sin cifras.", "fuente": "Conocimiento general del campo; no se contrastó con una fuente específica en esta sesión, solo con los principios de Mellor 2016", "confianza": "medio"},
+        {"afirmacion": "La LGVS define trato digno y respetuoso como las medidas para evitar dolor, deterioro físico o sufrimiento, y su capítulo VI obliga a adoptar medidas para evitar o disminuir tensión, sufrimiento, traumatismo y dolor en fauna silvestre.", "fuente": "LGVS art. 3 y art. 29 (última reforma DOF 16-07-2025)", "confianza": "alto"}
+      ]
+    },
+    {
+      "id": "polinizadores-abejas",
+      "titulo": "Polinizadores: por qué importan las abejas",
+      "area": "Biodiversidad y apicultura",
+      "descripcion": "Qué es polinizar, quiénes lo hacen, por qué importa para ecosistemas y alimentos, abejas melíferas y nativas sin aguijón de México, amenazas y cómo ayudar.",
+      "diapositivas": [
+        {
+          "titulo": "Polinizadores: por qué importan las abejas",
+          "puntos": [
+            "Muchas plantas silvestres y cultivos dependen de ellos para reproducirse",
+            "Abejas melíferas y abejas nativas cumplen funciones distintas",
+            "Veremos datos clave, amenazas y acciones concretas"
+          ],
+          "nota": "Esta presentación reúne cifras de IPBES, FAO y CONABIO con su año. Cuando una cifra proviene de evaluaciones regionales o de un trabajo citado por otra institución, lo indicamos.",
+          "visual": "Silueta de una abeja sobre una flor con un fondo de hojas esquemáticas"
+        },
+        {
+          "titulo": "Qué es polinizar y quién lo hace",
+          "puntos": [
+            "Polinizar es transferir polen de la antera al estigma de una flor",
+            "Después ocurre la fertilización y se forman semillas y frutos",
+            "El polen puede moverse con viento o agua, pero muchas plantas usan animales",
+            "Abejas, avispas, escarabajos, mariposas, polillas, colibríes y murciélagos son polinizadores",
+            "Los animales polinizadores se alimentan de néctar y polen"
+          ],
+          "nota": "CONABIO menciona como polinizadores en México a abejas, abejorros, mariposas, colibríes y murciélagos que se alimentan de néctar. Al visitar flores para alimentarse, los animales transportan polen de una flor a otra.",
+          "visual": "Diagrama de una flor con una flecha de polen que va de la antera al estigma"
+        },
+        {
+          "titulo": "Importancia ecológica y agrícola",
+          "puntos": [
+            "Casi 90% de plantas silvestres con flor depende en parte de animales (IPBES, 2016)",
+            "75% de los cultivos alimentarios depende en parte de polinizadores (IPBES, 2016)",
+            "Contribuyen a cerca de 35% de la producción agrícola mundial (FAO, 2021)",
+            "Entre 235 y 577 mil millones de dólares anuales dependen de ellos (IPBES, 2016)",
+            "En México, 85% de 171 cultivos comestibles depende en parte (Ashworth, 2009)"
+          ],
+          "nota": "Dependencia parcial no significa dependencia total: IPBES habla de cultivos que dependen al menos en parte de la polinización. El dato de México proviene de Ashworth y colaboradores (2009), citado por CONABIO, y se refiere a 171 especies cultivadas de las que se consumen frutos o semillas. FAO (2021) añade que los polinizadores intervienen en 87 de los 115 cultivos alimentarios principales.",
+          "visual": "Gráfica sencilla de barras o íconos de frutas y verduras con una abeja sobre una de ellas"
+        },
+        {
+          "titulo": "Abejas melíferas y abejas nativas",
+          "puntos": [
+            "La abeja melífera, Apis mellifera, llegó a México desde Europa",
+            "En México se estiman más de 1,800 especies de abejas (SEMARNAT, 2023)",
+            "La gran mayoría de los polinizadores son silvestres (FAO, 2021)",
+            "Reemplazar abejas sin aguijón por melíferas ha reducido la meliponicultura (SEMARNAT, 2023)"
+          ],
+          "nota": "La cifra de más de 1,800 especies es una estimación que SEMARNAT atribuye a la Secretaría de Agricultura (2022), y otras fuentes dan números parecidos. Las abejas melíferas pueden complementar la polinización agrícola, pero no sustituyen a la comunidad de polinizadores silvestres.",
+          "visual": "Dos siluetas de abeja lado a lado: una melífera y otra nativa de menor tamaño"
+        },
+        {
+          "titulo": "Abejas sin aguijón de México",
+          "puntos": [
+            "Tribu Meliponini: en México hay 46 especies en 16 géneros registradas (SEMARNAT, 2023)",
+            "No tienen aguijón, por eso se crían cerca de los hogares",
+            "Melipona beecheii, la xunáan kaab, es la abeja maya emblemática",
+            "Guardan miel y polen en potes de cerumen, no en panales",
+            "Su miel suele ser más líquida y de sabor más ácido"
+          ],
+          "nota": "La cifra de 46 especies es un registro que SEMARNAT toma de Ayala (1999) y Reyes-González y colaboradores (2016); otras fuentes citan cifras cercanas, por lo que conviene decir al menos 46. En la tradición maya, la xunáan kaab se asocia con el dios abeja Ah Muzenkab y su cría persiste en la península de Yucatán.",
+          "visual": "Ilustración sencilla de un pote de cerumen o un nido abierto con una abeja pequeña sin personajes"
+        },
+        {
+          "titulo": "Amenazas para los polinizadores",
+          "puntos": [
+            "Pérdida y fragmentación de hábitat por agricultura, ganadería y urbanización",
+            "Monocultivos intensivos y plaguicidas, incluidos los neonicotinoides",
+            "Plagas y enfermedades, entre ellas parásitos como la varroa",
+            "Cambio climático: desfase entre la floración y la actividad de los insectos",
+            "Especies invasoras y pérdida del conocimiento tradicional"
+          ],
+          "nota": "IPBES (2016) y la FAO (2021) coinciden en que la mayoría de estos factores los provoca el ser humano. En México, SEMARNAT (2023) también señala la extracción indiscriminada de nidos silvestres de abejas sin aguijón y el desinterés de nuevas generaciones por la meliponicultura.",
+          "visual": "Mapa esquemático con parches de hábitat que se fragmentan y un ícono de gota de plaguicida"
+        },
+        {
+          "titulo": "Qué dicen los datos del riesgo",
+          "puntos": [
+            "Cerca de 16% de los polinizadores vertebrados está amenazado de extinción (IPBES, 2016)",
+            "Evaluaciones regionales: a menudo más de 40% de invertebrados amenazados localmente (IPBES, 2016)",
+            "La mayoría de los insectos polinizadores no se ha evaluado globalmente (IPBES, 2016)",
+            "En muchas zonas la abundancia y diversidad de abejas está disminuyendo (FAO, 2021)"
+          ],
+          "nota": "IPBES reportó 16.5% de polinizadores vertebrados amenazados y advirtió que, aunque la mayoría de los insectos no se evaluó a nivel global, las evaluaciones regionales y nacionales muestran niveles altos de amenaza para abejas y mariposas. Por eso monitorear es parte de la solución y hay que evitar presentar cifras locales como si fueran globales.",
+          "visual": "Pictograma de diez siluetas de animales con algunas resaltadas como proporción aproximada"
+        },
+        {
+          "titulo": "Cómo ayudar a los polinizadores",
+          "puntos": [
+            "Crea un jardín con plantas principalmente nativas y sin insecticidas",
+            "Ofrece alimento, agua y refugio durante todo el año",
+            "Participa en la iniciativa Poliniza de CONABIO (2026)",
+            "Elige miel y productos de apicultores y meliponicultores responsables",
+            "Reduce los plaguicidas y evita aplicarlos cuando hay floración"
+          ],
+          "nota": "CONABIO recomienda jardines con plantas nativas y sin insecticidas, aunque sean pequeños, como un balcón con macetas. Su iniciativa Poliniza (junio de 2026) invita a registrar hábitats y a monitorear polinizadores; revisa en biodiversidad.gob.mx el estado actual de la convocatoria.",
+          "visual": "Balcón esquemático con macetas de flores nativas, una abeja y una mariposa"
+        },
+        {
+          "titulo": "Apicultura responsable",
+          "puntos": [
+            "Ubica los apiarios lejos de terrenos con plaguicidas durante la floración",
+            "Vigila y controla plagas y enfermedades, como la varroa",
+            "Mueve colmenas con cuidado: pueden diseminar plagas y enfermedades",
+            "Lleva registros del apiario y trazabilidad de la miel",
+            "No extraigas nidos silvestres de abejas nativas; fomenta la cría sustentable"
+          ],
+          "nota": "El Manual de Buenas Prácticas Pecuarias en la Producción de Miel de SADER y SENASICA (2019) recoge estas ideas y ofrece una vía de reconocimiento voluntaria. Los tratamientos sanitarios deben definirse con orientación profesional y la normativa vigente, por lo que esta presentación no incluye dosis ni productos.",
+          "visual": "Apiario esquemático con cajas de colmena alineadas junto a un bosque y un cultivo, con una cerca"
+        },
+        {
+          "titulo": "Fuentes y siguientes pasos",
+          "puntos": [
+            "Consulta los informes de IPBES, FAO y CONABIO citados",
+            "Identifica las abejas y plantas nativas de tu región",
+            "Planea un jardín o corredor de flores nativas",
+            "Si eres apicultor, revisa el manual de buenas prácticas de SENASICA",
+            "Registra tus observaciones en NaturaLista de CONABIO"
+          ],
+          "nota": "Todas las cifras de esta presentación tienen fuente y año; si las citas, usa esa misma atribución. Las cifras pueden cambiar con nuevas evaluaciones, así que conviene revisar las publicaciones más recientes de IPBES, FAO y CONABIO.",
+          "visual": "Lista de verificación con una flor, una abeja y un libro abierto"
+        }
+      ],
+      "fuentes": [
+        {"nombre": "IPBES (2016). Comunicado de prensa: Pollinators vital to our food supply under threat (26 de febrero de 2016)", "url": "https://ipbes.net/article/press-release-pollinators-vital-our-food-supply-under-threat"},
+        {"nombre": "FAO (2021). Día Mundial de las Abejas 2021, guía Participe", "url": "https://openknowledge.fao.org/server/api/core/bitstreams/0164efad-249c-4999-9aeb-e787e98f5604/content"},
+        {"nombre": "CONABIO. Polinización", "url": "https://www.biodiversidad.gob.mx/ecosistemas/procesose/polinizacion"},
+        {"nombre": "CONABIO (2019). Los polinizadores nos necesitan y nosotros también", "url": "https://www.gob.mx/conabio/prensa/los-polinizadores-nos-necesitan-y-nosotros-tambien"},
+        {"nombre": "CONABIO (2026). Poliniza: iniciativa para convertir espacios públicos en refugios para polinizadores", "url": "https://www.gob.mx/conabio/prensa/poliniza-iniciativa-de-la-conabio-busca-convertir-espacios-publicos-en-refugios-para-polinizadores"},
+        {"nombre": "SEMARNAT (2023). La meliponicultura en México: un acercamiento a las prácticas tradicionales y a las perspectivas de su manejo contemporáneo", "url": "https://biblioteca.semarnat.gob.mx/janium/Documentos/Ciga/libros2023/CD008608.pdf"},
+        {"nombre": "SADER y SENASICA (2019). Manual de Buenas Prácticas Pecuarias en la Producción de Miel, 4.ª edición", "url": "https://www.gob.mx/cms/uploads/attachment/file/859834/Manual_de_BPP_en_la_Producci_n_de_Miel_2019.pdf"}
+      ],
+      "revision": [
+        {"afirmacion": "Polinizar es transferir polen de la antera al estigma; después ocurre la fertilización, que lleva a semillas y frutos; el polen puede moverse por viento o agua, pero la mayoría de las plantas depende de animales.", "fuente": "CONABIO, página Polinización", "confianza": "alto"},
+        {"afirmacion": "Entre los polinizadores en México figuran abejas, avispas, hormigas, escarabajos, mariposas, polillas, colibríes y murciélagos.", "fuente": "CONABIO 2019 (comunicado) y CONABIO, página Polinización", "confianza": "alto"},
+        {"afirmacion": "75% de los cultivos alimentarios depende al menos en parte de la polinización animal y casi 90% de las plantas silvestres con flor depende en alguna medida de ella.", "fuente": "IPBES 2016, comunicado de prensa del 26 de febrero de 2016", "confianza": "alto"},
+        {"afirmacion": "Entre 235 y 577 mil millones de dólares anuales de producción mundial de alimentos dependen directamente de los polinizadores.", "fuente": "IPBES 2016, comunicado de prensa", "confianza": "alto"},
+        {"afirmacion": "Los polinizadores contribuyen a 35% de la producción agrícola mundial y polinizan 87 de los 115 cultivos alimentarios principales; 75% de los cultivos para consumo humano depende al menos en parte de ellos.", "fuente": "FAO 2021, guía del Día Mundial de las Abejas (Hechos interesantes)", "confianza": "alto"},
+        {"afirmacion": "En México, 85% de las 171 especies cultivadas de las que se consumen frutos o semillas depende en cierto grado de polinizadores.", "fuente": "CONABIO, página Polinización, citando a Ashworth et al. (2009)", "confianza": "medio"},
+        {"afirmacion": "CONABIO 2019 da otra cifra para México (88% de 145 especies) distinta de la de Ashworth 2009; por la discrepancia se usó solo la de Ashworth con su atribución.", "fuente": "CONABIO 2019 (comunicado) frente a CONABIO, página Polinización", "confianza": "medio"},
+        {"afirmacion": "Alrededor de 16% (16.5%) de los vertebrados polinizadores está amenazado de extinción a nivel global; más de 40% de las especies de invertebrados está amenazado localmente según evaluaciones regionales y nacionales, mientras que la mayoría de los insectos no se ha evaluado globalmente.", "fuente": "IPBES 2016, comunicado de prensa", "confianza": "alto"},
+        {"afirmacion": "En muchas zonas las abejas, los polinizadores y otros insectos disminuyen en abundancia y diversidad; la gran mayoría de los polinizadores son silvestres, con más de 20 000 especies de abejas en el mundo.", "fuente": "FAO 2021, guía del Día Mundial de las Abejas", "confianza": "alto"},
+        {"afirmacion": "Apis mellifera fue introducida a México desde Europa; las abejas sin aguijón (Meliponini) tienen 16 géneros y 46 especies registradas en México; en México se estiman más de 1,800 especies de abejas.", "fuente": "SEMARNAT 2023, La meliponicultura en México (cita a Ayala 1999, Reyes-González et al. 2016 y Secretaría de Agricultura 2022)", "confianza": "alto"},
+        {"afirmacion": "Otras fuentes secundarias dan cifras de 46 a 47 especies sin aguijón; la fecha de introducción de Apis mellifera varía entre fuentes, por lo que la presentación no da año.", "fuente": "Búsquedas en literatura académica (UNAM, CICY, ECOSUR) revisadas en esta sesión; no se contrastaron con el artículo original de Arnold et al. 2018", "confianza": "medio"},
+        {"afirmacion": "Melipona beecheii es la xunáan kaab, abeja sin aguijón asociada a la cultura maya y al dios abeja Ah Muzenkab; su cría persiste en la península de Yucatán.", "fuente": "SEMARNAT 2023, La meliponicultura en México", "confianza": "alto"},
+        {"afirmacion": "Las abejas sin aguijón guardan miel y polen en recipientes ovoides de cerumen; su miel es más líquida y normalmente más ácida que la de abejas melíferas; se crían alrededor de los hogares porque no pican.", "fuente": "SEMARNAT 2023, La meliponicultura en México", "confianza": "alto"},
+        {"afirmacion": "Amenazas: pérdida de hábitat, agricultura intensiva y plaguicidas (incluidos neonicotinoides), plagas y enfermedades, especies invasoras, cambio climático y pérdida de conocimiento tradicional.", "fuente": "IPBES 2016, comunicado; FAO 2021; SEMARNAT 2023 (desfase entre floración y actividad, extracción de nidos, pérdida de conocimiento)", "confianza": "alto"},
+        {"afirmacion": "La varroa es un parásito que afecta a las colmenas; la normativa mexicana tiene una Campaña Nacional contra la Varroasis y el manual de SENASICA menciona su control.", "fuente": "SADER y SENASICA 2019, manual de buenas prácticas (citas NOM-001-ZOO-1994 y la varroa); no se verificó el estado vigente de esa norma", "confianza": "medio"},
+        {"afirmacion": "Para apiarios, el manual indica instalarlos en terrenos sin aplicación de plaguicidas durante la floración, lejos de fuentes de contaminación, y llevar bitácora y trazabilidad; existe un Sistema Nacional de Identificación y Trazabilidad de la Miel.", "fuente": "SADER y SENASICA 2019, manual de buenas prácticas", "confianza": "alto"},
+        {"afirmacion": "La movilización de colmenas puede diseminar plagas y enfermedades; IPBES propone mejorar el control sanitario de abejas manejadas y regular el comercio de abejas.", "fuente": "IPBES 2016, comunicado; el manual de SENASICA incluye un apartado de movilización de colmenas", "confianza": "medio"},
+        {"afirmacion": "CONABIO recomienda jardines con plantas nativas y sin insecticidas, aun pequeños, como un balcón con macetas; la iniciativa Poliniza se presentó el 1 de junio de 2026.", "fuente": "CONABIO 2019 (comunicado); CONABIO 2026 (comunicado Poliniza)", "confianza": "alto"},
+        {"afirmacion": "Elegir miel de productores responsables y evitar aplicar plaguicidas durante la floración como acciones del consumidor y del jardinero.", "fuente": "FAO 2021 (papel del consumidor) y manual SENASICA 2019 (floración); la redacción como consejo al público es de Zoorigen", "confianza": "medio"},
+        {"afirmacion": "Registrar observaciones en NaturaLista como acción de ciencia ciudadana.", "fuente": "CONABIO promueve NaturaLista según resultados de búsqueda en gob.mx/conabio; no se abrió la plataforma en esta sesión", "confianza": "medio"}
+      ]
+    }
+  ]
+}

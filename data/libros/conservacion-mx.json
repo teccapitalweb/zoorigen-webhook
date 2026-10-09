@@ -1,0 +1,453 @@
+{
+  "id": "conservacion-mx",
+  "titulo": "Conservación de la vida silvestre en México",
+  "subtitulo": "Especies, amenazas y herramientas",
+  "autor": "Equipo Zoorigen",
+  "categoria": "Conservación",
+  "color": "#2F7A4F",
+  "icono": "leaf",
+  "resumen": "Qué hace único a México, qué amenaza a su fauna y qué herramientas existen para protegerla: áreas protegidas, UMA, NOM-059, CITES, casos de recuperación y cómo participar.",
+  "requiereRetos": 30,
+  "actualizado": "2026-10-09",
+  "fuentes": [
+    {
+      "nombre": "CONABIO. Países megadiversos y posición de México por grupo",
+      "url": "https://www.biodiversidad.gob.mx/pais/quees"
+    },
+    {
+      "nombre": "CONABIO. Ecosistemas de México",
+      "url": "https://www.biodiversidad.gob.mx/ecosistemas/ecosismex"
+    },
+    {
+      "nombre": "CONABIO. Especies invasoras (definición e impactos)",
+      "url": "https://www.biodiversidad.gob.mx/especies/Invasoras/"
+    },
+    {
+      "nombre": "CONANP. Numeralia de Áreas Naturales Protegidas decretadas (2025)",
+      "url": "https://sig.conanp.gob.mx/General"
+    },
+    {
+      "nombre": "CONANP. Programa de Conservación para el Desarrollo Sostenible (PROCODES)",
+      "url": "https://www.gob.mx/conanp/acciones-y-programas/programa-de-conservacion-para-el-desarrollo-sostenible-procodes-57997"
+    },
+    {
+      "nombre": "Ley General de Vida Silvestre (texto vigente, última reforma DOF 16-07-2025)",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+    },
+    {
+      "nombre": "Ley General del Equilibrio Ecológico y la Protección al Ambiente (art. 46, tipos de ANP)",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGEEPA.pdf"
+    },
+    {
+      "nombre": "DOF 14/11/2019. Modificación del Anexo Normativo III (lista de especies en riesgo) de la NOM-059-SEMARNAT-2010",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5578808&fecha=14/11/2019"
+    },
+    {
+      "nombre": "NOM-059-SEMARNAT-2010 (DOF 30/12/2010)",
+      "url": "https://paot.mx/centro/normas_a/2014/NOM-059-SEMARNAT-2010.pdf"
+    },
+    {
+      "nombre": "PROY-NOM-059-SEMARNAT-2025 (DOF 14/04/2025, proyecto)",
+      "url": "https://platiica.economia.gob.mx/wp-content/uploads/sites/2/historialdocumental/PROY-NOM-059-SEMARNAT-2025.pdf"
+    },
+    {
+      "nombre": "Convención sobre el Comercio Internacional de Especies Amenazadas de Fauna y Flora Silvestres (CITES), texto en español",
+      "url": "https://biodiversidadcop16.foronacionalambiental.org.co/wp-content/uploads/2024/07/4.-CONVENCION-SOBRE-EL-COMERCIO-INTERNACIONAL-DE-ESPECIES-AMENAZADAS-DE-FAUNA-Y-FLORA-SILVESTRES.pdf"
+    },
+    {
+      "nombre": "SEMARNAT (2018). PACE: Águilas Neotropicales y Zopilote Rey (marco de los PACE y el PROCER)",
+      "url": "https://www.gob.mx/cms/uploads/attachment/file/443936/PACE__guilas_Neotropicales.pdf"
+    },
+    {
+      "nombre": "Lista Roja de la UICN, categorías consultadas mediante la API de GBIF (ejemplo: ajolote)",
+      "url": "https://api.gbif.org/v1/species/2431950/iucnRedListCategory"
+    },
+    {
+      "nombre": "UICN. Grupo de Especialistas en Cetáceos: crucero de la vaquita, mayo de 2024",
+      "url": "https://iucn-csg.org/new-findings-reveal-vaquitas-outside-protected-areas-following-may-2024-survey/"
+    },
+    {
+      "nombre": "UICN. La mariposa monarca migratoria pasa a En Peligro (21 de julio de 2022)",
+      "url": "https://iucn.org/press-release/202207/migratory-monarch-butterfly-now-endangered-iucn-red-list"
+    },
+    {
+      "nombre": "IPBES. Evaluación Global de Biodiversidad y Servicios de los Ecosistemas (2019), comunicado",
+      "url": "https://www.ipbes.net/news/Media-Release-Global-Assessment"
+    },
+    {
+      "nombre": "USFWS. Estadísticas de población del lobo mexicano (datos al 31 de diciembre de 2025)",
+      "url": "https://www.fws.gov/sites/default/files/documents/2026-02/mexican-wolf-population-statistics-populationestimate2025.pdf"
+    },
+    {
+      "nombre": "USFWS. Estado de la población del cóndor de California en 2025",
+      "url": "https://www.fws.gov/sites/default/files/documents/2026-02/2025-california-condor-population-status_508-compliant.pdf"
+    },
+    {
+      "nombre": "SEMARNAT. Comunicado 79 (11 de abril de 2026): reintroducción de lobos mexicanos en Durango",
+      "url": "https://www.gob.mx/semarnat/prensa/mexico-reintroduce-con-exito-a-familia-de-lobos-mexicanos-en-durango?idiom=es-MX"
+    },
+    {
+      "nombre": "NOAA Fisheries. Ballena gris",
+      "url": "https://www.fisheries.noaa.gov/species/gray-whale"
+    },
+    {
+      "nombre": "NOAA Fisheries. Evento de mortalidad inusual de la ballena gris 2019-2023",
+      "url": "https://www.fisheries.noaa.gov/national/marine-life-distress/2019-2023-gray-whale-unusual-mortality-event-along-west-coast-and"
+    },
+    {
+      "nombre": "NOAA Fisheries. Tortuga lora (Lepidochelys kempii)",
+      "url": "https://www.fisheries.noaa.gov/species/kemps-ridley-turtle"
+    },
+    {
+      "nombre": "INAH (ficha con datos de UNESCO). Santuario de ballenas de El Vizcaíno",
+      "url": "https://lugares.inah.gob.mx/en/node/6135"
+    },
+    {
+      "nombre": "Mendoza-Almeralla, Burrowes y Parra-Olea (2015). La quitridiomicosis en los anfibios de México. Revista Mexicana de Biodiversidad 86(1)",
+      "url": "https://www.redalyc.org/pdf/425/42538797002.pdf"
+    },
+    {
+      "nombre": "Convenio sobre la Diversidad Biológica, artículo 9 (conservación ex situ)",
+      "url": "https://www.cbd.int/convention/articles/?a=cbd-09"
+    },
+    {
+      "nombre": "Expansión (2025). Monitoreo 2025 de la vaquita marina en el Alto Golfo",
+      "url": "https://politica.expansion.mx/mexico/2025/10/28/monitoreo-2025-confirma-reaparicion-de-vaquitas-marinas-y-sus-crias-en-el-alto-golfo"
+    },
+    {
+      "nombre": "Expansión (2024). Censo de ajolote en Xochimilco (UNAM)",
+      "url": "https://expansion.mx/ciencia-y-salud/2024/11/21/la-unam-realiza-nuevo-censo-del-ajolote-en-xochimilco"
+    },
+    {
+      "nombre": "Expansión (2026). Mariposa monarca, temporada 2025-2026",
+      "url": "https://politica.expansion.mx/mexico/2026/03/17/ocupacion-de-la-mariposa-monarca-en-mexico-crece-64-en-la-temporada-2025-2026"
+    },
+    {
+      "nombre": "Expansión (2026). Presupuesto 2027 y áreas naturales protegidas",
+      "url": "https://politica.expansion.mx/mexico/2026/09/22/presupuesto-2027-areas-naturales-protegidas-riesgo"
+    },
+    {
+      "nombre": "Excélsior (2026). Profepa asegura 482 ejemplares de vida silvestre en siete estados",
+      "url": "https://www.excelsior.com.mx/nacional/profepa-asegura-482-ejemplares-vida-silvestre-siete-estados"
+    },
+    {
+      "nombre": "Excélsior (2026). Liberación de lobos mexicanos en Durango",
+      "url": "https://www.excelsior.com.mx/nacional/lobo-mexicano-reconquista-territorio-cuatro-ejemplares-fueron-liberados-video"
+    },
+    {
+      "nombre": "Fundación Carlos Slim (2023). México alcanza 5 millones de observaciones en NaturaLista",
+      "url": "https://fundacioncarlosslim.org/english/mexico-reaches-5-million-observations-of-plants-animals-and-fungi-in-naturalista/"
+    },
+    {
+      "nombre": "eBird (Cornell Lab of Ornithology). Acerca de eBird",
+      "url": "https://ebird.org/about"
+    }
+  ],
+  "paginas": [
+    {
+      "titulo": "México, país megadiverso",
+      "parrafos": [
+        "Se llama megadiversos a los países que concentran una parte enorme de las especies del planeta. Según CONABIO, México es uno de los 17 países que forman ese grupo. El criterio que la institución cita, propuesto por Mittermeier y colaboradores en 2004, considera tres cosas: la cantidad de especies endémicas (al menos 5,000 de plantas), la variedad de grupos de seres vivos y la diversidad de ecosistemas, incluidos los marinos y las selvas tropicales.",
+        "México aparece muy arriba en varios grupos. Según una tabla de CONABIO basada en Llorente-Bousquets y Ocegueda (2008), ocupa el segundo lugar mundial en reptiles, el tercero en mamíferos y el quinto en plantas vasculares y en anfibios. También es uno de los tres países megadiversos con costas en el Atlántico y el Pacífico, junto con Estados Unidos y Colombia. Las cifras de especies se actualizan con la investigación, así que conviene revisar la página de CONABIO para conocer los números vigentes."
+      ]
+    },
+    {
+      "titulo": "Ecosistemas y regiones",
+      "parrafos": [
+        "La riqueza de México nace de la mezcla de montañas, climas y costas. CONABIO enlista ecosistemas muy distintos: bosques nublados y templados, matorrales, pastizales, selvas húmedas y secas, dunas costeras, manglares, playas, islas, arrecifes, bosques de macroalgas, praderas de pastos marinos, ríos y lagos, ambiente pelágico e incluso ecosistemas urbanos. El territorio mide cerca de 1.97 millones de kilómetros cuadrados y ocupa el lugar 14 por su tamaño, según la misma institución.",
+        "Cada región sostiene especies que dependen de ella. Las lagunas costeras de Baja California Sur reciben a la ballena gris; el Alto Golfo de California es el hogar de la vaquita marina; los canales de Xochimilco albergan al ajolote; las montañas de Michoacán y del Estado de México reciben cada invierno a la mariposa monarca; y la Sierra Madre Occidental fue territorio histórico del lobo mexicano. Estas regiones reaparecerán a lo largo del libro."
+      ]
+    },
+    {
+      "titulo": "Endemismos: especies que solo viven aquí",
+      "parrafos": [
+        "Una especie endémica vive de forma natural en una sola región; en este libro, solo en México. Si desaparece aquí, desaparece del mundo. Para describir su situación se usan dos sistemas distintos: la Lista Roja de la UICN, que evalúa el riesgo de extinción a escala mundial, y la NOM-059-SEMARNAT, que clasifica a las especies nativas en categorías legales de México, como P (en peligro de extinción). No siempre coinciden, porque miden cosas diferentes.",
+        "El ajolote (Ambystoma mexicanum) es el ejemplo más conocido. La UICN lo clasifica En Peligro Crítico y la NOM-059 lo ubica en P. Vive en los canales de Xochimilco, en la Ciudad de México. Según investigadores de la UNAM citados por Expansión (2024), su densidad pasó de unos 6,000 ejemplares por kilómetro cuadrado en 1998 a unos 36 en 2014. Pesan la contaminación, la urbanización y peces introducidos, como la tilapia y la carpa, que se alimentan de sus huevos y crías."
+      ]
+    },
+    {
+      "titulo": "Vaquita, teporingo y gorrión serrano",
+      "parrafos": [
+        "La vaquita marina (Phocoena sinus) es endémica del Alto Golfo de California. La UICN la clasifica En Peligro Crítico y la NOM-059, en P. Su principal amenaza es quedar atrapada en redes de pesca ilegal dirigidas a la totoaba, cuya vejiga natatoria se trafica. Según el grupo de especialistas en cetáceos de la UICN, el crucero de mayo de 2024 estimó entre 6 y 8 animales como cifra mínima, porque solo se recorrió una parte de su área. El monitoreo de 2025 reportó además crías. Estas cifras cambian cada año.",
+        "El teporingo o zacatuche (Romerolagus diazi), conocido como conejo de los volcanes, es un conejo endémico de México. La UICN lo clasifica En Peligro y la NOM-059, en P. El gorrión serrano (Xenospiza baileyi) es un ave endémica con las mismas categorías: En Peligro y P. Ambos recuerdan que no solo los animales grandes o famosos necesitan atención."
+      ]
+    },
+    {
+      "titulo": "Amenazas: hábitat, clima y contaminación",
+      "parrafos": [
+        "La IPBES, que reúne evidencia científica sobre la biodiversidad, ordena así los cinco impulsores directos de la pérdida de naturaleza en el mundo: cambios en el uso de la tierra y el mar, explotación directa de organismos, cambio climático, contaminación y especies exóticas invasoras (2019). La pérdida de hábitat ocurre cuando bosques, humedales o costas se convierten en cultivos, ciudades o caminos. La fragmentación divide lo que queda en parches aislados. En los bosques de la monarca, entre febrero de 2024 y febrero de 2025 se degradaron 2.55 hectáreas: 1.85 por tala ilegal, 0.58 por incendios y 0.11 por sequía, según Expansión (2026).",
+        "El cambio climático altera el alimento y el clima que las especies necesitan. La UICN señala que las sequías limitan el algodoncillo de la monarca y que las temperaturas extremas adelantan su migración. NOAA incluye el cambio climático entre las amenazas de la ballena gris, porque puede afectar el hielo marino y las presas de sus zonas de alimentación, y vincula su mortalidad de 2019 a 2023 con cambios de ecosistema en esas zonas del Ártico y el Subártico."
+      ]
+    },
+    {
+      "titulo": "Amenazas: tráfico, invasoras y enfermedades",
+      "parrafos": [
+        "El tráfico ilegal extrae animales y plantas para venderlos como mascotas o por sus partes. En un operativo del 28 de abril al 5 de mayo de 2026, la Profepa informó del aseguramiento, rescate o detección de al menos 482 ejemplares en siete estados del sureste, entre ellos pericos, loros, guacamayas, monos araña, tortugas y un jaguar (Excélsior, 2026). Comprar un animal silvestre alimenta ese comercio.",
+        "Una especie invasora es una especie no nativa que se establece y se propaga; según CONABIO, puede competir con las nativas, depredarlas o introducir enfermedades. La tilapia y la carpa en Xochimilco son un ejemplo. Las enfermedades también cuentan: el hongo causante de la quitridiomicosis se ha registrado en al menos 50 especies de anfibios de México, sobre todo en montañas del centro y sur, y el comercio internacional y la rana toro ayudan a dispersarlo (Mendoza-Almeralla y colaboradores, 2015). En 2023, un brote de influenza aviar altamente patógena causó la muerte de 21 cóndores de California en Arizona y Utah (USFWS)."
+      ]
+    },
+    {
+      "titulo": "Áreas Naturales Protegidas y CONANP",
+      "parrafos": [
+        "Las Áreas Naturales Protegidas (ANP) son zonas decretadas para conservar ecosistemas y especies. La Ley General del Equilibrio Ecológico y la Protección al Ambiente reconoce categorías como reservas de la biosfera, parques nacionales, monumentos naturales, áreas de protección de recursos naturales, áreas de protección de flora y fauna y santuarios. La CONANP administra las federales: según su numeralia (2025), son 232 ANP con unos 98 millones de hectáreas, de las cuales alrededor de 23 millones son terrestres (11.76% del territorio terrestre) y cerca de 75 millones son marinas (23.78% de la superficie marina).",
+        "Decretar un área no basta. Expansión, citando a la coalición NOSSA (2026), reportó que 94 de las 232 ANP federales aún no tenían programa de manejo, el documento que organiza qué se puede hacer en cada área. Por eso importan la vigilancia, el presupuesto y la participación de quienes viven ahí."
+      ]
+    },
+    {
+      "titulo": "UMA, NOM-059 y CITES",
+      "parrafos": [
+        "Según la Ley General de Vida Silvestre, las Unidades de Manejo para la Conservación de Vida Silvestre (UMA) son predios e instalaciones registrados que operan con un plan de manejo aprobado y dan seguimiento permanente al hábitat y a las poblaciones. Pueden tener fines de restauración, reintroducción, investigación, educación ambiental o aprovechamiento sustentable.",
+        "La NOM-059-SEMARNAT-2010 es la lista oficial de especies nativas en riesgo: probablemente extinta en el medio silvestre (E), en peligro de extinción (P), amenazada (A) y sujeta a protección especial (Pr). Su anexo se modificó en 2019, y en abril de 2025 se publicó un proyecto de actualización, por lo que conviene verificar la versión vigente. Cualquier persona puede proponer inclusiones o cambios.",
+        "CITES es un tratado firmado en Washington el 3 de marzo de 1973 que regula el comercio internacional. Su Apéndice I reúne especies en peligro de extinción; el II, las que podrían llegar a esa situación sin regulación estricta; el III, las que un país regula y para las que pide cooperación."
+      ]
+    },
+    {
+      "titulo": "PACE y casos de recuperación: lobo y cóndor",
+      "parrafos": [
+        "Los Programas de Acción para la Conservación de Especies (PACE) forman parte del Programa de Conservación de Especies en Riesgo de la SEMARNAT. Definen líneas y acciones para recuperar especies prioritarias, es decir, las que por su valor cultural, económico o ecológico deben recuperarse con urgencia.",
+        "Lobo mexicano: el USFWS contó un mínimo de 319 lobos en libertad en Arizona y Nuevo México al cierre de 2025, frente a 286 en 2024. Es un conteo mínimo que cambia cada año. En México, la Semarnat informó en abril de 2026 la liberación de una familia de cuatro lobos en Durango, segundo estado donde se reintroduce la especie.",
+        "Cóndor de California: según el USFWS, al 31 de diciembre de 2025 había 607 en el mundo, 392 en libertad (53 en Baja California) y 215 bajo cuidado humano. El Zoológico de Chapultepec participa en su reproducción. Entre 1992 y 2025 se confirmaron 161 muertes por plomo."
+      ]
+    },
+    {
+      "titulo": "Tortugas marinas, ballena gris y monarca",
+      "parrafos": [
+        "Tortuga lora: México prohibió la captura de todas las tortugas marinas en 1990. Según NOAA, cerca del 95% de su anidación mundial ocurre en Tamaulipas; en 1985 se registraron solo 702 nidos, y con protección los nidos crecieron cerca de 15% anual hasta 2009. Desde 2010 fluctúan. La captura accidental en redes sigue siendo la mayor amenaza.",
+        "Ballena gris: la población oriental del Pacífico norte salió de la lista estadounidense de especies en peligro en 1994 y visita cada invierno las lagunas de Baja California; El Vizcaíno es Patrimonio Mundial desde 1993. Aun así, NOAA registró 690 varamientos entre 2018 y 2023, 316 en México, y su abundancia estimada bajó de unas 20,500 a 14,526 ballenas.",
+        "Mariposa monarca: en 2025-2026 las colonias ocuparon 2.93 hectáreas, frente a 1.79 de la temporada previa, según Semarnat, CONANP y WWF (Expansión, 2026). El máximo registrado fue de 18.19 hectáreas en 1996-1997. Se mide superficie ocupada, no número de mariposas."
+      ]
+    },
+    {
+      "titulo": "Conservación in situ y ex situ",
+      "parrafos": [
+        "La conservación in situ protege a las especies en su hábitat natural: áreas protegidas, UMA, vigilancia y restauración. La ex situ las cuida fuera de él, en zoológicos, acuarios, viveros y bancos de material genético. El Convenio sobre la Diversidad Biológica establece que las medidas ex situ deben complementar a las in situ, y contempla recuperar especies amenazadas y reintroducirlas cuando las condiciones lo permitan.",
+        "La Ley General de Vida Silvestre da prioridad a la reproducción fuera del hábitat para repoblar y reintroducir, sobre todo especies en riesgo, y exige plan de manejo a zoológicos y colecciones con animales vivos. Un ejemplo es el cóndor de California, que se reproduce en el Zoológico de Chapultepec. Los lobos liberados en Durango pasaron antes por un recinto de preliberación. Liberar animales sin autorización es una infracción y puede dañar a las poblaciones silvestres."
+      ]
+    },
+    {
+      "titulo": "Participación comunitaria",
+      "parrafos": [
+        "Gran parte del territorio con biodiversidad pertenece a ejidos, comunidades y propietarios. Sin su participación, ni las áreas protegidas ni las UMA funcionan. En Durango, la Asamblea Comunitaria aprobó la iniciativa de reintroducir al lobo en El Tarahumar (Excélsior, 2026). En el Alto Golfo, Semarnat indicó que cualquier ampliación de la zona de protección de la vaquita se decidirá con las comunidades pesqueras (Expansión, 2025).",
+        "La CONANP impulsa el programa PROCODES, que apoya a ejidos, comunidades y grupos de personas mayores de 18 años que habitan en las ANP o en sus zonas de influencia con proyectos productivos sostenibles, cursos, estudios técnicos y brigadas ante contingencias como incendios. Participar significa informarse, decidir, vigilar y beneficiarse, no solo recibir información."
+      ]
+    },
+    {
+      "titulo": "Ciencia ciudadana y fototrampeo",
+      "parrafos": [
+        "NaturaLista es la versión mexicana de iNaturalist, adoptada y adaptada por CONABIO. Quien participa sube fotografías o audios con fecha y lugar; la red de usuarios y curadores propone la identificación, y la plataforma indica si la especie es nativa o introducida y su estado de conservación. La Fundación Carlos Slim informó en 2023 que se alcanzaron 5 millones de observaciones en 10 años.",
+        "eBird, del Cornell Lab of Ornithology, reúne listas de aves con fecha y lugar; sus datos son de libre acceso y, según la plataforma, han apoyado cientos de decisiones de conservación. El fototrampeo usa cámaras automáticas activadas por movimiento o calor para registrar fauna sin molestarla, sobre todo mamíferos medianos y grandes y aves. Lo realizan equipos técnicos, a menudo con permisos. En todos los casos, observa sin perturbar y no compartas ubicaciones exactas de especies amenazadas."
+      ]
+    },
+    {
+      "titulo": "Cómo medir resultados",
+      "parrafos": [
+        "Conservar sin medir es adivinar. Un indicador es un dato que se mide siempre con el mismo método para saber si una situación mejora o empeora. En los casos de este libro hay varios: lobos contados cada invierno, hectáreas ocupadas por la monarca, nidos de tortuga lora, pollos de cóndor y causas de muerte, hectáreas de bosque degradadas. También se miden las acciones: según la Profepa, las embarcaciones ilegales en la zona de tolerancia cero de la vaquita bajaron de 171 a 4 (Expansión, 2025).",
+        "Al interpretar hay tres cuidados. Primero, distinguir mínimo de total: 319 lobos es un mínimo contado. Segundo, no mezclar unidades: la monarca se mide en hectáreas, no en individuos. Tercero, mirar tendencias de varios años, porque una temporada puede variar por el clima. Un buen monitoreo usa varios indicadores y registra su método."
+      ]
+    },
+    {
+      "titulo": "Qué puede hacer cada persona y lista de verificación",
+      "parrafos": [
+        "La conservación también se construye con decisiones cotidianas. La Ley General de Vida Silvestre considera infracción poseer ejemplares fuera de su hábitat sin poder demostrar su legal procedencia, así que no compres animales ni plantas silvestres sin documentos. Si ves tráfico o maltrato, avisa a las autoridades ambientales. Participa en NaturaLista o eBird, elige turismo responsable en áreas protegidas y comparte información solo de fuentes confiables."
+      ],
+      "lista": [
+        "Lista de verificación. Antes de comprar: ¿el animal o la planta tiene procedencia legal comprobable?",
+        "¿Sé qué categoría tiene la especie en la NOM-059 y en la Lista Roja de la UICN?",
+        "¿Mi visita sigue las reglas del área y usa guías o prestadores autorizados?",
+        "¿Evito liberar mascotas, peces o plantas exóticas en el campo o en cuerpos de agua?",
+        "¿Observo sin perturbar y cuido no publicar ubicaciones exactas de especies amenazadas?",
+        "¿Verifico fecha y fuente antes de compartir una cifra de población?",
+        "¿Apoyo a comunidades y proyectos locales que conservan su territorio?"
+      ]
+    },
+    {
+      "titulo": "Glosario y fuentes",
+      "parrafos": [
+        "Estos términos aparecen en el libro. Las fuentes principales son CONABIO, SEMARNAT, CONANP, la Profepa, el Diario Oficial de la Federación, la Ley General de Vida Silvestre, el texto de CITES, la Lista Roja de la UICN, NOAA, el Servicio de Pesca y Vida Silvestre de Estados Unidos (USFWS), la IPBES y artículos científicos; los enlaces están en la sección de fuentes."
+      ],
+      "lista": [
+        "ANP: Área Natural Protegida.",
+        "CITES: tratado sobre comercio internacional de especies.",
+        "Endémica: que vive de forma natural solo en una región.",
+        "Ex situ: fuera del hábitat natural.",
+        "In situ: dentro del hábitat natural.",
+        "Especie invasora: no nativa, se propaga y causa daños.",
+        "Indicador: dato medido de forma repetida.",
+        "NOM-059: lista oficial mexicana de especies en riesgo.",
+        "PACE: Programa de Acción para la Conservación de la Especie.",
+        "UICN: publica la Lista Roja de especies amenazadas.",
+        "UMA: Unidad de Manejo para la Conservación de Vida Silvestre."
+      ]
+    },
+    {
+      "titulo": "Aviso importante",
+      "parrafos": [
+        "Este libro es material informativo y educativo de Zoorigen, actualizado a octubre de 2026. No sustituye asesoría legal, biológica ni veterinaria, ni los permisos de las autoridades ambientales.",
+        "Las cifras de poblaciones, áreas protegidas, categorías de riesgo y listas legales cambian con frecuencia: algunas se actualizan cada año y las normas pueden modificarse. Los datos aquí citados corresponden a la fecha de cada fuente. Antes de citar una cifra o tomar una decisión, consulta la fuente oficial vigente: CONABIO, SEMARNAT, CONANP, Profepa, el Diario Oficial de la Federación, la UICN, CITES, NOAA o el USFWS.",
+        "Si encuentras un animal silvestre herido, no lo manipules ni lo lleves a casa; avisa a las autoridades ambientales o a un especialista."
+      ]
+    }
+  ],
+  "revision": [
+    {
+      "afirmacion": "México es uno de los 17 países megadiversos y ocupa los lugares 2 (reptiles), 3 (mamíferos) y 5 (plantas vasculares y anfibios).",
+      "fuente": "CONABIO, tabla basada en Llorente-Bousquets y Ocegueda (2008), datos de 2013; https://www.biodiversidad.gob.mx/pais/quees",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Se omitió deliberadamente la cifra de CONABIO de \"casi 70% de la diversidad mundial\": la página no da año ni aclara la base de cálculo.",
+      "fuente": "CONABIO (pais/quees)",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Ajolote: UICN En Peligro Crítico; NOM-059 en P; densidad de unos 6,000 por km2 (1998) a unos 36 (2014).",
+      "fuente": "Categoría UICN leída vía API de GBIF (no se pudo abrir iucnredlist.org por bloqueo); NOM-059 anexo DOF 14/11/2019; densidades de Expansión 2024 citando a la UNAM. Otro medio (ADN40, 2026) da fechas distintas para el valor de 36, por eso se citó solo 2014.",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Vaquita: UICN En Peligro Crítico, NOM-059 P; crucero de mayo de 2024 con estimación de 6 a 8 animales como mínimo; monitoreo 2025 con crías.",
+      "fuente": "UICN SSC Cetacean Specialist Group (2024); Expansión (28-oct-2025); NOM-059 anexo 2019. Las fuentes dan rangos distintos para 2025 (6 a 8 y 7 a 10); se evitó fijar una cifra para 2025.",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Teporingo y gorrión serrano: endémicos, UICN En Peligro, NOM-059 en P.",
+      "fuente": "Anexo III de la NOM-059 (DOF 14/11/2019) para endemismo y categoría P; UICN vía GBIF. La evaluación UICN del teporingo es antigua (referida como 2008 en fuentes secundarias): conviene que un biólogo confirme si hay actualización.",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "El ajolote, la vaquita y las demás categorías UICN citadas se tomaron de GBIF, que replica la Lista Roja, y no de iucnredlist.org (acceso bloqueado).",
+      "fuente": "https://api.gbif.org/v1/species/{key}/iucnRedListCategory",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Cinco impulsores directos de pérdida de naturaleza, en el orden IPBES.",
+      "fuente": "IPBES, comunicado de la Evaluación Global 2019",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Degradación de 2.55 ha de bosque (1.85 tala ilegal, 0.58 incendios, 0.11 sequía) entre feb 2024 y feb 2025.",
+      "fuente": "Expansión, 17-mar-2026 (prensa que reporta datos oficiales y de WWF); no se pudo abrir el informe original de WWF",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Operativo de Profepa: al menos 482 ejemplares en siete estados (28 abr a 5 may 2026).",
+      "fuente": "Excélsior, 13-may-2026",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Quitridiomicosis registrada en 50 especies de anfibios de México; comercio internacional y rana toro ayudan a dispersarla.",
+      "fuente": "Mendoza-Almeralla et al. (2015), Revista Mexicana de Biodiversidad 86(1). Cifra de 2015: puede haber aumentado.",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Brote de influenza aviar altamente patógena mató a 21 cóndores en Arizona y Utah en 2023.",
+      "fuente": "USFWS, California Condor Recovery Program, 2025 Annual Population Status",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "CONANP administra 232 ANP federales con 98,000,719 ha (23,096,563 terrestres, 11.76%; 74,904,155 marinas, 23.78%).",
+      "fuente": "CONANP, numeralia sig.conanp.gob.mx/General (2025). La misma página y comunicados previos citan también \"99 millones\"; se usó la numeralia.",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "94 de 232 ANP federales sin programa de manejo.",
+      "fuente": "Expansión, 22-sep-2026, citando a la coalición NOSSA; no se encontró fuente oficial de CONANP",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Categorías de ANP (reservas de la biosfera, parques nacionales, monumentos naturales, APRN, APFF, santuarios).",
+      "fuente": "LGEEPA, art. 46 (texto vigente, última reforma 19-01-2026)",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Definición de UMA y sus posibles objetivos.",
+      "fuente": "Ley General de Vida Silvestre, art. 3 fr. XLVIII y art. 39 (última reforma DOF 16-07-2025)",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "NOM-059-SEMARNAT-2010: categorías E, P, A y Pr; anexo modificado el 14-nov-2019; proyecto PROY-NOM-059-SEMARNAT-2025 publicado el 14-abr-2025; cualquier persona puede proponer cambios.",
+      "fuente": "DOF 30/12/2010; DOF 14/11/2019; PROY-NOM-059-SEMARNAT-2025; LGVS art. 56 y 57. No se encontró evidencia de norma definitiva posterior a la fecha de la consulta; verificar en el DOF.",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Apéndices I, II y III de CITES; firma en Washington el 3 de marzo de 1973.",
+      "fuente": "Texto en español de la Convención (art. 2); sitio oficial cites.org bloqueó el acceso",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "PACE: parte del PROCER y orientados a especies prioritarias (valor cultural, económico o ecológico).",
+      "fuente": "SEMARNAT (2018), PACE Águilas Neotropicales y Zopilote Rey",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Lobo mexicano: mínimo de 319 en vida libre en Arizona y Nuevo México al 31-dic-2025 (286 en 2024).",
+      "fuente": "USFWS, Mexican Wolf Population Statistics (datos al 31-dic-2025)",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Lobo en Durango: liberación de una familia de cuatro lobos el 10-abr-2026, segundo estado tras Chihuahua.",
+      "fuente": "Semarnat, comunicado 79 (11-abr-2026); Excélsior (12-abr-2026). No se verificó el número actual de lobos libres en México.",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Cóndor de California: 607 mundial, 392 silvestres (53 en Baja California), 215 en cautiverio; 161 muertes por plomo 1992-2025; cría en Chapultepec.",
+      "fuente": "USFWS, California Condor Population Status, 31-dic-2025",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Tortuga lora: ~95% de la anidación mundial en Tamaulipas; 702 nidos en 1985; crecimiento de ~15% anual hasta 2009; fluctuación desde 2010; México prohibió la captura de tortugas marinas en 1990.",
+      "fuente": "NOAA Fisheries, Kemp's ridley turtle",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Ballena gris: retirada de la lista ESA en 1994; 690 varamientos 2018-2023 (316 en México); abundancia de ~20,500 (2019) a 14,526 (2023).",
+      "fuente": "NOAA Fisheries (ficha de especie y página del UME 2019-2023). Cifras de abundancia son estimaciones y se actualizan.",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Santuario de ballenas de El Vizcaíno, Patrimonio Mundial desde 1993.",
+      "fuente": "Ficha del INAH que cita el registro de UNESCO (11-dic-1993); whc.unesco.org bloqueó el acceso",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Monarca: 2.93 ha en 2025-2026 vs 1.79 ha; máximo 18.19 ha en 1996-1997; la UICN clasifica la subespecie migratoria como En Peligro (2022).",
+      "fuente": "Expansión (17-mar-2026) citando a Semarnat, CONANP y WWF; UICN, comunicado del 21-jul-2022. La cifra del máximo varía levemente entre medios (18.19 a 18.21).",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "El Convenio sobre la Diversidad Biológica (art. 9): la conservación ex situ complementa a la in situ y contempla reintroducción.",
+      "fuente": "CBD, artículo 9",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "Liberar animales sin autorización y poseer ejemplares sin demostrar legal procedencia son infracciones.",
+      "fuente": "Ley General de Vida Silvestre, art. 122",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "PROCODES apoya a grupos, ejidos y comunidades con proyectos, cursos, estudios técnicos y brigadas.",
+      "fuente": "CONANP, página del programa PROCODES",
+      "confianza": "alto"
+    },
+    {
+      "afirmacion": "NaturaLista: adoptada por CONABIO, 5 millones de observaciones en 10 años (2023); eBird: datos de libre acceso, uso en decisiones de conservación.",
+      "fuente": "Fundación Carlos Slim (29-mar-2023); eBird, página Acerca de. La cifra de NaturaLista está desactualizada: no se encontró total de 2025-2026.",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Fototrampeo: cámaras activadas por movimiento o calor, usadas sobre todo en mamíferos medianos y grandes y aves.",
+      "fuente": "Resumen de literatura técnica y presentación alojada en CONABIO (no se pudo leer el documento completo); descripción general del método",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Embarcaciones ilegales en la zona de tolerancia cero de la vaquita bajaron de 171 a 4.",
+      "fuente": "Expansión (28-oct-2025), citando a la Profepa; periodo de comparación no precisado por la fuente",
+      "confianza": "medio"
+    },
+    {
+      "afirmacion": "Especie invasora: definición e impactos (competencia, depredación, enfermedades).",
+      "fuente": "CONABIO, sección de especies invasoras",
+      "confianza": "alto"
+    }
+  ]
+}

@@ -1,0 +1,1209 @@
+{
+  "documentos": [
+    {
+      "id": "checklist-bioseguridad",
+      "titulo": "Checklist de bioseguridad para unidades de manejo de fauna",
+      "tipo": "checklist",
+      "area": "Sanidad y manejo de fauna silvestre",
+      "descripcion": "Lista de verificación de principios generales de bioseguridad: acceso, limpieza, cuarentena, alimentación y agua, residuos, plagas y registros. Sin productos ni dosis.",
+      "paginas": [
+        {
+          "titulo": "Checklist de bioseguridad: acceso, limpieza y cuarentena",
+          "bloques": [
+            {
+              "t": "p",
+              "texto": "La bioseguridad es el conjunto de medidas que busca reducir el riesgo de que una enfermedad entre, se transmita o se difunda en una unidad de manejo. La Ley Federal de Sanidad Animal define las medidas de bioseguridad como las disposiciones y acciones zoosanitarias indispensables para minimizar ese riesgo. Usa esta lista como apoyo para revisar tu unidad; adáptala a tus especies, instalaciones y a las indicaciones de tu médico veterinario responsable."
+            },
+            {
+              "t": "aviso",
+              "texto": "Esta lista contiene principios generales. No incluye productos comerciales, dosis ni tratamientos: esos aspectos los define el médico veterinario responsable de la unidad."
+            },
+            {
+              "t": "subtitulo",
+              "texto": "1. Acceso y flujo de personal"
+            },
+            {
+              "t": "casillas",
+              "items": [
+                "El acceso a las áreas de animales está limitado a personal y visitantes autorizados.",
+                "Existe una entrada definida con señalización clara de las áreas restringidas.",
+                "Hay un registro de visitantes (nombre, fecha, motivo y áreas visitadas).",
+                "El personal usa ropa y calzado de trabajo de uso exclusivo para la unidad.",
+                "Hay un lugar para cambiarse y lavarse las manos antes y después de entrar a las áreas de animales.",
+                "El recorrido de trabajo va de las áreas más sanas (crías, animales sanos) a las de mayor riesgo (cuarentena, enfermos), y no al revés.",
+                "Quien presente síntomas de enfermedad o heridas abiertas lo informa y no tiene contacto con los animales hasta recibir indicaciones.",
+                "El personal recibe capacitación periódica sobre estos procedimientos."
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "2. Limpieza y desinfección"
+            },
+            {
+              "t": "casillas",
+              "items": [
+                "Existe un programa escrito de limpieza con responsables y frecuencia para cada área.",
+                "Primero se retira la materia orgánica (restos, heces, alimento) y después se desinfecta: la desinfección se aplica después de una limpieza a fondo.",
+                "El tipo de desinfectante, la forma de uso y el tiempo de contacto los indica el médico veterinario responsable.",
+                "Los utensilios de limpieza, alimentación y manejo son exclusivos de cada área, o se limpian y desinfectan antes de cambiar de área.",
+                "Los recintos se limpian y se dejan secar antes de recibir nuevos animales.",
+                "Los vehículos, jaulas de transporte y equipo que entran o salen se limpian y desinfectan."
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "3. Cuarentena de ingresos"
+            },
+            {
+              "t": "casillas",
+              "items": [
+                "Existe un área de cuarentena separada del resto de los animales, con personal, utensilios y flujo de trabajo propios, o con orden de trabajo que la deja siempre al final del recorrido.",
+                "Todo ejemplar que ingresa pasa por cuarentena antes de mezclarse con otros; el médico veterinario define su duración y las revisiones.",
+                "Antes del ingreso se solicita y revisa la documentación que ampara la legal procedencia del ejemplar y, cuando aplique, la autorización de traslado.",
+                "Los ejemplares en cuarentena se mantienen en condiciones adecuadas a sus necesidades (espacio, temperatura, alimento, agua, mínimo estrés), como exige el trato digno y respetuoso de la Ley General de Vida Silvestre.",
+                "Cada ejemplar en cuarentena se observa a diario y se anotan los cambios de conducta, apetito o aspecto.",
+                "Un ejemplar sale de cuarentena solo con autorización del médico veterinario responsable."
+              ]
+            }
+          ]
+        },
+        {
+          "titulo": "Checklist de bioseguridad: alimentación, residuos, plagas y registros",
+          "bloques": [
+            {
+              "t": "subtitulo",
+              "texto": "4. Alimentación y agua"
+            },
+            {
+              "t": "casillas",
+              "items": [
+                "Los animales cuentan con alimento y agua en cantidad y calidad adecuadas para su especie y etapa de vida, como establece la Ley Federal de Sanidad Animal para animales silvestres en cautiverio.",
+                "El alimento se compra o prepara en condiciones higiénicas y se registra su origen.",
+                "El alimento se almacena cerrado, elevado del suelo y protegido de roedores, aves e insectos.",
+                "Los comederos y bebederos se limpian con la frecuencia que el programa de limpieza establece.",
+                "El agua de bebida se revisa periódicamente (limpia, sin residuos visibles ni mal olor) y se renueva.",
+                "Las áreas de preparación de alimento están separadas de las áreas de cuarentena y de residuos."
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "5. Manejo de residuos"
+            },
+            {
+              "t": "casillas",
+              "items": [
+                "Existen contenedores identificados y con tapa para residuos comunes, orgánicos (heces, restos de alimento) y residuos de atención veterinaria.",
+                "Los residuos peligrosos biológico-infecciosos de la atención veterinaria (por ejemplo, material punzocortante) se manejan conforme a la NOM-087-SEMARNAT-SSA1-2002 y con los servicios autorizados que correspondan.",
+                "Los residuos salen de las áreas de animales por una ruta definida y no cruzan por áreas limpias.",
+                "Los animales muertos se retiran de inmediato y se manejan según las indicaciones del médico veterinario y la normatividad aplicable; no se dejan en el recinto ni se reutilizan sus restos.",
+                "Los contenedores de residuos se limpian y desinfectan después de vaciarse."
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "6. Control de plagas"
+            },
+            {
+              "t": "casillas",
+              "items": [
+                "Se inspeccionan periódicamente cercos, mallas, techos, drenajes y puertas para detectar huecos por donde entren roedores, aves silvestres, insectos u otros animales.",
+                "El alimento y los residuos no se dejan expuestos (son lo que atrae a las plagas).",
+                "Hay un registro de avistamientos de plagas y de las acciones tomadas.",
+                "El control de plagas se hace con métodos que no pongan en riesgo a los animales de la unidad ni al personal, con asesoría de quien corresponda.",
+                "Los animales domésticos (perros, gatos) no tienen acceso a las áreas de fauna."
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "7. Registros"
+            },
+            {
+              "t": "casillas",
+              "items": [
+                "Cada ejemplar tiene una ficha o registro con su identificación, procedencia legal, fecha de ingreso, historial de revisiones y observaciones.",
+                "Se registran los movimientos de animales (ingresos, traslados, salidas y bajas) con fechas.",
+                "Se anotan las revisiones y la atención médica realizadas por el médico veterinario; la ley prevé que los animales silvestres en cautiverio estén bajo un programa de medicina preventiva con supervisión veterinaria.",
+                "Se conservan el registro de visitantes, la bitácora de limpieza y los registros de plagas.",
+                "El plan de bioseguridad se revisa por escrito al menos una vez al año o cuando cambie algo importante (nuevas especies, instalaciones, brote)."
+              ]
+            },
+            {
+              "t": "aviso",
+              "texto": "Material informativo. No sustituye asesoría profesional ni la normatividad vigente."
+            }
+          ]
+        }
+      ],
+      "fuentes": [
+        {
+          "nombre": "Ley Federal de Sanidad Animal (Cámara de Diputados; última reforma DOF 21-05-2024): definiciones de bienestar animal, cuarentena y medidas de bioseguridad; arts. 11 y 21",
+          "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFSA.pdf"
+        },
+        {
+          "nombre": "Ley General de Vida Silvestre (última reforma DOF 16-07-2025): art. 3 fr. XLVII (trato digno y respetuoso), arts. 29 y 33 (cuarentena), arts. 50-52 (legal procedencia y traslado)",
+          "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+        },
+        {
+          "nombre": "MSD Veterinary Manual, Developing a Biosecurity Program for Animals (revisión enero 2026)",
+          "url": "https://www.msdvetmanual.com/management-and-nutrition/biosecurity/developing-a-biosecurity-program-for-animals"
+        },
+        {
+          "nombre": "WOAH, Terrestrial Animal Health Code, glosario (ed. 2016): desinfección como aplicación posterior a una limpieza a fondo",
+          "url": "https://woah.org/fileadmin/Home/eng/Health_standards/tahc/2016/en_glossaire.htm"
+        },
+        {
+          "nombre": "Catálogo Mexicano de Normas (Secretaría de Economía): NOM-087-SEMARNAT-SSA1-2002, residuos peligrosos biológico-infecciosos (vigente; DOF 17-02-2003)",
+          "url": "https://platiica.economia.gob.mx/normalizacion/nom-087-semarnat-ssa1-2002/"
+        }
+      ],
+      "revision": [
+        {
+          "afirmacion": "Medidas de bioseguridad: disposiciones y acciones zoosanitarias indispensables para minimizar el riesgo de introducción, transmisión o difusión de enfermedades o plagas.",
+          "fuente": "Ley Federal de Sanidad Animal, art. 4 (definiciones), texto leído en diputados.gob.mx",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Propietarios o poseedores de animales silvestres en cautiverio deben dar alimento y agua en cantidad y calidad adecuadas a la especie, y mantenerlos bajo un programa de medicina preventiva con supervisión de médico veterinario, con revisión regular y atención inmediata de enfermedad o lesión.",
+          "fuente": "Ley Federal de Sanidad Animal, art. 21",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Cuando proceda la cuarentena de fauna silvestre, se adoptan medidas para mantener a los ejemplares en condiciones adecuadas a sus necesidades.",
+          "fuente": "Ley General de Vida Silvestre, art. 33",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "La legal procedencia de ejemplares fuera de su hábitat se demuestra con marca o con nota de remisión o factura; el traslado de ejemplares vivos requiere autorización de SEMARNAT.",
+          "fuente": "Ley General de Vida Silvestre, arts. 51 y 52",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Primero limpieza y después desinfección (la desinfección se aplica tras una limpieza a fondo).",
+          "fuente": "Glosario del Código Sanitario para los Animales Terrestres de la WOAH (edición 2016)",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Elementos de un programa de bioseguridad: control de acceso y registro de visitantes, ropa y calzado exclusivos, cuarentena o aislamiento de animales que ingresan, limpieza y desinfección con instalaciones vacías, control de plagas (aves, insectos, animales domésticos), registros y auditoría periódica.",
+          "fuente": "MSD Veterinary Manual (orientado a animales de producción; se adaptó a nivel de principios)",
+          "confianza": "medio"
+        },
+        {
+          "afirmacion": "Los residuos de atención veterinaria clasificados como biológico-infecciosos se rigen por la NOM-087-SEMARNAT-SSA1-2002 (vigente; DOF 17-02-2003; entrada en vigor 18-04-2003).",
+          "fuente": "Catálogo Mexicano de Normas (PLATIICA)",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Recomendaciones sobre flujo de trabajo de áreas sanas a áreas de mayor riesgo, retiro inmediato de animales muertos y renovación del plan al menos una vez al año son buenas prácticas generales redactadas por Zoorigen; no se atribuyen a una norma específica.",
+          "fuente": "Criterio editorial basado en principios generales de bioseguridad (MSD Veterinary Manual; Ley Federal de Sanidad Animal)",
+          "confianza": "medio"
+        }
+      ]
+    },
+    {
+      "id": "ficha-registro-ejemplar",
+      "titulo": "Ficha de registro de ejemplar",
+      "tipo": "plantilla",
+      "area": "Registro y trazabilidad de fauna silvestre",
+      "descripcion": "Plantilla imprimible de una página para registrar un ejemplar: identificación, procedencia legal, medidas, estado de salud al ingreso, observaciones y responsable.",
+      "paginas": [
+        {
+          "titulo": "Ficha de registro de ejemplar",
+          "bloques": [
+            {
+              "t": "p",
+              "texto": "Llena una ficha por ejemplar al momento del ingreso y actualízala cuando cambie algo importante. Escribe solo datos comprobados; si un dato no se conoce, anota «no se sabe» o «estimado» y explica el criterio. Conserva copia de los documentos que acreditan la legal procedencia."
+            },
+            {
+              "t": "subtitulo",
+              "texto": "1. Identificación"
+            },
+            {
+              "t": "campos",
+              "items": [
+                "Folio o número de registro interno",
+                "Fecha de ingreso",
+                "Nombre común",
+                "Nombre científico",
+                "Sexo (macho / hembra / no determinado) y cómo se determinó",
+                "Edad estimada y criterio usado para estimarla",
+                "Tipo de marca o identificación (anillo, microchip, tatuaje, otra)",
+                "Número o clave de la marca"
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "2. Procedencia legal"
+            },
+            {
+              "t": "campos",
+              "items": [
+                "Documento que acredita la legal procedencia (marca, nota de remisión, factura, autorización u otro)",
+                "Número o folio del documento",
+                "Fecha del documento",
+                "Origen (registro de la UMA, autorización de aprovechamiento, importación u otro) y su número, si aplica",
+                "Nombre de quien entrega el ejemplar (persona, UMA, autoridad)",
+                "Autorización de traslado (número y fecha), si aplica"
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "3. Medidas y peso"
+            },
+            {
+              "t": "campos",
+              "items": [
+                "Peso (anotar la unidad)",
+                "Medida principal de longitud (anotar cuál se tomó, la unidad y el método)",
+                "Otras medidas relevantes para la especie"
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "4. Estado de salud al ingreso"
+            },
+            {
+              "t": "campos",
+              "items": [
+                "Aspecto general y conducta observados",
+                "Lesiones, parásitos visibles u otros hallazgos",
+                "Revisión del médico veterinario (nombre, cédula y fecha)",
+                "Destino inicial (área de cuarentena u otra)"
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "5. Observaciones"
+            },
+            {
+              "t": "campos",
+              "items": [
+                "Observaciones",
+                "Seguimiento (fecha y anotación de cada revisión posterior)"
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "6. Responsable del registro"
+            },
+            {
+              "t": "campos",
+              "items": [
+                "Nombre completo",
+                "Cargo o función",
+                "Firma",
+                "Fecha"
+              ]
+            },
+            {
+              "t": "aviso",
+              "texto": "Material informativo. No sustituye asesoría profesional ni la normatividad vigente."
+            }
+          ]
+        }
+      ],
+      "fuentes": [
+        {
+          "nombre": "Ley General de Vida Silvestre (última reforma DOF 16-07-2025): art. 3 fr. XXXII (marca), arts. 50 a 52 (legal procedencia y traslado)",
+          "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+        },
+        {
+          "nombre": "Reglamento de la Ley General de Vida Silvestre (última reforma DOF 09-05-2014): arts. 53 a 55 (legal procedencia, marcas e inventario de ejemplares)",
+          "url": "https://www.diputados.gob.mx/LeyesBiblio/regley/Reg_LGVS.pdf"
+        }
+      ],
+      "revision": [
+        {
+          "afirmacion": "La legal procedencia de ejemplares fuera de su hábitat natural se demuestra con la marca que muestra aprovechamiento sustentable y tasa autorizada, o con la nota de remisión o factura correspondiente.",
+          "fuente": "Ley General de Vida Silvestre, art. 51",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Quien adquiere ejemplares debe exigir y conservar la documentación de legal procedencia durante la posesión; esa documentación contiene el número de registro de la UMA de origen, la autorización de importación o la autorización de aprovechamiento de subsistencia.",
+          "fuente": "Reglamento de la LGVS, art. 53",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "El traslado de ejemplares vivos de especies silvestres requiere la autorización de SEMARNAT.",
+          "fuente": "Ley General de Vida Silvestre, art. 52",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Los inventarios de ejemplares que se presentan a la autoridad indican nombre común y científico, descripción, sexo, tipo y número de marca; por eso la ficha incluye esos campos.",
+          "fuente": "Reglamento de la LGVS, art. 55 fr. II",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "La marca es el método de identificación aprobado por la autoridad competente que puede demostrar la legal procedencia de ejemplares, partes o derivados.",
+          "fuente": "Ley General de Vida Silvestre, art. 3 fr. XXXII",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Los campos de peso, medidas, estado de salud y seguimiento son criterio editorial de Zoorigen para un registro interno; la ley no prescribe un formato único de ficha por ejemplar.",
+          "fuente": "Criterio editorial; no se atribuye a una norma",
+          "confianza": "medio"
+        }
+      ]
+    },
+    {
+      "id": "fauna-herida",
+      "titulo": "Qué hacer si encuentras fauna silvestre herida",
+      "tipo": "guia",
+      "area": "Rescate y atención de fauna silvestre",
+      "descripcion": "Pasos generales y seguros para la persona y el animal si encuentras fauna silvestre herida en México: qué hacer, qué evitar, a quién avisar y por qué.",
+      "paginas": [
+        {
+          "titulo": "Primeros pasos: seguridad, distancia y aviso",
+          "bloques": [
+            {
+              "t": "p",
+              "texto": "Encontrar un animal silvestre herido es una situación delicada para él y para ti. Lo más útil que puedes hacer casi siempre es protegerte, observar a distancia, avisar a la autoridad y dejar que personal capacitado decida cómo atenderlo. Esta guía resume pasos generales; cada especie y cada situación son distintas."
+            },
+            {
+              "t": "aviso",
+              "texto": "Esta guía no sustituye a un médico veterinario ni a las instrucciones de la autoridad ambiental. No intentes diagnosticar ni curar al animal."
+            },
+            {
+              "t": "subtitulo",
+              "texto": "Pasos generales"
+            },
+            {
+              "t": "ol",
+              "items": [
+                "Mantén la distancia y pon tu seguridad primero. Un animal asustado o con dolor puede morder, arañar o picar aunque parezca débil. Aleja a niños y a perros o gatos.",
+                "Observa sin acercarte: anota qué animal parece ser, dónde está (calle, colonia, referencias, coordenadas si puedes) y si se mueve, está atrapado, inmóvil o tiene heridas visibles. Si puedes, toma una foto o video desde lejos.",
+                "No lo toques con las manos desnudas. Si es indispensable moverlo porque está en un lugar peligroso, usa guantes gruesos y una toalla o cobija, y solo si es un animal pequeño y manejable. Ante animales grandes, venenosos, con aspecto agresivo o murciélagos, no intentes tocarlos.",
+                "Avisa a la autoridad (ver «A quién avisar», en la página siguiente) lo antes posible y sigue sus indicaciones. Pregunta si conviene dejar al animal donde está o contenerlo.",
+                "Si está en un lugar riesgoso (carretera, patio con perros), puedes cubrir el sitio o desviar el paso a distancia mientras llega ayuda. Evita perseguirlo o acorralarlo.",
+                "Si se trata de una cría, no la recojas. Si la madre parece muerta, informa de inmediato a la autoridad.",
+                "Espera y, de ser posible, quédate a distancia para orientar a quien llegue a atenderlo."
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "Si tuviste contacto con el animal"
+            },
+            {
+              "t": "p",
+              "texto": "Si te mordió, te arañó o tuviste contacto con su saliva o sangre, lava la zona afectada con agua a chorro y jabón durante 15 minutos y acude de inmediato a una unidad de salud, como indica el cartel de prevención de la rabia del CENAPRECE de la Secretaría de Salud. Informa que fue un animal silvestre. Algunos animales silvestres pueden transmitir enfermedades a las personas (zoonosis)."
+            }
+          ]
+        },
+        {
+          "titulo": "Contención mínima, qué NO hacer, a quién avisar y por qué",
+          "bloques": [
+            {
+              "t": "subtitulo",
+              "texto": "Contención mínima y segura (solo si es seguro y la autoridad lo indica o lo permite)"
+            },
+            {
+              "t": "ul",
+              "items": [
+                "Coloca al animal en una caja de cartón firme o transportadora con ventilación y un paño suave, sin jaulas de alambre que puedan lastimarlo.",
+                "Mantenlo en un lugar tranquilo, oscuro, cálido y silencioso, lejos de niños, mascotas, ruido y gente. Cubre la caja con una tela ligera para reducir el estrés.",
+                "No lo muestres, no lo acaricies y no lo manipules más de lo indispensable: el manejo prolongado le causa estrés y puede empeorar su estado.",
+                "No le des alimento ni agua, salvo que un profesional lo indique. Dar líquidos o comida a un animal herido puede ser peligroso.",
+                "Entrégalo cuanto antes a quien indique la autoridad. No lo mantengas en casa más tiempo del necesario."
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "Lo que NO debes hacer"
+            },
+            {
+              "t": "ul",
+              "items": [
+                "No lo alimentes ni le des agua por iniciativa propia.",
+                "No lo adoptes ni lo mantengas en casa como mascota: la fauna silvestre no se adapta a un hogar y puede sufrir y causar problemas de salud. Capturar o retener fauna nativa es ilegal.",
+                "No lo persigas, no lo agredas y no intentes capturarlo o manipularlo si no es indispensable.",
+                "No intentes curarlo ni le des medicamentos: la atención la define un médico veterinario.",
+                "No lo regales ni lo entregues a personas sin autorización o sin experiencia en fauna silvestre.",
+                "No liberes en otro sitio a un animal herido: puede morir o transmitir enfermedades."
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "A quién avisar en México"
+            },
+            {
+              "t": "ul",
+              "items": [
+                "PROFEPA (Procuraduría Federal de Protección al Ambiente): línea 800 PROFEPA (7763372), de 09:00 a 18:00 horas; correo denuncias@profepa.gob.mx; formulario de denuncia en internet; o en persona en la oficina de representación de PROFEPA de tu estado (módulo de Atención Ciudadana). Una denuncia por teléfono debe ratificarse en un plazo de 3 días hábiles. Confirma siempre los datos vigentes en gob.mx/profepa.",
+                "Autoridades locales: si no hay oficina de PROFEPA en tu localidad, la ley permite presentar la denuncia ante la autoridad municipal. Pregunta en tu municipio o estado si la dirección de medio ambiente o de protección civil atiende reportes de fauna silvestre.",
+                "Centros de rescate y de atención de fauna: la autoridad federal opera centros para recibir y rehabilitar ejemplares producto de rescate o entrega voluntaria. Llama primero para pedir orientación y confirma que cuenten con autorización; evita llevar al animal por tu cuenta si no te lo indican.",
+                "Médico veterinario con experiencia en fauna silvestre: puede orientarte mientras llega la autoridad, sin que esto sustituya el aviso a PROFEPA."
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "¿Por qué estas indicaciones?"
+            },
+            {
+              "t": "ul",
+              "items": [
+                "Un animal herido suele estar en estado de estrés; el ruido, el contacto y la luz lo agravan.",
+                "Cada especie tiene necesidades de alimentación y manejo distintas; una dieta o un manejo equivocados pueden ser mortales.",
+                "El contacto con animales silvestres puede transmitir enfermedades (zoonosis) y causar lesiones a las personas.",
+                "La ley protege a la fauna silvestre: cualquier persona puede denunciar daños a la vida silvestre ante PROFEPA, y la autoridad es quien define el destino del ejemplar (atención, rehabilitación, reubicación o liberación)."
+              ]
+            },
+            {
+              "t": "aviso",
+              "texto": "Material informativo. No sustituye asesoría profesional ni la normatividad vigente."
+            }
+          ]
+        }
+      ],
+      "fuentes": [
+        {
+          "nombre": "PROFEPA, Denuncia ante la Profepa (gob.mx; publicado 05-11-2025): canales de denuncia, horario y ratificación",
+          "url": "https://www.gob.mx/profepa/articulos/denuncia-ante-la-profepa?state=published"
+        },
+        {
+          "nombre": "PROFEPA, comunicado Profepa invita a convivir responsablemente con la fauna silvestre urbana (27-11-2025)",
+          "url": "https://www.gob.mx/profepa/prensa/profepa-invita-a-convivir-responsablemente-con-la-fauna-silvestre-urbana?tab="
+        },
+        {
+          "nombre": "CENAPRECE (Secretaría de Salud), Cartel Prevención de la Rabia (02-09-2024)",
+          "url": "https://www.gob.mx/salud/cenaprece/documentos/cartel-prevencion-de-la-rabia"
+        },
+        {
+          "nombre": "Ley General de Vida Silvestre (última reforma DOF 16-07-2025): art. 38 (centros de conservación e investigación, rescate y entrega voluntaria) y art. 107 (denuncia ante PROFEPA)",
+          "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+        },
+        {
+          "nombre": "Ley General del Equilibrio Ecológico y la Protección al Ambiente (última reforma DOF 19-01-2026): art. 189 (denuncia popular)",
+          "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGEEPA.pdf"
+        },
+        {
+          "nombre": "Cornell University College of Veterinary Medicine, What to do if you find an injured animal (guía de referencia internacional sobre contención, calma y no dar alimento)",
+          "url": "https://www.vet.cornell.edu/hospitals/janet-l-swanson-wildlife-hospital/what-do-if-you-find-injured-animal"
+        }
+      ],
+      "revision": [
+        {
+          "afirmacion": "Canales de denuncia ante PROFEPA: internet (formulario), 800 PROFEPA (7763372), 3 días hábiles para ratificar, horario de 09:00 a 18:00 horas, oficinas de representación estatales, oficinas centrales y correo denuncias@profepa.gob.mx.",
+          "fuente": "gob.mx/profepa, artículo Denuncia ante la Profepa, publicado 05-11-2025 (otra página de gob.mx muestra el número con un dígito de menos; se usó la versión de 7 dígitos que coincide con el mnemónico PROFEPA)",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "PROFEPA recomienda mantener la distancia, no intentar capturar ni manipular al animal, no alimentarlo, no adoptarlo, no recoger crías (y avisar de inmediato si la madre parece muerta) y reportar a la oficina estatal de PROFEPA; matar, capturar o retener fauna nativa es ilegal.",
+          "fuente": "Comunicado de PROFEPA 27-11-2025 (campaña Vecinos Silvestres)",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Tras mordedura o contacto con animales silvestres: lavar con agua a chorro y jabón 15 minutos y acudir de inmediato a una unidad de salud; no manipular animales silvestres de manera innecesaria.",
+          "fuente": "Cartel Prevención de la Rabia, CENAPRECE, 02-09-2024",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Cualquier persona puede denunciar a PROFEPA daños a la vida silvestre; si no hay representación de PROFEPA en la localidad, la denuncia puede formularse ante la autoridad municipal.",
+          "fuente": "LGVS art. 107; LGEEPA art. 189",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Los Centros para la Conservación e Investigación de la Vida Silvestre reciben, rehabilitan y canalizan ejemplares producto de rescate, entregas voluntarias o aseguramientos.",
+          "fuente": "LGVS art. 38 fr. I",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Contención en caja o transportadora, lugar oscuro, tranquilo y cálido, lejos de niños y mascotas, y no dar comida ni agua salvo indicación de un profesional.",
+          "fuente": "Cornell University College of Veterinary Medicine (guía de EE. UU., no mexicana); consistente con la recomendación de PROFEPA de no alimentar",
+          "confianza": "medio"
+        },
+        {
+          "afirmacion": "Que la dirección de medio ambiente o de protección civil local atienda reportes de fauna varía por municipio; se redactó como sugerencia de consulta, sin afirmar que exista el servicio. No se verificó un directorio de centros de rescate; se pide confirmar su autorización.",
+          "fuente": "No verificado en fuente oficial única; se apoya en LGEEPA art. 189 (autoridad municipal)",
+          "confianza": "medio"
+        },
+        {
+          "afirmacion": "Uso de guantes gruesos y toalla solo con animales pequeños y manejables; evitar la manipulación prolongada; no liberar en otro sitio a un animal herido. Son precauciones generales de sentido común y de guías internacionales de rehabilitación, no una disposición mexicana; la propia PROFEPA y CENAPRECE priorizan no manipular.",
+          "fuente": "Criterio editorial; guías internacionales de rehabilitadores consultadas solo en resumen de búsqueda (no leídas directamente)",
+          "confianza": "medio"
+        },
+        {
+          "afirmacion": "No se escribió el número de emergencias 911 como canal de reporte de fauna porque no se encontró confirmación oficial de PROFEPA/SEMARNAT en esta sesión.",
+          "fuente": "Omisión deliberada",
+          "confianza": "alto"
+        }
+      ]
+    },
+    {
+      "id": "calendario-colmenas",
+      "titulo": "Calendario anual de manejo de colmenas",
+      "tipo": "guia",
+      "area": "Apicultura y polinizadores",
+      "descripcion": "Panorama general del año apícola en clima templado de México: revisión, floración, cosecha y preparación para la época de escasez. Varía por región y especie de abeja.",
+      "paginas": [
+        {
+          "titulo": "El año apícola en clima templado: panorama general",
+          "bloques": [
+            {
+              "t": "p",
+              "texto": "El manejo de las colmenas sigue el ritmo de las flores, la lluvia y la temperatura de cada lugar, más que el calendario de pared. Por eso esta guía organiza el año por etapas y no por meses: ubica en qué etapa está tu zona (según lo que florece y cuándo llueve) y ajusta las tareas. Está pensada de forma general para clima templado de México y para Apis mellifera; si trabajas con abejas nativas sin aguijón u otras especies, o en clima tropical o semiárido, las etapas y las tareas cambian."
+            },
+            {
+              "t": "aviso",
+              "texto": "Esta guía no incluye tratamientos, medicamentos ni dosis. Para sanidad de la colonia (por ejemplo, varroa o cría enferma) consulta a un médico veterinario o técnico apícola y a la oficina de sanidad de tu estado."
+            },
+            {
+              "t": "subtitulo",
+              "texto": "Herramienta base: tu propio calendario floral y apícola"
+            },
+            {
+              "t": "p",
+              "texto": "El calendario floral registra cuándo y por cuánto tiempo florecen las plantas que dan néctar o polen a las abejas en tu zona. El calendario apícola reúne esas épocas con tus manejos (cosechas, divisiones, alimentación, control de enfermedades o plagas, entre otros). Anota cada año lo que observas: en pocas temporadas tendrás el calendario más confiable, el de tu propio apiario."
+            },
+            {
+              "t": "subtitulo",
+              "texto": "Etapa 1. Salida del invierno e inicio de primavera: revisar y fortalecer"
+            },
+            {
+              "t": "ul",
+              "items": [
+                "Qué pasa en la colonia: la reina reanuda o aumenta la postura y la colonia empieza a crecer, gastando las reservas del invierno antes de que haya abundancia de flores.",
+                "Revisa que cada colmena tenga abejas suficientes, cría, reina y reservas de alimento. En una región de clima templado del altiplano central se vio que las colmenas grandes tuvieron menos cría, miel y polen al final del invierno.",
+                "Si las reservas son escasas, el manual de buenas prácticas de SENASICA distingue la alimentación artificial de sostén (mantener la colonia en escasez) y la de estímulo (fortalecerla antes de la floración). Consulta ese manual y a tu técnico antes de aplicarla.",
+                "Retira lo que ya no sirve: colmenas muertas, material sucio o viejo. Mantén todo el equipo limpio.",
+                "Revisa el apiario y su entorno: agua limpia disponible, sin cultivos recién tratados con agroquímicos cerca de la floración."
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "Etapa 2. Primavera y primera floración: crecimiento de la colonia"
+            },
+            {
+              "t": "ul",
+              "items": [
+                "Qué pasa en la colonia: la población crece con rapidez cuando hay néctar y polen; hay más riesgo de que la colonia se sobrepueble y enjambre.",
+                "Programa revisiones periódicas, en días soleados y cálidos, para ver si falta espacio, si la reina está en buen estado y si la colonia se ve sana.",
+                "Da espacio a las colonias que lo necesiten y, si se trata de una colonia fuerte, planea cómo se manejará la posible división antes de que enjambre.",
+                "Si usaste alimentación de estímulo, el manual de SENASICA indica suspenderla al inicio de la floración, para no alterar la miel.",
+                "Toma en cuenta la africanización: ubica los apiarios en sitios que den la máxima seguridad a las personas y los animales de la comunidad."
+              ]
+            }
+          ]
+        },
+        {
+          "titulo": "Cosecha, escasez, preparación para el invierno y registros",
+          "bloques": [
+            {
+              "t": "subtitulo",
+              "texto": "Etapa 3. Floración principal y cosecha"
+            },
+            {
+              "t": "ul",
+              "items": [
+                "Qué pasa en la colonia: las abejas almacenan miel mientras dura el flujo de néctar; las épocas de cosecha dependen de lo que florece en tu región.",
+                "Cosecha solo miel madura. El manual de SENASICA da como criterio que los panales estén operculados (sellados) al 90 % en zonas del norte y altiplano y al 100 % en zonas tropicales y subtropicales, y evitar cosechar panales con cría.",
+                "Cuida la inocuidad: equipo y sala de extracción limpios, sin contaminar la miel, y sin sustancias prohibidas.",
+                "Deja siempre reservas suficientes en la colmena; no coseches todo.",
+                "Anota la cosecha en la bitácora del apiario."
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "Etapa 4. Fin del verano y otoño: escasez y preparación para el invierno"
+            },
+            {
+              "t": "ul",
+              "items": [
+                "Qué pasa en la colonia: disminuyen las flores y el alimento escasea. La cría baja y nacen las abejas que sostendrán a la colonia hacia el invierno y la primavera siguiente.",
+                "Intensifica la revisión en época de escasez: las colonias están más expuestas a enfermedades y plagas y requieren más atención al alimento, según el manual de SENASICA.",
+                "Verifica que cada colmena llegue a esta época con abejas suficientes y reservas de miel y polen. Si la colonia es muy débil, consulta a tu técnico si conviene reforzarla o unirla a otra.",
+                "Vigila la sanidad con apoyo profesional (cría, varroa y otras señales).",
+                "Reduce entradas para dificultar el pillaje (robo entre colonias) cuando haya escasez, y mantén limpio el equipo.",
+                "Asegura agua limpia en el apiario: su falta provoca desnutrición y estrés en la colonia."
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "Etapa 5. Invierno: reposo relativo y vigilancia"
+            },
+            {
+              "t": "ul",
+              "items": [
+                "Qué pasa en la colonia: la actividad baja y las abejas se agrupan para conservar el calor. En algunas zonas de clima templado el invierno tiene días cálidos y la postura puede continuar, así que la colonia puede gastar reservas.",
+                "Revisa lo indispensable y con cuidado, sin abrir la colmena en días fríos, para no enfriar la cría.",
+                "Observa el peso de las colmenas y el nivel de reservas para actuar a tiempo, con ayuda de tu técnico.",
+                "Protege las colmenas del viento, la humedad y los animales que puedan molestarlas.",
+                "Aprovecha para mantenimiento del equipo, limpieza y planeación de la siguiente temporada."
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "Tareas permanentes durante todo el año"
+            },
+            {
+              "t": "ul",
+              "items": [
+                "Llevar la bitácora del apiario: movilización, cosecha, alimentación, tratamientos que indique el profesional, ventas y observaciones. SENASICA la considera el formato de trazabilidad del apicultor.",
+                "Numerar las colmenas y tener ficha de registro de cada una.",
+                "Mantener limpio el equipo de trabajo y usar protección personal.",
+                "Capacitarte y coordinarte con la asociación y la oficina de sanidad apícola de tu estado."
+              ]
+            },
+            {
+              "t": "aviso",
+              "texto": "Material informativo. No sustituye asesoría profesional ni la normatividad vigente."
+            }
+          ]
+        }
+      ],
+      "fuentes": [
+        {
+          "nombre": "SADER-SENASICA, Manual de Buenas Prácticas Pecuarias en la Producción de Miel, 4.ª ed., 2019 (Programa Nacional para el Control de la Abeja Africana)",
+          "url": "https://www.gob.mx/cms/uploads/attachment/file/859834/Manual_de_BPP_en_la_Producci_n_de_Miel_2019.pdf"
+        },
+        {
+          "nombre": "INIFAP, Revista Mexicana de Ciencias Pecuarias 2020;11(3):757-770, Efecto del tamaño interno de la colmena en la producción de cría, miel y polen en colonias de Apis mellifera en el altiplano central de México",
+          "url": "https://cienciaspecuarias.inifap.gob.mx/index.php/Pecuarias/article/download/5019/4405/16117"
+        },
+        {
+          "nombre": "Universidad Intercultural Maya de Quintana Roo / TNC México, Manual de Apicultura (Corredor Bioalimentario de la Selva Maya): calendario floral y calendario apícola, alimentación en escasez",
+          "url": "https://www.tncmx.org/content/dam/tnc/nature/en/documents/mexico/Manual-de-Apicultura.pdf"
+        },
+        {
+          "nombre": "Penn State Extension, Manejo de abejas de miel a través de las estaciones (actualizado 18-12-2023; referencia general de biología estacional, clima del noreste de EE. UU.)",
+          "url": "https://extension.psu.edu/manejo-de-abejas-de-miel-a-traves-de-las-estaciones"
+        }
+      ],
+      "revision": [
+        {
+          "afirmacion": "El manual de SENASICA distingue alimentación artificial de sostén (épocas de escasez), de estímulo (antes de la floración, suspendida al inicio de la floración) y suplementaria.",
+          "fuente": "Manual de Buenas Prácticas Pecuarias en la Producción de Miel, SADER-SENASICA 2019, sección de alimentación artificial",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Criterio de miel madura: panales operculados al 90 % en zonas del norte y altiplano y al 100 % en zonas tropicales y subtropicales; evitar cosechar panales con cría.",
+          "fuente": "Manual SENASICA 2019, capítulo Cosecha",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "En épocas de escasez la revisión de la colmena debe intensificarse porque las colonias requieren más alimento y están más expuestas a enfermedades y plagas; revisar en días soleados y cálidos; numerar colmenas y llevar ficha por colmena.",
+          "fuente": "Manual SENASICA 2019, manejo integral de la colmena",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Africanización: riesgo de ataques a personas y animales; se recomienda ubicar los apiarios en zonas de máxima seguridad para la comunidad.",
+          "fuente": "Manual SENASICA 2019, ubicación del apiario",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "La bitácora de producción del apiario (movilización, cosecha, alimentación, tratamientos, venta) es el formato de trazabilidad obligatorio para apicultores dentro de ese esquema.",
+          "fuente": "Manual SENASICA 2019, formato oficial de trazabilidad",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "En el altiplano central (Hidalgo, clima templado subhúmedo con lluvias en verano) las colmenas tipo Jumbo mostraron menos cría, miel y polen al final del invierno; en esa zona hubo días de más de 24 grados y la reina continuó la postura en invierno, por lo que se requiere vigilar reservas.",
+          "fuente": "INIFAP / UAEH, Rev Mex Cienc Pecu 2020;11(3):757-770",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Definición y uso del calendario floral y del calendario apícola como herramientas de planeación.",
+          "fuente": "Manual de Apicultura (UIMQRoo / TNC México)",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Secuencia estacional general (reanudación de postura a finales de invierno, crecimiento y enjambrazón en primavera, escasez a finales del verano, cría de abejas de invierno en otoño, cúmulo de invierno) y recomendación de reducir entradas ante riesgo de pillaje.",
+          "fuente": "Penn State Extension (noreste de EE. UU.; se usó solo la biología general, no sus fechas ni tratamientos)",
+          "confianza": "medio"
+        },
+        {
+          "afirmacion": "Las etapas se presentan sin meses porque no se encontró un calendario oficial del INIFAP o SENASICA por mes para clima templado; los momentos exactos dependen de la floración local. Zoorigen redactó la estructura de cinco etapas combinando las fuentes anteriores.",
+          "fuente": "Criterio editorial. Incluye consejos generales de sentido común (proteger colmenas del viento y la humedad, mantenimiento del equipo en invierno, abrir lo mínimo en días fríos) que no se atribuyen a una fuente específica",
+          "confianza": "medio"
+        },
+        {
+          "afirmacion": "No se consultó un documento de la FAO específico para el ciclo anual de la colonia (no se localizó en las búsquedas); por eso no se cita FAO.",
+          "fuente": "Omisión deliberada",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Se omitieron todas las proporciones de jarabe, cantidades, tratamientos para varroa y desinfectantes que aparecen en el manual de SENASICA, por regla de no incluir dosis ni tratamientos.",
+          "fuente": "Omisión deliberada",
+          "confianza": "alto"
+        }
+      ]
+    },
+    {
+      "id": "glosario-vida-silvestre",
+      "titulo": "Glosario de vida silvestre y normatividad",
+      "tipo": "glosario",
+      "area": "Normatividad y conceptos de vida silvestre",
+      "descripcion": "40 términos clave de vida silvestre y normatividad en México (LGVS, Reglamento, NOM-059, CITES), con definiciones breves y claras.",
+      "paginas": [
+        {
+          "titulo": "Glosario, parte 1 (A a E)",
+          "bloques": [
+            {
+              "t": "p",
+              "texto": "Definiciones breves, redactadas por Zoorigen a partir de la Ley General de Vida Silvestre (LGVS), su Reglamento, la Ley General del Equilibrio Ecológico y la Protección al Ambiente (LGEEPA), la Ley Federal de Sanidad Animal (LFSA), la NOM-059-SEMARNAT-2010 y el texto de la CITES. Para efectos legales, consulta siempre el texto oficial vigente."
+            },
+            {
+              "t": "terminos",
+              "items": [
+                {
+                  "termino": "Aprovechamiento extractivo",
+                  "def": "Utilización de ejemplares, partes o derivados de especies silvestres mediante colecta, captura o caza (LGVS)."
+                },
+                {
+                  "termino": "Aprovechamiento no extractivo",
+                  "def": "Actividades relacionadas con la vida silvestre en su hábitat natural que no implican retirar ejemplares, partes o derivados, pero que deben regularse porque, sin control, pueden causar impactos significativos en las poblaciones, en eventos biológicos o en el hábitat (LGVS)."
+                },
+                {
+                  "termino": "Aprovechamiento sustentable",
+                  "def": "Uso de los recursos naturales de manera que se respeten la integridad funcional y la capacidad de carga de los ecosistemas de los que forman parte, por periodos indefinidos (LGEEPA)."
+                },
+                {
+                  "termino": "Bienestar animal",
+                  "def": "Conjunto de actividades dirigidas a dar comodidad, tranquilidad, protección y seguridad a los animales durante su crianza, mantenimiento, explotación, transporte y sacrificio (LFSA). Para fauna silvestre, la LGVS lo desarrolla como trato digno y respetuoso."
+                },
+                {
+                  "termino": "Biodiversidad",
+                  "def": "Variabilidad de los organismos vivos de cualquier fuente, incluidos los ecosistemas terrestres, marinos y otros acuáticos y los complejos ecológicos de los que forman parte; comprende la diversidad dentro de cada especie, entre especies y de los ecosistemas (LGEEPA)."
+                },
+                {
+                  "termino": "Bioseguridad (medidas de)",
+                  "def": "Disposiciones y acciones zoosanitarias indispensables para minimizar el riesgo de introducción, transmisión o difusión de enfermedades o plagas (LFSA)."
+                },
+                {
+                  "termino": "CITES",
+                  "def": "Convención sobre el Comercio Internacional de Especies Amenazadas de Fauna y Flora Silvestres. Tratado internacional (adoptado en 1973) que regula el comercio internacional de especímenes mediante permisos y certificados. México se adhirió en 1991 y el texto se publicó en el DOF el 6 de marzo de 1992."
+                },
+                {
+                  "termino": "CITES, Apéndice I",
+                  "def": "Lista de las especies en peligro de extinción que son o pueden ser afectadas por el comercio. Su comercio se sujeta a una reglamentación particularmente estricta y se autoriza solo en circunstancias excepcionales."
+                },
+                {
+                  "termino": "CITES, Apéndice II",
+                  "def": "Lista de especies que no están necesariamente en peligro de extinción, pero podrían llegar a estarlo si su comercio no se regula estrictamente; incluye también otras especies que se regulan para poder controlar el comercio de las primeras."
+                },
+                {
+                  "termino": "CITES, Apéndice III",
+                  "def": "Lista de especies que un país parte declara sujetas a regulación dentro de su jurisdicción para prevenir o restringir su explotación, y para las cuales requiere la cooperación de otros países en el control de su comercio."
+                },
+                {
+                  "termino": "Conservación",
+                  "def": "Protección, cuidado, manejo y mantenimiento de los ecosistemas, hábitats, especies y poblaciones de la vida silvestre, dentro o fuera de sus entornos naturales, para salvaguardar las condiciones naturales que permitan su permanencia a largo plazo (LGVS)."
+                },
+                {
+                  "termino": "Cuarentena",
+                  "def": "Aislamiento preventivo y observación de animales recién llegados o sospechosos, antes de mezclarlos con otros, para detectar y evitar la entrada de enfermedades. La LFSA la define como aislamiento preventivo de mercancías reguladas para observación, verificación o aplicación del tratamiento correspondiente; la LGVS exige mantener a los ejemplares en condiciones adecuadas durante la cuarentena."
+                },
+                {
+                  "termino": "Ejemplar",
+                  "def": "Individuo de una especie silvestre. En CITES se habla de «espécimen»: todo animal o planta, vivo o muerto, y, según el caso, sus partes o derivados fácilmente identificables."
+                },
+                {
+                  "termino": "Endémica (especie)",
+                  "def": "Especie cuyo ámbito de distribución natural se encuentra circunscrito únicamente al territorio nacional y a las zonas donde la Nación ejerce su soberanía y jurisdicción (NOM-059-SEMARNAT-2010)."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "titulo": "Glosario, parte 2 (E a M)",
+          "bloques": [
+            {
+              "t": "terminos",
+              "items": [
+                {
+                  "termino": "Especie exótica (ejemplares o poblaciones exóticos)",
+                  "def": "Los que se encuentran fuera de su ámbito de distribución natural; incluye híbridos y modificados (LGVS)."
+                },
+                {
+                  "termino": "Especie exótica invasora",
+                  "def": "Especie o población no nativa, fuera de su ámbito de distribución natural, capaz de sobrevivir, reproducirse y establecerse en hábitats y ecosistemas naturales, y que amenaza la diversidad biológica nativa, la economía o la salud pública (LGVS)."
+                },
+                {
+                  "termino": "Especie nativa (ejemplares o poblaciones nativos)",
+                  "def": "Los pertenecientes a especies silvestres que se encuentran dentro de su ámbito de distribución natural (LGVS)."
+                },
+                {
+                  "termino": "Especies y poblaciones en riesgo",
+                  "def": "Las que la Secretaría identifica como probablemente extintas en el medio silvestre, en peligro de extinción, amenazadas o sujetas a protección especial (LGVS). La lista oficial es la NOM-059-SEMARNAT-2010."
+                },
+                {
+                  "termino": "Ex situ (conservación)",
+                  "def": "Conservación de componentes de la diversidad biológica fuera de sus hábitats naturales (Convenio sobre la Diversidad Biológica). Por ejemplo, el mantenimiento de ejemplares en confinamiento."
+                },
+                {
+                  "termino": "Fauna silvestre",
+                  "def": "Especies animales que subsisten sujetas a los procesos de selección natural y se desarrollan libremente, incluidas sus poblaciones menores bajo control humano, así como los animales domésticos que por abandono se vuelven salvajes y son susceptibles de captura y apropiación (LGEEPA)."
+                },
+                {
+                  "termino": "Hábitat",
+                  "def": "Sitio específico en un medio ambiente físico ocupado por un organismo, una población, una especie o comunidades de especies en un tiempo determinado (LGVS)."
+                },
+                {
+                  "termino": "In situ (conservación)",
+                  "def": "Conservación de los ecosistemas y los hábitats naturales, y mantenimiento y recuperación de poblaciones viables de especies en su entorno natural (Convenio sobre la Diversidad Biológica)."
+                },
+                {
+                  "termino": "Legal procedencia",
+                  "def": "Demostración de que un ejemplar, parte o derivado fuera de su hábitat natural fue obtenido legalmente. Se acredita con la marca que muestra un aprovechamiento sustentable y una tasa autorizada, o con la nota de remisión o factura correspondiente (LGVS)."
+                },
+                {
+                  "termino": "Maltrato",
+                  "def": "Todo hecho, acto u omisión de una persona que puede causar dolor, deterioro físico o sufrimiento, que afecte el bienestar, ponga en peligro la vida del animal o afecte gravemente su salud o integridad física (LGVS)."
+                },
+                {
+                  "termino": "Manejo en vida libre",
+                  "def": "El que se hace con ejemplares o poblaciones de especies que se desarrollan en condiciones naturales, sin imponer restricciones a sus movimientos (LGVS)."
+                },
+                {
+                  "termino": "Manejo intensivo",
+                  "def": "El que se realiza sobre ejemplares o poblaciones de especies silvestres en condiciones de cautiverio o confinamiento (LGVS)."
+                },
+                {
+                  "termino": "Marca",
+                  "def": "Método de identificación aprobado por la autoridad competente que puede demostrar la legal procedencia de ejemplares, partes o derivados (LGVS)."
+                },
+                {
+                  "termino": "Mascota o animal de compañía (fauna silvestre)",
+                  "def": "Ejemplar de fauna silvestre que, por su comportamiento natural, puede convivir con las personas en un ambiente doméstico bajo manejo sin representar riesgos físicos, sanitarios ni de seguridad. Se excluyen las especies exóticas invasoras (Reglamento de la LGVS)."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "titulo": "Glosario, parte 3 (N a Z)",
+          "bloques": [
+            {
+              "t": "terminos",
+              "items": [
+                {
+                  "termino": "NOM-059-SEMARNAT-2010",
+                  "def": "Norma Oficial Mexicana de protección ambiental sobre especies nativas de México de flora y fauna silvestres: establece las categorías de riesgo y las especificaciones para incluir, excluir o cambiar especies, y contiene la lista de especies en riesgo (DOF 30-12-2010; su Anexo Normativo III se modificó en el DOF del 14-11-2019)."
+                },
+                {
+                  "termino": "NOM-059: Probablemente extinta en el medio silvestre (E)",
+                  "def": "Especie nativa de México cuyos ejemplares en vida libre dentro del territorio nacional han desaparecido, hasta donde la documentación y los estudios lo prueban, y de la cual se conoce la existencia de ejemplares vivos en confinamiento o fuera del territorio mexicano."
+                },
+                {
+                  "termino": "NOM-059: En peligro de extinción (P)",
+                  "def": "Especie cuyas áreas de distribución o tamaño de poblaciones en el territorio nacional han disminuido drásticamente, poniendo en riesgo su viabilidad biológica en todo su hábitat natural."
+                },
+                {
+                  "termino": "NOM-059: Amenazada (A)",
+                  "def": "Especie que podría llegar a encontrarse en peligro de desaparecer a corto o mediano plazo si siguen operando los factores que afectan negativamente su viabilidad, al deteriorar o modificar su hábitat o disminuir el tamaño de sus poblaciones."
+                },
+                {
+                  "termino": "NOM-059: Sujeta a protección especial (Pr)",
+                  "def": "Especie que podría llegar a encontrarse amenazada por factores que afectan negativamente su viabilidad, por lo que se determina la necesidad de propiciar su recuperación y conservación, o la de poblaciones de especies asociadas."
+                },
+                {
+                  "termino": "PIMVS",
+                  "def": "Predios o instalaciones que manejan vida silvestre en forma confinada, fuera de su hábitat natural: criaderos intensivos, viveros, jardines botánicos o similares que manejan vida silvestre de manera confinada para reproducción controlada de especies o poblaciones con fines de aprovechamiento comercial (Reglamento de la LGVS)."
+                },
+                {
+                  "termino": "Plan de manejo",
+                  "def": "Documento técnico operativo de una UMA, sujeto a aprobación de la Secretaría, que describe y programa actividades para manejar especies silvestres particulares y sus hábitats, y establece metas e indicadores de éxito (LGVS)."
+                },
+                {
+                  "termino": "SUMA",
+                  "def": "Sistema Nacional de Unidades de Manejo para la Conservación de la Vida Silvestre (Reglamento de la LGVS)."
+                },
+                {
+                  "termino": "Trato digno y respetuoso",
+                  "def": "Medidas que la ley, su reglamento, los tratados internacionales y las normas establecen para evitar dolor, deterioro físico o sufrimiento durante la posesión, crianza, captura, traslado, exhibición, cuarentena, comercialización, aprovechamiento, adiestramiento o sacrificio de los animales (LGVS)."
+                },
+                {
+                  "termino": "UMA",
+                  "def": "Unidad de Manejo para la Conservación de Vida Silvestre: predios e instalaciones registrados que operan de acuerdo con un plan de manejo aprobado y dentro de los cuales se da seguimiento permanente al estado del hábitat y de las poblaciones o ejemplares que ahí se distribuyen (LGVS)."
+                },
+                {
+                  "termino": "Vida silvestre",
+                  "def": "Organismos que subsisten sujetos a los procesos de evolución natural y que se desarrollan libremente en su hábitat, incluidas sus poblaciones menores e individuos bajo control humano, así como los ferales (LGVS)."
+                },
+                {
+                  "termino": "Zoonosis",
+                  "def": "Enfermedad o infección que se transmite de manera natural de los animales a las personas (definición del glosario de la WOAH)."
+                }
+              ]
+            },
+            {
+              "t": "aviso",
+              "texto": "Material informativo. No sustituye asesoría profesional ni la normatividad vigente."
+            }
+          ]
+        }
+      ],
+      "fuentes": [
+        {
+          "nombre": "Ley General de Vida Silvestre (última reforma DOF 16-07-2025), art. 3 (definiciones), arts. 33, 38 y 51",
+          "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+        },
+        {
+          "nombre": "Reglamento de la Ley General de Vida Silvestre (última reforma DOF 09-05-2014), art. 2 (definiciones)",
+          "url": "https://www.diputados.gob.mx/LeyesBiblio/regley/Reg_LGVS.pdf"
+        },
+        {
+          "nombre": "Ley General del Equilibrio Ecológico y la Protección al Ambiente (última reforma DOF 19-01-2026), art. 3",
+          "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGEEPA.pdf"
+        },
+        {
+          "nombre": "Ley Federal de Sanidad Animal (última reforma DOF 21-05-2024), art. 4",
+          "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFSA.pdf"
+        },
+        {
+          "nombre": "NOM-059-SEMARNAT-2010 (DOF 30-12-2010), numerales 2.2 y 2.6",
+          "url": "https://dof.gob.mx/nota_detalle.php?codigo=5173091&fecha=30/12/2010"
+        },
+        {
+          "nombre": "DOF 14-11-2019, Modificación del Anexo Normativo III, Lista de especies en riesgo de la NOM-059-SEMARNAT-2010",
+          "url": "https://sidof.segob.gob.mx/notas/5578808"
+        },
+        {
+          "nombre": "Convención sobre el Comercio Internacional de Especies Amenazadas de Fauna y Flora Silvestres (texto con datos de vinculación de México, DOF 06-03-1992), arts. I y II",
+          "url": "https://dsiappsdev.semarnat.gob.mx/inai/I/109/6_Convencion_Sobre_El_Comercio_Internacional_De_Especies_Amenazadas_De_Fauna_Y_Flora_Silvestres.pdf"
+        },
+        {
+          "nombre": "Convenio sobre la Diversidad Biológica, art. 2 (conservación in situ y ex situ)",
+          "url": "https://www.cbd.int/convention/articles/?a=cbd-02&lg=1"
+        },
+        {
+          "nombre": "WOAH, Terrestrial Animal Health Code, glosario (ed. 2016): zoonosis",
+          "url": "https://woah.org/fileadmin/Home/eng/Health_standards/tahc/2016/en_glossaire.htm"
+        }
+      ],
+      "revision": [
+        {
+          "afirmacion": "Definiciones de aprovechamiento extractivo y no extractivo, conservación, especie exótica, exótica invasora, nativa, en riesgo, hábitat, maltrato, manejo en vida libre, manejo intensivo, marca, plan de manejo, trato digno y respetuoso, UMA y vida silvestre.",
+          "fuente": "Ley General de Vida Silvestre, art. 3, texto vigente leído en diputados.gob.mx (última reforma DOF 16-07-2025); redactadas con palabras propias a partir del texto",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "PIMVS, SUMA y mascota o animal de compañía.",
+          "fuente": "Reglamento de la LGVS, art. 2 fr. XV Bis, XX y XIII Bis",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Aprovechamiento sustentable, biodiversidad y fauna silvestre.",
+          "fuente": "LGEEPA, art. 3 (fr. III, IV y XVIII), última reforma DOF 19-01-2026",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Bienestar animal y medidas de bioseguridad; definición de cuarentena en la LFSA.",
+          "fuente": "Ley Federal de Sanidad Animal, art. 4",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Especie endémica y las cuatro categorías de riesgo (E, P, A, Pr).",
+          "fuente": "NOM-059-SEMARNAT-2010, numerales 2.2.1 a 2.2.4 y 2.6, texto leído en el DOF",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Fechas: NOM-059 publicada en el DOF el 30-12-2010; modificación del Anexo Normativo III en el DOF el 14-11-2019. El catálogo de la Secretaría de Economía registra además una revisión sistemática de 2026 con resultado «Modificación»; el glosario no afirma que ya exista una versión nueva, y recomienda revisar el DOF.",
+          "fuente": "DOF (nota 5173091 y SIDOF 5578808); PLATIICA (Secretaría de Economía)",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "CITES: adopción 1973, vinculación de México 2-07-1991, entrada en vigor para México 30-09-1991, DOF 6-03-1992; definiciones de espécimen y de los Apéndices I, II y III.",
+          "fuente": "Texto de la Convención recopilado en sitio de SEMARNAT (dsiappsdev.semarnat.gob.mx), arts. I y II; consistente con la ficha de CONABIO (México parte desde 1991). El sitio cites.org rechazó el acceso automatizado (403), por lo que no se consultó directamente",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Conservación in situ y ex situ.",
+          "fuente": "Convenio sobre la Diversidad Biológica, art. 2; la consulta se hizo sobre la versión en inglés de la página y la redacción en español es propia",
+          "confianza": "medio"
+        },
+        {
+          "afirmacion": "Ejemplar: la LGVS no define el término en el art. 3; la definición es redacción propia basada en el uso de la ley y en la definición de «espécimen» de CITES. Cuarentena: definición propia anclada en la LFSA y el art. 33 de la LGVS. Zoonosis: traducción propia de la definición de la WOAH (glosario 2016).",
+          "fuente": "LGVS, LFSA, CITES art. I, WOAH",
+          "confianza": "medio"
+        },
+        {
+          "afirmacion": "Legal procedencia: no hay una definición literal; se resumió el art. 51 de la LGVS.",
+          "fuente": "LGVS art. 51",
+          "confianza": "alto"
+        }
+      ]
+    },
+    {
+      "id": "marco-normativo-uno",
+      "titulo": "Marco normativo de la vida silvestre en una página",
+      "tipo": "infografia",
+      "area": "Normatividad y cumplimiento",
+      "descripcion": "Mapa de una página de las leyes, reglamento, normas y tratados que rigen la vida silvestre en México, con su nombre oficial, enlace oficial y quién vigila su cumplimiento.",
+      "paginas": [
+        {
+          "titulo": "Marco normativo de la vida silvestre en México",
+          "bloques": [
+            {
+              "t": "p",
+              "texto": "Panorama de los instrumentos principales. Cada uno se presenta con su nombre oficial, lo que regula en una línea y el enlace donde consultar el texto oficial vigente."
+            },
+            {
+              "t": "subtitulo",
+              "texto": "Leyes y reglamento"
+            },
+            {
+              "t": "terminos",
+              "items": [
+                {
+                  "termino": "Ley General de Vida Silvestre (LGVS)",
+                  "def": "Regula la conservación y el aprovechamiento sustentable de la vida silvestre y su hábitat, con concurrencia de Federación, estados y municipios. Publicada en el DOF el 3 de julio de 2000; última reforma DOF 16-07-2025. Texto: https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+                },
+                {
+                  "termino": "Reglamento de la Ley General de Vida Silvestre",
+                  "def": "Detalla cómo se aplica la LGVS (UMA y PIMVS, legal procedencia, marcas, mascotas, entre otros). Publicado en el DOF el 30 de noviembre de 2006; última reforma DOF 09-05-2014. Texto: https://www.diputados.gob.mx/LeyesBiblio/regley/Reg_LGVS.pdf"
+                },
+                {
+                  "termino": "Ley General del Equilibrio Ecológico y la Protección al Ambiente (LGEEPA)",
+                  "def": "Ley marco ambiental, de aplicación supletoria a la LGVS; contiene el capítulo de flora y fauna silvestre y la denuncia popular ante PROFEPA. Publicada en el DOF el 28 de enero de 1988; última reforma DOF 19-01-2026. Texto: https://www.diputados.gob.mx/LeyesBiblio/pdf/LGEEPA.pdf"
+                },
+                {
+                  "termino": "Ley Federal de Sanidad Animal (LFSA)",
+                  "def": "Sanidad y bienestar animal, bioseguridad y buenas prácticas pecuarias; incluye animales silvestres en cautiverio. Publicada en el DOF el 25 de julio de 2007; última reforma DOF 21-05-2024. Texto: https://www.diputados.gob.mx/LeyesBiblio/pdf/LFSA.pdf"
+                }
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "Normas oficiales mexicanas y tratado internacional"
+            },
+            {
+              "t": "terminos",
+              "items": [
+                {
+                  "termino": "NOM-059-SEMARNAT-2010, Protección ambiental-Especies nativas de México de flora y fauna silvestres-Categorías de riesgo y especificaciones para su inclusión, exclusión o cambio-Lista de especies en riesgo",
+                  "def": "Identifica las especies en riesgo (probablemente extinta en el medio silvestre, en peligro de extinción, amenazada, sujeta a protección especial). DOF 30-12-2010; Anexo Normativo III modificado en el DOF del 14-11-2019. Texto: https://dof.gob.mx/nota_detalle.php?codigo=5173091&fecha=30/12/2010. Verifica siempre la lista vigente en el DOF."
+                },
+                {
+                  "termino": "Convención sobre el Comercio Internacional de Especies Amenazadas de Fauna y Flora Silvestres (CITES)",
+                  "def": "Regula el comercio internacional de especímenes mediante permisos y certificados, según los Apéndices I, II y III. En México: DOF 06-03-1992. Texto de la Convención: https://dsiappsdev.semarnat.gob.mx/inai/I/109/6_Convencion_Sobre_El_Comercio_Internacional_De_Especies_Amenazadas_De_Fauna_Y_Flora_Silvestres.pdf. Apéndices vigentes: https://cites.org"
+                },
+                {
+                  "termino": "NOM-051-ZOO-1995, Trato humanitario en la movilización de animales",
+                  "def": "Bienestar durante el traslado de animales. DOF 23-03-1998. Catálogo de normas (Secretaría de Economía): https://platiica.economia.gob.mx/normalizacion/?p=161846"
+                },
+                {
+                  "termino": "NOM-033-SAG/ZOO-2014, Métodos para dar muerte a los animales domésticos y silvestres",
+                  "def": "Métodos permitidos de sacrificio. DOF 26-08-2015. Catálogo de normas (Secretaría de Economía): https://platiica.economia.gob.mx/normalizacion/nom-033-sag-zoo-2014/"
+                }
+              ]
+            },
+            {
+              "t": "subtitulo",
+              "texto": "Quién vigila y a quién acudir"
+            },
+            {
+              "t": "ul",
+              "items": [
+                "SEMARNAT (Secretaría de Medio Ambiente y Recursos Naturales): autoridad de la LGVS; otorga registros y autorizaciones, elabora las listas de especies en riesgo y, mediante su Dirección General de Vida Silvestre, expide los permisos y certificados CITES.",
+                "PROFEPA (Procuraduría Federal de Protección al Ambiente): órgano administrativo desconcentrado de SEMARNAT; atiende denuncias populares y realiza inspección, verificación y vigilancia; recibe denuncias por daños a la vida silvestre y verifica documentos y embarques CITES en puertos, aeropuertos y fronteras. Denuncias: 800 PROFEPA (7763372) y denuncias@profepa.gob.mx.",
+                "SADER (Secretaría de Agricultura y Desarrollo Rural): autoridad en sanidad y bienestar animal conforme a la LFSA, y emisora de las NOM de sanidad animal; en coordinación con SEMARNAT en enfermedades que afecten a la fauna silvestre.",
+                "Estados y municipios: tienen facultades propias dentro de la LGVS y pueden recibir denuncias donde no haya oficina de PROFEPA."
+              ]
+            },
+            {
+              "t": "aviso",
+              "texto": "Material informativo. No sustituye asesoría profesional ni la normatividad vigente."
+            }
+          ]
+        }
+      ],
+      "fuentes": [
+        {
+          "nombre": "Ley General de Vida Silvestre, texto vigente (Cámara de Diputados): arts. 1, 3, 10, 104 y 107",
+          "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+        },
+        {
+          "nombre": "Reglamento de la Ley General de Vida Silvestre, texto vigente (Cámara de Diputados)",
+          "url": "https://www.diputados.gob.mx/LeyesBiblio/regley/Reg_LGVS.pdf"
+        },
+        {
+          "nombre": "Ley General del Equilibrio Ecológico y la Protección al Ambiente, texto vigente (Cámara de Diputados): arts. 1, 79 a 87 y 189",
+          "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGEEPA.pdf"
+        },
+        {
+          "nombre": "Ley Federal de Sanidad Animal, texto vigente (Cámara de Diputados): arts. 1, 3, 11 y 21",
+          "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFSA.pdf"
+        },
+        {
+          "nombre": "NOM-059-SEMARNAT-2010 (DOF 30-12-2010)",
+          "url": "https://dof.gob.mx/nota_detalle.php?codigo=5173091&fecha=30/12/2010"
+        },
+        {
+          "nombre": "SIDOF, Modificación del Anexo Normativo III de la NOM-059-SEMARNAT-2010 (DOF 14-11-2019)",
+          "url": "https://sidof.segob.gob.mx/notas/5578808"
+        },
+        {
+          "nombre": "Catálogo Mexicano de Normas (Secretaría de Economía), fichas de NOM-059-SEMARNAT-2010, NOM-051-ZOO-1995 y NOM-033-SAG/ZOO-2014",
+          "url": "https://platiica.economia.gob.mx/normalizacion/nom-059-semarnat-2010/"
+        },
+        {
+          "nombre": "Convención CITES, texto con datos de vinculación de México (SEMARNAT)",
+          "url": "https://dsiappsdev.semarnat.gob.mx/inai/I/109/6_Convencion_Sobre_El_Comercio_Internacional_De_Especies_Amenazadas_De_Fauna_Y_Flora_Silvestres.pdf"
+        },
+        {
+          "nombre": "CONABIO, Generalidades de CITES y su implementación en México (autoridades CITES en México)",
+          "url": "https://www.biodiversidad.gob.mx/media/1/planeta/cites/files/Generalidades_de_CITES_y_su_implementacion_en_Mexico3Web.pdf"
+        },
+        {
+          "nombre": "PROFEPA, Denuncia ante la Profepa (publicado 05-11-2025)",
+          "url": "https://www.gob.mx/profepa/articulos/denuncia-ante-la-profepa?state=published"
+        },
+        {
+          "nombre": "SEMARNAT, Procuración de justicia ambiental, misión de la Profepa (03-04-2018)",
+          "url": "https://www.gob.mx/semarnat/articulos/procuracion-de-justicia-ambiental-mision-de-la-profepa"
+        }
+      ],
+      "revision": [
+        {
+          "afirmacion": "Nombre oficial, fecha de publicación y última reforma: LGVS (nueva ley DOF 03-07-2000; última reforma DOF 16-07-2025); Reglamento de la LGVS (DOF 30-11-2006; última reforma 09-05-2014); LGEEPA (DOF 28-01-1988; última reforma 19-01-2026); LFSA (DOF 25-07-2007; última reforma 21-05-2024).",
+          "fuente": "Encabezados de los textos vigentes publicados por la Cámara de Diputados, leídos en esta sesión",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "La LGVS establece la concurrencia de Federación, estados y municipios; se aplica supletoriamente la LGEEPA; cualquier persona puede denunciar daños a la vida silvestre ante PROFEPA.",
+          "fuente": "LGVS arts. 1, 2, 10 y 107; LGEEPA art. 189",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Título oficial completo y fechas de la NOM-059-SEMARNAT-2010 (DOF 30-12-2010; Anexo Normativo III modificado en el DOF 14-11-2019). El catálogo de la Secretaría de Economía la marca como vigente y registra una revisión sistemática de 2026 con resultado «Modificación», sin indicar publicación de una versión nueva.",
+          "fuente": "DOF nota 5173091; SIDOF 5578808; PLATIICA",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "NOM-051-ZOO-1995, Trato humanitario en la movilización de animales (vigente; DOF 23-03-1998; entrada en vigor 24-03-1998) y NOM-033-SAG/ZOO-2014, Métodos para dar muerte a los animales domésticos y silvestres (vigente; DOF 26-08-2015; entrada en vigor 27-08-2015). Se incluyeron solo estas dos NOM de bienestar porque se confirmó título, vigencia y fechas en el catálogo oficial; no se confirmaron otras NOM de bienestar para fauna silvestre y no se listan.",
+          "fuente": "Catálogo Mexicano de Normas (PLATIICA, Secretaría de Economía)",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "CITES: la Dirección General de Vida Silvestre de SEMARNAT expide los permisos y certificados; PROFEPA verifica documentos y embarques en puertos, aeropuertos y fronteras; la Autoridad Científica (CONABIO) emite dictámenes de extracción no perjudicial.",
+          "fuente": "CONABIO, Generalidades de CITES y su implementación en México; PROFEPA, artículo CITES (23-12-2022)",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "El enlace https://cites.org corresponde al sitio oficial de la Convención, pero devolvió error 403 a las consultas automatizadas en esta sesión; no se pudo comprobar su contenido. Los Apéndices vigentes deben consultarse allí.",
+          "fuente": "Intento de consulta directa a cites.org",
+          "confianza": "medio"
+        },
+        {
+          "afirmacion": "SADER como autoridad de sanidad y bienestar animal y coordinación con SEMARNAT en enfermedades de fauna silvestre.",
+          "fuente": "LFSA arts. 3 y 11",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "Las fichas del Catálogo Mexicano de Normas se usan como enlace oficial de las NOM-051 y NOM-033 porque no se consultó el texto completo en el DOF.",
+          "fuente": "Limitación de la consulta",
+          "confianza": "medio"
+        },
+        {
+          "afirmacion": "No existe una Ley General de Bienestar Animal en el índice de leyes federales vigentes de la Cámara de Diputados consultado; el bienestar se aborda en la LGVS (trato digno y respetuoso), la LFSA y las NOM.",
+          "fuente": "Índice de leyes federales, diputados.gob.mx/LeyesBiblio",
+          "confianza": "alto"
+        },
+        {
+          "afirmacion": "PROFEPA es órgano administrativo desconcentrado de SEMARNAT y su misión incluye atender denuncias y realizar inspección, verificación y vigilancia.",
+          "fuente": "gob.mx/semarnat, nota del 03-04-2018 (fecha antigua; confirmar en gob.mx/profepa)",
+          "confianza": "alto"
+        }
+      ]
+    }
+  ]
+}
