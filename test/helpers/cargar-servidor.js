@@ -1,7 +1,7 @@
 'use strict';
 
 const proxyquire = require('proxyquire').noCallThru();
-const { FakeFirestore, FakeTimestamp } = require('./fake-firestore');
+const { FakeFirestore, FakeTimestamp, NOMBRE_DOC } = require('./fake-firestore');
 
 const PRICE_MENSUAL = 'price_1TRcJnA7If2CqXs9dMBGRmDF';
 const PRICE_ANUAL = 'price_1TRcJlA7If2CqXs97WQNmKFq';
@@ -29,10 +29,12 @@ function suscripcion({ id, uid, precio = PRICE_MENSUAL, status = 'active', termi
  * @param {object} opciones
  *  - seed: documentos de Firestore { 'miembros/uid': {...} }
  *  - tokens: { token: { uid, email } } para Firebase Auth
+ *  - usuariosAuth: { uid: { emailVerified, creationTime } } lo que responden auth.getUser / auth.getUsers
+ *    (el objeto se devuelve y se puede cambiar durante la prueba, p. ej. para "confirmar el correo")
  *  - suscripciones: lista de objetos creados con suscripcion()
  *  - env: variables de entorno extra (p. ej. BUNNY_TOKEN_AUTH_KEY)
  */
-function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {} } = {}) {
+function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {}, usuariosAuth = {} } = {}) {
   const guardado = {};
   const entorno = {
     STRIPE_SECRET_KEY: 'sk_test_falsa',
@@ -55,6 +57,15 @@ function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {} }
   const firestore = () => db;
   firestore.FieldValue = { serverTimestamp: () => ts(Date.now()) };
   firestore.Timestamp = FakeTimestamp;
+  firestore.FieldPath = { documentId: () => NOMBRE_DOC };
+
+  const registroAuth = { getUser: 0, getUsers: 0 };
+  const usuarioAuth = uid => {
+    const u = usuariosAuth[uid];
+    if (!u) return null;
+    const creacion = u.creationTime === undefined ? new Date().toUTCString() : u.creationTime;
+    return { uid, emailVerified: u.emailVerified === true, metadata: { creationTime: creacion } };
+  };
 
   const admin = {
     apps: [],
@@ -65,6 +76,18 @@ function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {} }
       verifyIdToken: async token => {
         if (!tokens[token]) throw new Error('token inválido');
         return tokens[token];
+      },
+      getUser: async uid => {
+        registroAuth.getUser++;
+        const u = usuarioAuth(uid);
+        if (!u) throw Object.assign(new Error('There is no user record'), { code: 'auth/user-not-found' });
+        return u;
+      },
+      getUsers: async identificadores => {
+        registroAuth.getUsers++;
+        const users = []; const notFound = [];
+        for (const { uid } of identificadores) { const u = usuarioAuth(uid); if (u) users.push(u); else notFound.push({ uid }); }
+        return { users, notFound };
       }
     })
   };
@@ -107,7 +130,7 @@ function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {} }
       if (v === undefined) delete process.env[k]; else process.env[k] = v;
     }
   }
-  return { app, db, registro, stripe, suscripciones: mapaSuscripciones };
+  return { app, db, registro, stripe, suscripciones: mapaSuscripciones, usuariosAuth, registroAuth };
 }
 
 module.exports = {

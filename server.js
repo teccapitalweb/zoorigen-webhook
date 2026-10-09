@@ -10,6 +10,7 @@ const admin = require('firebase-admin');
 const crypto = require('crypto');
 const bunnyCatalog = require('./data/zoorigen-bunny-catalog.json');
 const pruebaGratuita = require('./services/prueba-gratuita');
+const { montarRutasClub } = require('./services/rutas-club');
 
 // ── Config ──────────────────────────────────────────────
 const rawKey = (process.env.STRIPE_SECRET_KEY || '').trim().replace(/^["']|["']$/g, '');
@@ -414,7 +415,7 @@ let ultimaLecturaVideos = 0;     // momento del último intento de lectura (éxi
 let lecturaVideosEnCurso = null; // evita lecturas simultáneas duplicadas
 
 function indiceVacio() {
-  return { conocidos: new Set(), gratis: new Set(), cursos: new Map(), elegibles: [], porDefectoId: null, cargadoEn: 0 };
+  return { conocidos: new Set(), gratis: new Set(), cursos: new Map(), datos: new Map(), elegibles: [], porDefectoId: null, cargadoEn: 0 };
 }
 
 async function leerIndiceVideosDeFirestore() {
@@ -422,9 +423,15 @@ async function leerIndiceVideosDeFirestore() {
   const conocidos = new Set();
   const gratis = new Set();
   const cursos = new Map();
+  const datos = new Map(); // datos básicos de cada curso (logros y premios)
   for (const doc of snapshot.docs) {
     const curso = doc.data() || {};
     cursos.set(doc.id, pruebaGratuita.resumirCurso(curso, id => BUNNY_FREE_VIDEO_IDS.has(id)));
+    datos.set(doc.id, {
+      area: typeof curso.area === 'string' ? curso.area.trim().slice(0, 80) : '',
+      disponibleSiempre: curso.disponibleSiempre === true,
+      cursoMuestraGratis: curso.cursoMuestraGratis === true
+    });
     if (!Array.isArray(curso.lecciones)) continue;
     for (const leccion of curso.lecciones) {
       const id = leccion && typeof leccion.videoId === 'string' ? leccion.videoId.trim() : '';
@@ -435,7 +442,7 @@ async function leerIndiceVideosDeFirestore() {
     }
   }
   const { elegibles, porDefectoId } = pruebaGratuita.resumenDeCursos(cursos, id => BUNNY_FREE_VIDEO_IDS.has(id));
-  return { conocidos, gratis, cursos, elegibles, porDefectoId, cargadoEn: Date.now() };
+  return { conocidos, gratis, cursos, datos, elegibles, porDefectoId, cargadoEn: Date.now() };
 }
 
 // Devuelve siempre un índice (vacío si Firestore nunca respondió): jamás lanza, para que un
@@ -916,6 +923,14 @@ app.post('/reactivate-subscription', express.json(), async (req, res) => {
     console.error('❌ Error reactivando:', error);
     res.status(500).json({ error: error.message });
   }
+});
+
+// ── Retos, logros, premios, referidos y directorio (services/rutas-club.js) ──
+// Reutiliza la autenticación, las reglas de membresía y el índice de cursos de arriba.
+// No toca las rutas de pago ni /api/bunny/embed-token.
+montarRutasClub(app, {
+  express, db, auth, admin, autenticarFirebase, esAdminPorDocumentos, tienePlanVigente,
+  obtenerIndiceVideos, leerEleccionPrueba, errorHttp
 });
 
 // Solo escucha al ejecutarse directamente (node server.js); las pruebas importan `app`.

@@ -21,6 +21,9 @@ function clone(value) {
   return value;
 }
 
+// Marca que devuelve FieldPath.documentId() en las consultas por id de documento.
+const NOMBRE_DOC = '__name__';
+
 class FakeDocumentSnapshot {
   constructor(ref, value) {
     this.ref = ref;
@@ -54,27 +57,76 @@ class FakeDocumentReference {
   }
 }
 
+// Valor comparable: las marcas de tiempo se comparan por milisegundos.
+function comparable(v) {
+  if (v instanceof FakeTimestamp) return v.toMillis();
+  if (v instanceof Date) return v.getTime();
+  return v;
+}
+function leerCampo(valor, campo) {
+  return String(campo).split('.').reduce((acc, parte) => (acc == null ? undefined : acc[parte]), valor);
+}
+function compara(a, b) {
+  const x = comparable(a); const y = comparable(b);
+  if (x === y) return 0;
+  return x < y ? -1 : 1;
+}
+const valorDe = (d, campo) => (campo === NOMBRE_DOC ? d.id : leerCampo(d.value, campo));
+
 class FakeQuery {
-  constructor(collection, filters = [], max = Infinity) {
+  constructor(collection, filters = [], max = Infinity, orden = []) {
     this.collection = collection;
     this.filters = filters;
     this.max = max;
+    this.orden = orden;
   }
   where(field, operator, value) {
-    if (operator !== '==') throw new Error(`unsupported operator ${operator}`);
-    return new FakeQuery(this.collection, [...this.filters, [field, value]], this.max);
+    if (!['==', '>', '>=', '<', '<=', 'in', 'array-contains'].includes(operator)) throw new Error(`unsupported operator ${operator}`);
+    return new FakeQuery(this.collection, [...this.filters, [field, operator, value]], this.max, this.orden);
   }
-  limit(max) { return new FakeQuery(this.collection, this.filters, max); }
-  async get() {
-    const docs = [];
+  orderBy(field, direccion = 'asc') {
+    return new FakeQuery(this.collection, this.filters, this.max, [...this.orden, [field, direccion]]);
+  }
+  limit(max) { return new FakeQuery(this.collection, this.filters, max, this.orden); }
+  _coincide(d, [field, operator, expected]) {
+    const actual = valorDe(d, field);
+    if (operator === '==') return comparable(actual) === comparable(expected);
+    if (operator === 'in') return Array.isArray(expected) && expected.includes(actual);
+    if (operator === 'array-contains') return Array.isArray(actual) && actual.includes(expected);
+    if (actual === undefined || actual === null) return false;
+    const c = compara(actual, expected);
+    return operator === '>' ? c > 0 : operator === '>=' ? c >= 0 : operator === '<' ? c < 0 : c <= 0;
+  }
+  _docs() {
+    const db = this.collection._db;
     const prefix = `${this.collection.path}/`;
-    for (const [path, value] of this.collection._db._data.entries()) {
+    let docs = [];
+    for (const [path, value] of db._data.entries()) {
       if (!path.startsWith(prefix) || path.slice(prefix.length).includes('/')) continue;
-      if (!this.filters.every(([field, expected]) => value && value[field] === expected)) continue;
-      docs.push(new FakeDocumentSnapshot(new FakeDocumentReference(this.collection._db, path), value));
-      if (docs.length >= this.max) break;
+      const d = { path, id: path.slice(prefix.length), value };
+      if (!this.filters.every(f => this._coincide(d, f))) continue;
+      docs.push(d);
     }
+    // Como en Firestore: al ordenar por un campo, los documentos que no lo tienen quedan fuera.
+    for (const [campo] of this.orden) docs = docs.filter(d => valorDe(d, campo) != null);
+    if (this.orden.length) {
+      docs.sort((a, b) => {
+        for (const [campo, dir] of this.orden) {
+          const c = compara(valorDe(a, campo), valorDe(b, campo));
+          if (c !== 0) return dir === 'desc' ? -c : c;
+        }
+        return 0;
+      });
+    }
+    return docs.slice(0, this.max);
+  }
+  async get() {
+    const db = this.collection._db;
+    const docs = this._docs().map(d => new FakeDocumentSnapshot(new FakeDocumentReference(db, d.path), d.value));
     return { docs, empty: docs.length === 0, size: docs.length };
+  }
+  count() {
+    return { get: async () => ({ data: () => ({ count: this._docs().length }) }) };
   }
 }
 
@@ -115,6 +167,7 @@ class FakeFirestore {
     throw new Error('Transacción abortada por contención');
   }
   collection(name) { return new FakeCollectionReference(this, name); }
+  async getAll(...refs) { return Promise.all(refs.map(ref => ref.get())); }
   batch() {
     const operaciones = [];
     const lote = {
@@ -128,4 +181,4 @@ class FakeFirestore {
   value(path) { return clone(this._data.get(path)); }
 }
 
-module.exports = { FakeFirestore, FakeTimestamp };
+module.exports = { FakeFirestore, FakeTimestamp, NOMBRE_DOC };
