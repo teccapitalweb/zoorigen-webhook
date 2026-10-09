@@ -42,8 +42,8 @@ sean 3 o 5); la última se desbloquea con la membresía.
   403 la persona no es elegible (el `error` trae el motivo); 409 `Ya elegiste tu prueba gratuita y no se puede cambiar`
   (la elección se guarda en una transacción, así que dos solicitudes a la vez guardan solo una).
 - Un curso es elegible si existe en `cursos`, tiene 2 o más lecciones, **todas** con `videoId` UUID de Bunny (los de
-  Drive no se pueden proteger), no es `disponibleSiempre` y no es el curso por defecto (el que trae el video gratis
-  fijo `befd1641…` o tiene `cursoMuestraGratis: true`).
+  Drive no se pueden proteger), y no es `disponibleSiempre` ni el curso de muestra del panel (`cursoMuestraGratis`). El curso por defecto (el que trae el video gratis fijo `befd1641…`)
+  también se puede elegir: quien ya lo conocía puede volver a tomarlo como su prueba.
 - "Nunca ha tenido plan" es `nuncaHaTenidoPlan` en `services/prueba-gratuita.js`: ninguna señal de plan en
   `miembros` ni en `usuarios` (`planVence`/`fechaExpiracion`, `planInicio`, `ultimoPago`, `stripeSubscriptionId`,
   `planTipo`, `activadoManualmente`, `shopifyOrderId`, `planActivo`, un `planStatus` real, cancelación...). `stripeCustomerId`

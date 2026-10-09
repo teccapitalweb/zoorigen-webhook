@@ -29,7 +29,7 @@ const cursos = {
   'cursos/siempre': { titulo: 'Siempre disponible', disponibleSiempre: true, lecciones: lecciones(600, 3) },
   'cursos/muestra': { titulo: 'Curso de muestra del panel', cursoMuestraGratis: true, lecciones: lecciones(700, 3).map((l, i) => ({ ...l, gratis: i === 0 })) }
 };
-const ELEGIBLES = ['a', 'b', 'c'];
+const ELEGIBLES = ['defecto', 'a', 'b', 'c'];   // el curso por defecto también se puede elegir como prueba
 
 // Cuentas (todas en `miembros`, con la forma que escribe el registro del Club).
 const registro = { planActivo: false, planCancelado: false, planTipo: null, planInicio: null, planVence: null, ultimoPago: null, role: 'member' };
@@ -210,8 +210,8 @@ test('GET: quien ya eligió ve su curso y no es elegible', async () => {
   assert.equal(res.body.motivo, 'Ya elegiste tu prueba gratuita y no se puede cambiar');
 });
 
-test('GET: sin cursos elegibles (solo el de por defecto) no hay prueba', async () => {
-  const seed = { 'cursos/defecto': cursos['cursos/defecto'], ...cuentas };
+test('GET: sin cursos elegibles (solo cursos que no se pueden elegir) no hay prueba', async () => {
+  const seed = { 'cursos/corto': cursos['cursos/corto'], 'cursos/siempre': cursos['cursos/siempre'], ...cuentas };
   const { app } = cargarServidor({ tokens, seed });
   const res = await obtener(app);
   assert.equal(res.body.elegible, false);
@@ -219,14 +219,31 @@ test('GET: sin cursos elegibles (solo el de por defecto) no hay prueba', async (
   assert.deepEqual(res.body.cursosElegibles, []);
 });
 
-test('el curso por defecto, de Drive, de una sola clase, siempre disponible o de muestra NO son elegibles', async () => {
+test('los cursos de Drive, de una sola clase, siempre disponibles o de muestra del panel NO son elegibles', async () => {
   const { app } = cargarServidor({ tokens, seed: base });
   const lista = (await obtener(app)).body.cursosElegibles;
-  for (const id of ['defecto', 'corto', 'drive', 'siempre', 'muestra']) assert.ok(!lista.includes(id), id);
+  for (const id of ['corto', 'drive', 'siempre', 'muestra']) assert.ok(!lista.includes(id), id);
   // y el servidor tampoco los acepta al elegir
-  for (const id of ['defecto', 'corto', 'drive', 'siempre', 'muestra']) {
+  for (const id of ['corto', 'drive', 'siempre', 'muestra']) {
     assert.equal((await elegir(app, id)).status, 400, id);
   }
+});
+
+test('el curso que tenían por defecto (con la clase gratis de siempre) SÍ se puede volver a elegir como prueba', async () => {
+  const { app } = cargarServidor({ tokens, seed: base });
+  assert.ok((await obtener(app)).body.cursosElegibles.includes('defecto'));
+  const res = await elegir(app, 'defecto');
+  assert.equal(res.status, 200);
+  assert.equal(res.body.cursoId, 'defecto');
+  assert.deepEqual((await obtener(app)).body.elegida, { cursoId: 'defecto' });
+});
+
+test('si elige el curso por defecto: sus clases menos la última son gratis y la última pide membresía', async () => {
+  const { app } = cargarServidor({ tokens, seed: base });
+  await elegir(app, 'defecto');
+  assert.equal((await embed(app, VIDEO_GRATIS, 'token-nuevo')).status, 200);
+  assert.equal((await embed(app, VIDEO_PREMIUM, 'token-nuevo')).status, 200);
+  assert.equal((await embed(app, uuid(1), 'token-nuevo')).status, 403, 'la última clase del curso por defecto sigue siendo de membresía');
 });
 
 test('el curso con cursoMuestraGratis cuenta como por defecto cuando no hay uno con el video fijo', async () => {
@@ -285,7 +302,7 @@ test('POST 400: falta cursoId o no es texto', async () => {
 
 test('POST 400: curso inexistente o no elegible, y no se guarda nada', async () => {
   const { app, db } = cargarServidor({ tokens, seed: base });
-  for (const cursoId of ['no-existe', '../admins/x', 'cursos/a', 'corto', 'drive', 'defecto']) {
+  for (const cursoId of ['no-existe', '../admins/x', 'cursos/a', 'corto', 'drive', 'siempre']) {
     const res = await elegir(app, cursoId);
     assert.equal(res.status, 400, cursoId);
     assert.equal(res.body.error, 'Ese curso no se puede elegir como prueba gratuita');
@@ -442,7 +459,7 @@ test('embed-token: la clase gratis fija SIGUE gratis para quien ya pagó antes y
 test('embed-token: sin registro de miembro la clase fija sigue como hoy; sin cursos elegibles también', async () => {
   const { app } = cargarServidor({ tokens, seed: base });
   assert.equal((await embed(app, VIDEO_GRATIS, 'token-sin-registro')).status, 200);
-  const seed = { 'cursos/defecto': cursos['cursos/defecto'], ...cuentas };
+  const seed = { 'cursos/corto': cursos['cursos/corto'], ...cuentas };
   const { app: app2 } = cargarServidor({ tokens, seed });
   const res = await embed(app2, VIDEO_GRATIS, 'token-nuevo');
   assert.equal(res.status, 200, 'si no hay nada que elegir, no se deja sin clase gratis');

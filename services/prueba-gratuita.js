@@ -65,11 +65,13 @@ function resumirCurso(curso, esVideoGratisFijo) {
     return p === '' || p === 'bunny';
   });
   // "Curso por defecto": el que trae el video gratis fijo o el marcado como curso de muestra.
+  // El que trae el video gratis fijo SÍ se puede elegir como prueba (quien ya lo conocía puede volver a tomarlo).
+  // El marcado como curso de muestra en el panel no: ya tiene sus propias clases gratis para todos.
   const porDefecto = Boolean(curso && curso.cursoMuestraGratis === true) || ids.some(id => id && esVideoGratisFijo(id));
   const sinRepetidos = new Set(ids).size === ids.length;
   const elegible = Boolean(
     ids.length >= 2 && ids.every(Boolean) && sinRepetidos && proveedoresValidos &&
-    !porDefecto && !(curso && curso.disponibleSiempre === true)
+    !(curso && curso.disponibleSiempre === true) && !(curso && curso.cursoMuestraGratis === true)
   );
   const ultimo = ids.length ? ids[ids.length - 1] : '';
   // Gratis en la prueba: todas menos la última (aunque su video se repitiera antes, se bloquea).
