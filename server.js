@@ -21,6 +21,9 @@ const STRIPE_PRICES = Object.freeze({
 });
 const BUNNY_STREAM_LIBRARY_ID = String(process.env.BUNNY_STREAM_LIBRARY_ID || '731751').trim();
 const BUNNY_TOKEN_AUTH_KEY = (process.env.BUNNY_TOKEN_AUTH_KEY || '').trim().replace(/^["']|["']$/g, '');
+// Clave de GESTIÓN de Bunny Stream (solo lectura del catálogo). Es distinta de BUNNY_TOKEN_AUTH_KEY,
+// que solo firma los reproductores. Si falta, el resto del servidor funciona igual.
+const BUNNY_API_KEY = (process.env.BUNNY_API_KEY || '').trim().replace(/^["']|["']$/g, '');
 const BUNNY_TOKEN_TTL_SECONDS = Math.min(900, Math.max(60, Number(process.env.BUNNY_TOKEN_TTL_SECONDS) || 300));
 const BUNNY_VIDEO_IDS = new Set(
   bunnyCatalog.flatMap(course => (course.lecciones || []).map(lesson => String(lesson.videoId || ''))).filter(Boolean)
@@ -178,6 +181,32 @@ async function autenticarFirebase(req, res) {
     return await auth.verifyIdToken(match[1]);
   } catch (_) {
     res.status(401).json({ error: 'Sesión inválida o vencida' });
+    return null;
+  }
+}
+
+// Regla de administrador (compartida): existe admins/{uid} o miembros/{uid}.role === 'admin'.
+function esAdminPorDocumentos(adminDoc, miembroDoc) {
+  return adminDoc.exists || miembroDoc.data()?.role === 'admin';
+}
+
+// Exige sesión de Firebase y que sea administrador. Responde 401/403/500 y devuelve null si no pasa.
+async function autenticarAdmin(req, res) {
+  const decoded = await autenticarFirebase(req, res);
+  if (!decoded) return null;
+  try {
+    const [adminDoc, miembroDoc] = await Promise.all([
+      db.collection('admins').doc(decoded.uid).get(),
+      db.collection('miembros').doc(decoded.uid).get()
+    ]);
+    if (!esAdminPorDocumentos(adminDoc, miembroDoc)) {
+      res.status(403).json({ error: 'Solo los administradores pueden hacer esto' });
+      return null;
+    }
+    return decoded;
+  } catch (error) {
+    console.error('[Admin] No se pudo verificar el permiso:', error.message);
+    res.status(500).json({ error: 'No se pudo verificar el permiso de administrador' });
     return null;
   }
 }
@@ -467,7 +496,7 @@ app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
       db.collection('miembros').doc(decoded.uid).get(),
       db.collection('usuarios').doc(decoded.uid).get()
     ]);
-    const esAdmin = adminDoc.exists || miembroDoc.data()?.role === 'admin';
+    const esAdmin = esAdminPorDocumentos(adminDoc, miembroDoc);
     const tienePlan = (miembroDoc.exists && tieneAccesoVigente(miembroDoc.data())) ||
       (usuarioDoc.exists && tieneAccesoVigente(usuarioDoc.data()));
     // A quien ya tiene acceso no le hace falta forzar un refresco solo para saber si es gratis.
@@ -488,6 +517,85 @@ app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
   } catch (error) {
     console.error('[Bunny embed-token]', error);
     return res.status(500).json({ error: 'No se pudo preparar la reproducción' });
+  }
+});
+
+// ── ADMIN: catálogo de Bunny EN VIVO (solo lectura) ──
+// Alimenta el botón "Sincronizar con Bunny" del panel: consulta las colecciones y videos de la
+// librería con la clave de gestión (BUNNY_API_KEY) y devuelve solo los videos ya procesados.
+// No escribe nada ni en Bunny ni en Firestore.
+const BUNNY_API_BASE = 'https://video.bunnycdn.com/library';
+const BUNNY_POR_PAGINA = 100;
+const BUNNY_MAX_PAGINAS = 100;      // tope de seguridad contra un bucle infinito
+const BUNNY_COLECCIONES_EN_PARALELO = 5;
+const BUNNY_STATUS_TERMINADO = 4;
+
+// Primer entero del título sin extensión ("Clase 03.mp4" -> 3); 0 si no hay.
+function numeroDeClaseBunny(titulo) {
+  const limpio = String(titulo || '').replace(/\.[a-z0-9]{2,5}$/i, '');
+  const m = limpio.match(/\d+/);
+  return m ? parseInt(m[0], 10) : 0;
+}
+
+// Quita la clave de cualquier texto antes de registrarlo en consola.
+function sinClaveBunny(texto) {
+  const t = String(texto || '');
+  return BUNNY_API_KEY ? t.split(BUNNY_API_KEY).join('***') : t;
+}
+
+async function bunnyApiGet(ruta) {
+  // globalThis.fetch se lee en cada llamada para poder simularlo en las pruebas.
+  const r = await globalThis.fetch(`${BUNNY_API_BASE}/${encodeURIComponent(BUNNY_STREAM_LIBRARY_ID)}${ruta}`, {
+    headers: { AccessKey: BUNNY_API_KEY, accept: 'application/json' }
+  });
+  if (!r.ok) throw new Error(`Bunny respondió ${r.status} en ${ruta.split('?')[0]}`);
+  return r.json();
+}
+
+async function bunnyListarTodo(ruta) {
+  const items = [];
+  for (let pagina = 1; pagina <= BUNNY_MAX_PAGINAS; pagina++) {
+    const sep = ruta.includes('?') ? '&' : '?';
+    const data = await bunnyApiGet(`${ruta}${sep}page=${pagina}&itemsPerPage=${BUNNY_POR_PAGINA}`);
+    const lote = Array.isArray(data?.items) ? data.items : [];
+    items.push(...lote);
+    if (lote.length < BUNNY_POR_PAGINA) break;
+  }
+  return items;
+}
+
+app.get('/api/admin/bunny-catalogo', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    const decoded = await autenticarAdmin(req, res);
+    if (!decoded) return;
+
+    if (!BUNNY_API_KEY) {
+      return res.status(503).json({
+        error: 'Falta conectar la clave de Bunny (BUNNY_API_KEY) en el servidor',
+        codigo: 'sin_api_key'
+      });
+    }
+
+    const colecciones = await bunnyListarTodo('/collections');
+    const catalogo = [];
+    for (let i = 0; i < colecciones.length; i += BUNNY_COLECCIONES_EN_PARALELO) {
+      const grupo = colecciones.slice(i, i + BUNNY_COLECCIONES_EN_PARALELO);
+      const resultados = await Promise.all(grupo.map(async col => {
+        const videos = await bunnyListarTodo(`/videos?collection=${encodeURIComponent(col.guid)}`);
+        const sesiones = videos
+          .filter(v => v && v.status === BUNNY_STATUS_TERMINADO)
+          .map(v => ({ numero: numeroDeClaseBunny(v.title), titulo: String(v.title || ''), videoId: v.guid }))
+          .sort((a, b) => a.numero - b.numero || a.titulo.localeCompare(b.titulo, 'es', { numeric: true }));
+        return { titulo: col.name, collectionId: col.guid, sesiones };
+      }));
+      catalogo.push(...resultados.filter(c => c.sesiones.length > 0));
+    }
+
+    return res.json({ ok: true, catalogo });
+  } catch (error) {
+    console.error('[Admin bunny-catalogo]', sinClaveBunny(error && error.message));
+    return res.status(502).json({ error: 'No se pudo consultar el catálogo de Bunny. Intenta de nuevo en un momento' });
   }
 });
 

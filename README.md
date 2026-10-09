@@ -15,6 +15,7 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `POST /reactivate-subscription` | Quita la cancelación programada | Token de Firebase |
 | `POST /api/bunny/embed-token` | Enlace firmado de video (5 min) | Token de Firebase + membresía |
 | `POST /api/referidos` | Invitados del miembro (solo nombre de pila) | Token de Firebase |
+| `GET /api/admin/bunny-catalogo` | Colecciones y videos listos de Bunny, en vivo (solo lectura) | Token de Firebase + administrador |
 | `GET /` | Health check | — |
 
 ### Videos y clases gratis desde Firestore
@@ -32,6 +33,15 @@ error y siguen funcionando el catálogo estático y el video gratis fijo.
 `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FIREBASE_SERVICE_ACCOUNT` (JSON completo),
 `BUNNY_STREAM_LIBRARY_ID`, `BUNNY_TOKEN_AUTH_KEY`, `BUNNY_TOKEN_TTL_SECONDS`.
 Opcionales: `STRIPE_PRICE_MENSUAL`, `STRIPE_PRICE_ANUAL` (si faltan se usan los precios fijos de `server.js`).
+
+### `BUNNY_API_KEY` (clave de gestión de Bunny)
+
+Sirve solo para `GET /api/admin/bunny-catalogo`, que alimenta el botón "Sincronizar con Bunny" del panel
+admin: el servidor consulta a Bunny en vivo y devuelve las colecciones con sus videos ya procesados
+(`status` 4), ordenados por número de clase. Es distinta de `BUNNY_TOKEN_AUTH_KEY` (esa solo firma los
+reproductores). Se obtiene en Bunny → Stream → tu librería → API → API Key. Solo la ven los administradores
+(doc en `admins/{uid}` o `miembros/{uid}.role === 'admin'`) y nunca sale en ninguna respuesta. Es opcional:
+si falta, el servidor arranca igual y ese endpoint responde 503 con `codigo: 'sin_api_key'`.
 
 ## Pruebas locales
 

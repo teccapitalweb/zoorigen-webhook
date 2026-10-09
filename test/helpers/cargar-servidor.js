@@ -40,7 +40,9 @@ function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {} }
     BUNNY_TOKEN_AUTH_KEY: 'clave-bunny-de-prueba',
     ...env
   };
-  for (const [k, v] of Object.entries(entorno)) { guardado[k] = process.env[k]; process.env[k] = v; }
+  // Una BUNNY_API_KEY real del equipo no debe filtrarse a las pruebas; se restaura al terminar.
+  guardado.BUNNY_API_KEY = process.env.BUNNY_API_KEY; delete process.env.BUNNY_API_KEY;
+  for (const [k, v] of Object.entries(entorno)) { if (!(k in guardado)) guardado[k] = process.env[k]; process.env[k] = v; }
   // Evita que variables reales del equipo contaminen las pruebas.
   for (const k of ['STRIPE_PRICE_MENSUAL', 'STRIPE_PRICE_ANUAL', 'FIREBASE_SERVICE_ACCOUNT', 'BUNNY_STREAM_LIBRARY_ID']) {
     guardado[k] = process.env[k]; delete process.env[k];
