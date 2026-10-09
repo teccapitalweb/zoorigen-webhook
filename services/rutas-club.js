@@ -13,6 +13,7 @@ const logros = require('./logros');
 const retos = require('./retos');
 const premios = require('./premios');
 const referidos = require('./referidos');
+const directorio = require('./directorio');
 
 // Límite de solicitudes por clave en una ventana (memoria del proceso; suficiente para frenar abusos).
 function permitirSolicitud(mapa, clave, ventanaMs, maximo) {
@@ -33,7 +34,8 @@ function montarRutasClub(app, deps) {
   } = deps;
   const FieldValue = admin.firestore.FieldValue;
 
-  const limites = { lecturas: new Map(), retos: new Map(), premios: new Map(), referidos: new Map() };
+  const limites = { lecturas: new Map(), retos: new Map(), premios: new Map(), referidos: new Map(), directorio: new Map() };
+  const CAMBIOS_DIRECTORIO_POR_MINUTO = 20;
   const REGISTROS_POR_MINUTO = 10;
   const LECTURAS_POR_MINUTO = 60;
   const RETOS_POR_MINUTO = 60;       // contrato: 60 solicitudes por minuto por usuario
@@ -672,6 +674,68 @@ function montarRutasClub(app, deps) {
       });
     } catch (error) {
       return responderError(res, error, 'No se pudieron cargar tus invitados', 'referidos');
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // DIRECTORIO — una tarjeta profesional por miembro (colección directorio, solo del servidor)
+  // ════════════════════════════════════════════════════════════
+  const parametroTexto = v => (typeof v === 'string' ? v.trim().slice(0, 80) : '');
+
+  // GET /api/directorio?sector=&q= — con membresía: hasta 300 tarjetas reales; sin ella, 3 ejemplos ficticios
+  app.get('/api/directorio', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarFirebase(req, res);
+      if (!decoded) return;
+      limitar(limites.lecturas, decoded.uid, LECTURAS_POR_MINUTO);
+      const ctx = await leerContexto(decoded.uid);
+      if (!ctx.membresia) {
+        return res.json({ ok: true, membresia: false, tarjetas: directorio.EJEMPLOS.map(t => ({ ...t, contacto: {} })), mia: null });
+      }
+      const snap = await db.collection('directorio').orderBy('actualizado', 'desc').limit(1000).get();
+      const todas = snap.docs.map(d => directorio.tarjetaPublica(d.id, d.data()));
+      const filtradas = directorio.filtrar(todas, { sector: parametroTexto(req.query.sector), q: parametroTexto(req.query.q) });
+      return res.json({
+        ok: true, membresia: true, tarjetas: filtradas.slice(0, directorio.MAX_TARJETAS),
+        mia: todas.find(t => t.uid === decoded.uid) || null
+      });
+    } catch (error) {
+      return responderError(res, error, 'No se pudo cargar el directorio', 'directorio');
+    }
+  });
+
+  // POST /api/directorio — crea o actualiza MI tarjeta (requiere membresía)
+  app.post('/api/directorio', express.json(), async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarFirebase(req, res);
+      if (!decoded) return;
+      limitar(limites.directorio, decoded.uid, CAMBIOS_DIRECTORIO_POR_MINUTO);
+      const ctx = await leerContexto(decoded.uid);
+      if (!ctx.membresia) throw sinMembresia('El directorio es parte de la membresía. Activa tu suscripción para crear tu tarjeta');
+      const r = directorio.validarTarjeta(req.body);
+      if (r.error) throw errorHttp(400, r.error);
+      const ref = db.collection('directorio').doc(decoded.uid);
+      // set completo: la tarjeta guardada es exactamente la validada (nada extra que haya mandado el navegador)
+      await ref.set({ uid: decoded.uid, ...r.tarjeta, actualizado: FieldValue.serverTimestamp() });
+      return res.json({ ok: true, tarjeta: directorio.tarjetaPublica(decoded.uid, (await ref.get()).data()) });
+    } catch (error) {
+      return responderError(res, error, 'No se pudo guardar tu tarjeta', 'directorio');
+    }
+  });
+
+  // DELETE /api/directorio — borra MI tarjeta (también sin membresía: siempre puedes retirar tus datos)
+  app.delete('/api/directorio', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarFirebase(req, res);
+      if (!decoded) return;
+      limitar(limites.directorio, decoded.uid, CAMBIOS_DIRECTORIO_POR_MINUTO);
+      await db.collection('directorio').doc(decoded.uid).delete();
+      return res.json({ ok: true });
+    } catch (error) {
+      return responderError(res, error, 'No se pudo borrar tu tarjeta', 'directorio');
     }
   });
 
