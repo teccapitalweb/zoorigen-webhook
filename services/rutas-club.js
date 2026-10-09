@@ -213,6 +213,153 @@ function montarRutasClub(app, deps) {
     }
   });
 
+  // ════════════════════════════════════════════════════════════
+  // RETOS
+  // ════════════════════════════════════════════════════════════
+  const CAMINO_VACIO = Object.freeze({ quiz: 0, detective: 0, orden: 0 });
+
+  function vistaRetos(estado) {
+    const hoy = logros.fechaMexico();
+    return {
+      superados: estado.superados,
+      porReto: retos.resumenPorReto(estado),
+      camino: estado.camino,
+      retosHoy: estado.retosHoy.fecha === hoy ? estado.retosHoy.ids : [],
+      totales: retos.TOTALES_CAMINO
+    };
+  }
+
+  // GET /api/retos — progreso de la persona (y registra el día activo)
+  app.get('/api/retos', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarFirebase(req, res);
+      if (!decoded) return;
+      limitar(limites.lecturas, decoded.uid, LECTURAS_POR_MINUTO);
+      const ctx = await leerContexto(decoded.uid);
+      if (!ctx.membresia) {
+        return res.json({
+          ok: true, membresia: false, nivel: NIVEL_VISTA_PREVIA, xp: 0, superados: 0, porReto: {},
+          camino: { ...CAMINO_VACIO }, retosHoy: [], totales: retos.TOTALES_CAMINO
+        });
+      }
+      const { ev, estadoRetos } = await calcularResumen(ctx);
+      return res.json({ ok: true, membresia: true, nivel: ev.nivel, xp: ev.xp.total, ...vistaRetos(estadoRetos) });
+    } catch (error) {
+      return responderError(res, error, 'No se pudieron cargar tus retos', 'retos');
+    }
+  });
+
+  // Lee, aplica y guarda el estado de retos dentro de una transacción (dos solicitudes a la vez no se pisan)
+  async function guardarRetos(uid, aplicar) {
+    const ref = db.collection('retosUsuario').doc(uid);
+    let salida;
+    await db.runTransaction(async tx => {
+      const snap = await tx.get(ref);
+      const antes = retos.normalizarEstado(snap.exists ? snap.data() : null);
+      const r = aplicar(antes);
+      salida = { antes, ...r };
+      if (r.guardar !== false) tx.set(ref, { ...r.estado, uid, actualizadoEn: FieldValue.serverTimestamp() });
+    });
+    return salida;
+  }
+
+  const resumenInsignias = lista => lista.map(i => ({ id: i.id, nombre: i.nombre }));
+
+  // POST /api/retos/resultado — práctica diaria (XP una vez por reto por día)
+  app.post('/api/retos/resultado', express.json(), async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarFirebase(req, res);
+      if (!decoded) return;
+      limitar(limites.retos, decoded.uid, RETOS_POR_MINUTO);
+      const cuerpo = req.body && typeof req.body === 'object' ? req.body : {};
+      const datos = { retoId: cuerpo.retoId, puntaje: cuerpo.puntaje, total: cuerpo.total };
+      const invalido = retos.validarResultado(datos);
+      if (invalido) throw errorHttp(400, invalido);
+      const ctx = await leerContexto(decoded.uid);
+      if (!ctx.membresia) throw sinMembresia('Los retos son parte de la membresía. Activa tu suscripción para resolverlos');
+
+      const r = await guardarRetos(decoded.uid, antes => retos.aplicarResultado(antes, datos));
+      const { ev } = await calcularResumen(ctx, { estadoRetos: r.estado });
+      return res.json({
+        ok: true, aprobado: r.aprobado, xpGanado: r.xpGanado, xp: ev.xp.total, nivel: ev.nivel,
+        insigniasNuevas: resumenInsignias(retos.insigniasNuevas(r.antes, r.estado))
+      });
+    } catch (error) {
+      return responderError(res, error, 'No se pudo guardar el resultado del reto', 'retos');
+    }
+  });
+
+  // POST /api/retos/camino — el servidor decide qué reto del camino está desbloqueado
+  app.post('/api/retos/camino', express.json(), async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarFirebase(req, res);
+      if (!decoded) return;
+      limitar(limites.retos, decoded.uid, RETOS_POR_MINUTO);
+      const cuerpo = req.body && typeof req.body === 'object' ? req.body : {};
+      const datos = { modo: cuerpo.modo, indice: cuerpo.indice, puntaje: cuerpo.puntaje, total: cuerpo.total };
+      const invalido = retos.validarCaminoResultado(datos);
+      if (invalido) throw errorHttp(400, invalido);
+      const ctx = await leerContexto(decoded.uid);
+      if (!ctx.membresia) throw sinMembresia('Los retos son parte de la membresía. Activa tu suscripción para resolverlos');
+
+      const r = await guardarRetos(decoded.uid, antes => {
+        const o = retos.aplicarCaminoResultado(antes, datos);
+        return { ...o, guardar: o.aceptado };
+      });
+      const salida = { ok: true, aceptado: r.aceptado, aprobado: r.aprobado, xpGanado: r.xpGanado, camino: r.estado.camino };
+      if (r.aceptado) {
+        const { ev } = await calcularResumen(ctx, { estadoRetos: r.estado });
+        Object.assign(salida, { xp: ev.xp.total, nivel: ev.nivel, insigniasNuevas: resumenInsignias(retos.insigniasNuevas(r.antes, r.estado)) });
+      }
+      return res.json(salida);
+    } catch (error) {
+      return responderError(res, error, 'No se pudo guardar tu avance en el camino', 'retos');
+    }
+  });
+
+  // GET /api/retos/clasificacion — top 20 por XP total. Solo nombre público (primer nombre + inicial),
+  // XP y nivel: nunca correo, teléfono ni membresía.
+  app.get('/api/retos/clasificacion', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarFirebase(req, res);
+      if (!decoded) return;
+      limitar(limites.lecturas, decoded.uid, LECTURAS_POR_MINUTO);
+      const ctx = await leerContexto(decoded.uid);
+      if (!ctx.membresia) throw sinMembresia('La clasificación es parte de la membresía');
+
+      const coleccion = db.collection('premiosUsuario');
+      const top = await coleccion.where('xpTotal', '>', 0).orderBy('xpTotal', 'desc').limit(20).get();
+      const perfiles = top.docs.length
+        ? await db.getAll(...top.docs.map(d => db.collection('miembros').doc(d.id)))
+        : [];
+      let posicion = 0; let xpPrevio = null;
+      const filas = top.docs.map((d, i) => {
+        const xp = d.data().xpTotal;
+        if (xp !== xpPrevio) { posicion = i + 1; xpPrevio = xp; }   // mismo XP = misma posición
+        const perfil = perfiles[i] && perfiles[i].exists ? perfiles[i].data() : {};
+        const nivel = logros.infoNivel(xp);
+        return { posicion, nombre: referidos.aliasDeNombre(perfil.name || perfil.nombreCompleto), xp, nivel: { id: nivel.id, nombre: nivel.nombre } };
+      });
+
+      let yo = null;
+      if (!ctx.esAdmin) {
+        const mio = await coleccion.doc(decoded.uid).get();
+        const xpMio = mio.exists ? mio.data().xpTotal : null;
+        if (typeof xpMio === 'number' && xpMio > 0) {
+          const mayores = (await coleccion.where('xpTotal', '>', xpMio).count().get()).data().count;
+          yo = { posicion: mayores + 1, xp: xpMio };
+        }
+      }
+      return res.json({ ok: true, top: filas, yo });
+    } catch (error) {
+      return responderError(res, error, 'No se pudo cargar la clasificación', 'retos');
+    }
+  });
+
   return { leerContexto, calcularResumen, leerEstadoRetos, limites, limitar, sinMembresia, responderError, FieldValue };
 }
 
