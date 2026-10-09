@@ -14,6 +14,7 @@ const retos = require('./retos');
 const premios = require('./premios');
 const referidos = require('./referidos');
 const directorio = require('./directorio');
+const avisos = require('./avisos');
 
 // Límite de solicitudes por clave en una ventana (memoria del proceso; suficiente para frenar abusos).
 function permitirSolicitud(mapa, clave, ventanaMs, maximo) {
@@ -41,6 +42,7 @@ function montarRutasClub(app, deps) {
   const RETOS_POR_MINUTO = 60;       // contrato: 60 solicitudes por minuto por usuario
   const CANJES_POR_MINUTO = 10;
 
+  const ENLACE_LOGROS = 'club-logros.html';
   const sinMembresia = mensaje => Object.assign(errorHttp(403, mensaje), { codigo: 'membresia-requerida' });
 
   function responderError(res, err, mensajeGenerico, etiqueta) {
@@ -259,9 +261,13 @@ function montarRutasClub(app, deps) {
 
   // Un premio ganado no se pierde aunque el XP baje: solo se AGREGAN claves a `ganados`, y dentro de
   // una transacción para no pisar un canje simultáneo. También deja el XP total para la clasificación.
-  async function guardarProgreso(uid, { claves, xpTotal, conRanking }) {
+  //
+  // Avisos de la campana: `logrosGanados` y `cursosTerminados` (ids) se comparan con lo que ya se avisó
+  // (logrosAvisados / cursosAvisados) para devolver solo los NUEVOS. Una cuenta que ya existía antes de los avisos
+  // (ya tiene XP calculado) toma lo que tiene como punto de partida SIN avisar, para no llenarle la campana de cosas viejas.
+  async function guardarProgreso(uid, { claves, xpTotal, conRanking, logrosGanados, cursosTerminados }) {
     const ref = db.collection('premiosUsuario').doc(uid);
-    return db.runTransaction(async tx => {
+    const r = await db.runTransaction(async tx => {
       const snap = await tx.get(ref);
       const actual = snap.exists ? (snap.data() || {}) : {};
       const guardado = premios.normalizarGuardado(actual);
@@ -270,11 +276,56 @@ function montarRutasClub(app, deps) {
       if (nuevas.length || !snap.exists) cambios.ganados = [...guardado.ganados, ...nuevas];
       if (!snap.exists) cambios.usados = [];
       if (conRanking && actual.xpTotal !== xpTotal) cambios.xpTotal = xpTotal;
+
+      const yaCalculada = snap.exists && (actual.xpTotal !== undefined || guardado.ganados.length > 0);
+      const nuevosAvisos = { logrosNuevos: [], cursosNuevos: [] };
+      for (const [campo, ids, salida] of [['logrosAvisados', logrosGanados, 'logrosNuevos'], ['cursosAvisados', cursosTerminados, 'cursosNuevos']]) {
+        if (!Array.isArray(ids)) continue;
+        const previos = Array.isArray(actual[campo]) ? actual[campo] : null;
+        if (previos === null && yaCalculada) { cambios[campo] = ids; continue; }
+        const base = previos || [];
+        const nuevosIds = ids.filter(id => !base.includes(id));
+        nuevosAvisos[salida] = nuevosIds;
+        if (nuevosIds.length || previos === null) cambios[campo] = [...base, ...nuevosIds];
+      }
+
       if (Object.keys(cambios).length) {
         tx.set(ref, { uid, ...cambios, actualizadoEn: FieldValue.serverTimestamp() }, { merge: true });
       }
-      return { ganados: cambios.ganados || guardado.ganados, usados: guardado.usados, nuevas };
+      return { ganados: cambios.ganados || guardado.ganados, usados: guardado.usados, nuevas, ...nuevosAvisos };
     });
+    // Premios que se acaban de ganar -> aviso personal (no sobrescribe si ya existe; nunca lanza)
+    for (const clave of r.nuevas) {
+      const premio = premios.PREMIOS.find(p => p.clave === clave);
+      await avisos.crearAviso(db, uid, {
+        id: `premio_${clave}`, tipo: 'premio', titulo: '🎁 ¡Ganaste un premio!',
+        texto: `${premio ? premio.titulo : 'Un premio nuevo'}: abre un curso antes de su fecha.`, enlace: ENLACE_LOGROS
+      });
+    }
+    return r;
+  }
+
+  // Avisos por logros nuevos y por XP de cursos terminados (los premios los avisa guardarProgreso)
+  async function avisarNovedades(uid, ev, guardado) {
+    try {
+      for (const id of guardado.logrosNuevos || []) {
+        const logro = ev.logros.find(l => l.id === id);
+        if (!logro) continue;
+        await avisos.crearAviso(db, uid, {
+          id: `logro_${id}`, tipo: 'logro', titulo: '🏅 ¡Nueva insignia!', texto: `${logro.nombre} · +${logro.xp} XP`, enlace: ENLACE_LOGROS
+        });
+      }
+      for (const cursoId of guardado.cursosNuevos || []) {
+        const curso = ev.cursos.lista.find(c => c.courseId === cursoId);
+        if (!curso) continue;
+        await avisos.crearAviso(db, uid, {
+          id: `bonoxp_${cursoId}`, tipo: 'xp', titulo: '⭐ ¡Curso terminado!',
+          texto: `Ganaste +${curso.xp} XP por terminar tu curso número ${curso.n}.`, enlace: ENLACE_LOGROS
+        });
+      }
+    } catch (error) {
+      console.error('[Club avisos] No se pudieron crear los avisos:', error && error.message);
+    }
   }
 
   // ── Cálculo completo (nivel, XP, logros, premios) de una persona con membresía ──
@@ -289,7 +340,12 @@ function montarRutasClub(app, deps) {
     const datos = { ...(await datosParaLogros(ctx, dias, referidosInfo.validos)), bienvenida: Boolean(previo.bienvenida) };
     const ev = logros.evaluar(datos, estado, referidosInfo.xp);
     const claves = premios.clavesQueCumple({ nivelId: ev.nivel.id, invitadosValidos: referidosInfo.validos });
-    const guardado = await guardarProgreso(uid, { claves, xpTotal: ev.xp.total, conRanking: !ctx.esAdmin });
+    // Los administradores no reciben avisos de insignias ni de cursos (ya lo tienen todo abierto)
+    const guardado = await guardarProgreso(uid, {
+      claves, xpTotal: ev.xp.total, conRanking: !ctx.esAdmin,
+      ...(ctx.esAdmin ? {} : { logrosGanados: ev.logros.filter(l => l.ganado).map(l => l.id), cursosTerminados: ev.cursos.lista.map(c => c.courseId) })
+    });
+    await avisarNovedades(uid, ev, guardado);
     return { ev, estadoRetos: estado, guardado, referidos: referidosInfo };
   }
 
@@ -398,6 +454,12 @@ function montarRutasClub(app, deps) {
         tx.set(ref, { uid, ...inicio, bienvenida: { fecha: new Date().toISOString() }, actualizadoEn: FieldValue.serverTimestamp() }, { merge: true });
         return false;
       });
+      if (!yaReclamado) {
+        await avisos.crearAviso(db, uid, {
+          id: 'bono_bienvenida', tipo: 'bienvenida', titulo: '👋 ¡Bienvenido al club!',
+          texto: `Recibiste +${logros.XP_BIENVENIDA} XP de regalo por tu cuenta nueva.`, enlace: ENLACE_LOGROS
+        });
+      }
 
       // Con membresía se devuelve el XP total real; sin ella solo cuenta lo guardado (los 100 de bienvenida)
       let xpTotal = logros.XP_BIENVENIDA;

@@ -496,7 +496,8 @@ function vistaNoticia(doc) {
 }
 
 async function listarNoticias(db, limite = POR_DEFECTO_PUBLICAS) {
-  const n = Math.min(MAX_PUBLICAS, Math.max(1, Math.floor(Number(limite)) || POR_DEFECTO_PUBLICAS));
+  const pedido = Math.floor(Number(limite));
+  const n = pedido >= 1 ? Math.min(MAX_PUBLICAS, pedido) : POR_DEFECTO_PUBLICAS;
   const snap = await db.collection('noticiasSector').orderBy('creadoEn', 'desc').limit(n).get();
   return snap.docs.map(vistaNoticia);
 }

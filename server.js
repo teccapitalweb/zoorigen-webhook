@@ -11,6 +11,8 @@ const crypto = require('crypto');
 const bunnyCatalog = require('./data/zoorigen-bunny-catalog.json');
 const pruebaGratuita = require('./services/prueba-gratuita');
 const { montarRutasClub } = require('./services/rutas-club');
+const { montarRutasNoticias } = require('./services/rutas-noticias');
+const { iniciarProgramador } = require('./services/tarea-diaria');
 
 // ── Config ──────────────────────────────────────────────
 const rawKey = (process.env.STRIPE_SECRET_KEY || '').trim().replace(/^["']|["']$/g, '');
@@ -905,12 +907,22 @@ montarRutasClub(app, {
   obtenerIndiceVideos, leerEleccionPrueba, errorHttp
 });
 
+// ── Noticias del sector, datos curiosos y avisos (services/rutas-noticias.js) ──
+// CRON_KEY abre GET /cron/noticias (sin ella esa ruta responde 401). La tarea diaria corre en este mismo proceso.
+montarRutasNoticias(app, {
+  express, db, autenticarFirebase, autenticarAdmin, errorHttp,
+  cronKey: (process.env.CRON_KEY || '').trim().replace(/^["']|["']$/g, '')
+});
+
 // Solo escucha al ejecutarse directamente (node server.js); las pruebas importan `app`.
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`🚀 Webhook Stripe corriendo en puerto ${PORT}`);
     console.log(`🐰 Bunny Stream: ${BUNNY_VIDEO_IDS.size} videos permitidos · biblioteca ${BUNNY_STREAM_LIBRARY_ID}`);
     console.log(`🎁 Vista gratuita: ${BUNNY_FREE_VIDEO_IDS.size} clase`);
+    // Tarea diaria (noticias y dato curioso). Se apaga con NOTICIAS_TAREA=off; las pruebas importan `app` y nunca llegan aquí.
+    const tarea = iniciarProgramador(db);
+    console.log(tarea.activo ? '📰 Tarea diaria de noticias: activa (13:00 UTC y al arrancar)' : '📰 Tarea diaria de noticias: apagada');
   });
 }
 
