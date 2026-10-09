@@ -1,0 +1,50 @@
+{
+  "id": "libro-prueba",
+  "titulo": "Libro de prueba",
+  "subtitulo": "Solo para las pruebas automáticas",
+  "autor": "Equipo Zoorigen",
+  "categoria": "Pruebas",
+  "color": "#2F7A4F",
+  "icono": "📘",
+  "resumen": "Libro ficticio de tres páginas que se usa para probar el desbloqueo por retos.",
+  "requiereRetos": 1,
+  "actualizado": "2026-10-01",
+  "prueba": true,
+  "fuentes": [
+    {
+      "nombre": "Fuente de ejemplo",
+      "url": "https://example.org/fuente"
+    }
+  ],
+  "paginas": [
+    {
+      "titulo": "Primera página",
+      "parrafos": [
+        "Primer párrafo de la primera página.",
+        "Segundo párrafo con acentos: conservación y bienestar."
+      ]
+    },
+    {
+      "titulo": "Segunda página",
+      "parrafos": [
+        "Texto de la segunda página."
+      ],
+      "lista": [
+        "Primer punto",
+        "Segundo punto"
+      ]
+    },
+    {
+      "titulo": "Tercera página",
+      "parrafos": [
+        "Texto final del libro de prueba."
+      ]
+    }
+  ],
+  "revision": [
+    {
+      "pregunta": "¿Cuántas páginas tiene este libro?",
+      "respuesta": "Tres"
+    }
+  ]
+}
