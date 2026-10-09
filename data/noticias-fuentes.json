@@ -1,6 +1,10 @@
 [
-  { "id": "mongabay-latam", "nombre": "Mongabay Latam", "url": "https://es.mongabay.com/feed/", "categoria": "conservacion" },
-  { "id": "dw-ambiente", "nombre": "DW Ambiente", "url": "https://rss.dw.com/rdf/rss-sp-eco", "categoria": "ciencia" },
-  { "id": "natgeo-animales", "nombre": "National Geographic ES", "url": "https://www.nationalgeographic.com.es/rss/animales", "categoria": "fauna" },
-  { "id": "scidev-latam", "nombre": "SciDev.Net América Latina", "url": "https://www.scidev.net/america-latina/feed/", "categoria": "ciencia" }
+  { "id": "mongabay-latam", "nombre": "Mongabay Latam", "url": "https://es.mongabay.com/feed", "categoria": "conservacion" },
+  { "id": "scidev-america-latina", "nombre": "SciDev.Net América Latina", "url": "https://www.scidev.net/america-latina/america-latina_rss.xml", "categoria": "ciencia" },
+  { "id": "ecoosfera", "nombre": "Ecoosfera", "url": "https://ecoosfera.com/feed/", "categoria": "fauna" },
+  { "id": "noticias-ambientales", "nombre": "Noticias Ambientales", "url": "https://noticiasambientales.com.ar/feed/", "categoria": "fauna" },
+  { "id": "greenpeace-mexico", "nombre": "Greenpeace México", "url": "https://www.greenpeace.org/mexico/feed/", "categoria": "conservacion" },
+  { "id": "efeverde", "nombre": "EFEverde", "url": "https://efeverde.com/feed/", "categoria": "conservacion" },
+  { "id": "apicultura-y-miel", "nombre": "Apicultura y Miel", "url": "https://apiculturaymiel.com/feed/", "categoria": "apicultura" },
+  { "id": "ciencia-unam", "nombre": "Ciencia UNAM", "url": "https://ciencia.unam.mx/rss", "categoria": "ciencia" }
 ]

@@ -293,13 +293,16 @@ function mensajeDeError(error) {
   return 'No se pudo conectar';
 }
 
+// Algunos medios (Mongabay, por ejemplo) bloquean a los lectores que no se identifican como navegador: se manda un User-Agent de navegador.
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 ZoorigenNoticias/1.0 (+https://www.zoorigen.com)';
+
 async function descargar(url, { fetch: fetchFn = globalThis.fetch, timeoutMs = TIMEOUT_FEED_MS, aceptar = 'application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5' } = {}) {
   const control = new AbortController();
   const reloj = setTimeout(() => control.abort(), timeoutMs);
   try {
     const r = await fetchFn(url, {
       signal: control.signal, redirect: 'follow',
-      headers: { 'User-Agent': 'ZoorigenNoticias/1.0 (+https://www.zoorigen.com)', Accept: aceptar, 'Accept-Language': 'es' }
+      headers: { 'User-Agent': USER_AGENT, Accept: aceptar, 'Accept-Language': 'es' }
     });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const largo = Number(r.headers && r.headers.get && r.headers.get('content-length'));
