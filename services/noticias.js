@@ -13,7 +13,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { limpiarTexto, texto, recortar, urlHttps, aIso } = require('./texto');
 
-const RUTA_FUENTES = path.join(__dirname, '..', 'data', 'noticias-fuentes.json');
+const RUTA_FUENTES = process.env.NOTICIAS_FUENTES_RUTA || path.join(__dirname, '..', 'data', 'noticias-fuentes.json');
 
 const CATEGORIAS = Object.freeze({
   fauna: { nombre: 'Fauna silvestre', color: '#2F7A4F' },

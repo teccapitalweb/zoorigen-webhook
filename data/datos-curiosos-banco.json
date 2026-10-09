@@ -1,8 +1,470 @@
 [
-  { "id": "prueba-01", "prueba": true, "tema": "Abejas", "texto": "[PRUEBA] Una abeja obrera visita cientos de flores en un solo viaje de recolección.", "fuente": "Dato de prueba (reemplazar por el banco verificado)", "fuenteUrl": "" },
-  { "id": "prueba-02", "prueba": true, "tema": "Tortugas marinas", "texto": "[PRUEBA] Las tortugas marinas regresan a desovar a las playas donde nacieron.", "fuente": "Dato de prueba (reemplazar por el banco verificado)", "fuenteUrl": "" },
-  { "id": "prueba-03", "prueba": true, "tema": "Murciélagos", "texto": "[PRUEBA] Muchos murciélagos polinizan plantas y dispersan semillas durante la noche.", "fuente": "Dato de prueba (reemplazar por el banco verificado)", "fuenteUrl": "" },
-  { "id": "prueba-04", "prueba": true, "tema": "Jaguar", "texto": "[PRUEBA] El jaguar es el felino más grande de América y vive en selvas y humedales.", "fuente": "Dato de prueba (reemplazar por el banco verificado)", "fuenteUrl": "" },
-  { "id": "prueba-05", "prueba": true, "tema": "Manglares", "texto": "[PRUEBA] Los manglares sirven de criadero a peces jóvenes y protegen la costa de las tormentas.", "fuente": "Dato de prueba (reemplazar por el banco verificado)", "fuenteUrl": "" },
-  { "id": "prueba-06", "prueba": true, "tema": "Mariposa monarca", "texto": "[PRUEBA] La mariposa monarca migra miles de kilómetros desde Norteamérica hasta los bosques de México.", "fuente": "Dato de prueba (reemplazar por el banco verificado)", "fuenteUrl": "" }
+  {
+    "id": "zoo_001",
+    "tema": "Biodiversidad",
+    "texto": "México es uno de los 17 países megadiversos, un grupo que concentra casi el 70% de la diversidad mundial de especies, según la CONABIO.",
+    "fuente": "CONABIO",
+    "fuenteUrl": "https://www.biodiversidad.gob.mx/pais/quees"
+  },
+  {
+    "id": "zoo_002",
+    "tema": "Biodiversidad",
+    "texto": "Según la CONABIO, México ocupa el segundo lugar mundial en riqueza de reptiles y el tercero en mamíferos, entre los países con mayor diversidad biológica del planeta.",
+    "fuente": "CONABIO",
+    "fuenteUrl": "https://www.biodiversidad.gob.mx/pais/quees",
+    "activo": false,
+    "revisar": true
+  },
+  {
+    "id": "zoo_003",
+    "tema": "Biodiversidad",
+    "texto": "En México viven 138 especies de murciélagos, cerca del 10% de las más de 1,300 que existen en el mundo. Aportan polinización, control de plagas y dispersión de semillas, según la CONANP (2018).",
+    "fuente": "CONANP (gob.mx)",
+    "fuenteUrl": "https://www.gob.mx/conanp/prensa/mexico-es-hogar-de-138-especies-de-murcielagos?idiom=es"
+  },
+  {
+    "id": "zoo_004",
+    "tema": "Biodiversidad",
+    "texto": "El tapir centroamericano, presente en el sureste de México, es el mamífero terrestre más grande del Neotrópico. Su gestación dura unos 13 meses y, en condiciones ideales, tiene una cría cada dos años (CONANP).",
+    "fuente": "CONANP (ficha de identificación)",
+    "fuenteUrl": "https://simec.conanp.gob.mx/Publicaciones2020/Publicaciones%20CONANP/Parte%202/Monitoreo/2009%20Ficha%20Tapir.pdf"
+  },
+  {
+    "id": "zoo_005",
+    "tema": "Biodiversidad",
+    "texto": "La guacamaya roja habitaba desde el sur de Tamaulipas hasta Chiapas, pero hoy su población en México se restringe a la Selva Lacandona, según la PROFEPA. Su alimento principal son semillas y frutos.",
+    "fuente": "PROFEPA (gob.mx)",
+    "fuenteUrl": "https://www.gob.mx/profepa/articulos/guacamaya-roja-ara-macao?idiom=es"
+  },
+  {
+    "id": "zoo_006",
+    "tema": "Biodiversidad",
+    "texto": "El tiburón ballena, el pez más grande del mundo, mide unos 12 metros o más y cada individuo tiene un patrón único de manchas. En el Caribe mexicano se le observa de mayo a septiembre, según la CONANP.",
+    "fuente": "CONANP (gob.mx)",
+    "fuenteUrl": "https://www.gob.mx/conanp/articulos/datos-curiosos-del-navegante-de-los-mares?idiom=es",
+    "activo": false,
+    "revisar": true
+  },
+  {
+    "id": "zoo_007",
+    "tema": "Biodiversidad",
+    "texto": "Seis especies de tortugas marinas anidan en las costas de México. La CONANP coordina desde 2005 el programa nacional para recuperar sus poblaciones.",
+    "fuente": "CONANP (documento Programa Nacional de Conservación de Tortugas Marinas)",
+    "fuenteUrl": "https://chm.cbd.int/api/v2013/documents/7DFED332-8E25-6C00-8F1B-FD50DFBE5D54/attachments/210188/Meta12-CONANP%20TORTUGAS.pdf"
+  },
+  {
+    "id": "zoo_008",
+    "tema": "Biodiversidad",
+    "texto": "El teporingo o zacatuche es uno de los conejos más pequeños del mundo, pues pesa entre 450 y 700 gramos. Vive entre 2,800 y 4,250 metros de altitud en volcanes del centro de México, según la CONANP.",
+    "fuente": "CONANP (ficha de identificación)",
+    "fuenteUrl": "https://www.conanp.gob.mx/pdf_especies/teporingo.pdf",
+    "activo": false,
+    "revisar": true
+  },
+  {
+    "id": "zoo_009",
+    "tema": "Biodiversidad",
+    "texto": "Las islas y áreas protegidas del Golfo de California, Patrimonio Mundial de la UNESCO, albergan el 39% de las especies de mamíferos marinos del mundo y un tercio de las de cetáceos.",
+    "fuente": "UNESCO (Centro del Patrimonio Mundial)",
+    "fuenteUrl": "https://whc.unesco.org/en/list/1182/"
+  },
+  {
+    "id": "zoo_010",
+    "tema": "Biodiversidad",
+    "texto": "En la Reserva de la Biosfera Sian Ka'an, en Quintana Roo, conviven jaguar, puma, ocelote, tapir y manatí con más de 300 especies de aves, según la UNESCO.",
+    "fuente": "UNESCO (Centro del Patrimonio Mundial)",
+    "fuenteUrl": "https://whc.unesco.org/en/list/410/"
+  },
+  {
+    "id": "zoo_011",
+    "tema": "Biodiversidad",
+    "texto": "Cuatro Ciénegas, en Coahuila, es Área de Protección de Flora y Fauna desde 1994 y sitio Ramsar por sus dunas de yeso y su alto grado de endemismos, según la CONABIO.",
+    "fuente": "CONABIO (regionalización hidrológica prioritaria)",
+    "fuenteUrl": ""
+  },
+  {
+    "id": "zoo_012",
+    "tema": "Biodiversidad",
+    "texto": "En México, más del 45% de las especies de anfibios y reptiles son endémicas, es decir, viven solo en el país, según la SEMARNAT.",
+    "fuente": "SEMARNAT (gob.mx)",
+    "fuenteUrl": "https://www.gob.mx/semarnat/articulos/especies-endemicas-141676"
+  },
+  {
+    "id": "zoo_013",
+    "tema": "Biodiversidad",
+    "texto": "El flamenco rosa del Caribe debe su color a los pequeños crustáceos que come, ricos en carotenoides. Su principal zona de anidación en México es la Reserva de la Biosfera Ría Lagartos, según la CONANP.",
+    "fuente": "CONANP (gob.mx)",
+    "fuenteUrl": "https://www.gob.mx/conanp/es/articulos/el-flamenco-rosa-un-ave-que-fascina-por-su-color?idiom=es"
+  },
+  {
+    "id": "zoo_014",
+    "tema": "Biología",
+    "texto": "Los colibríes solo existen en América. El corazón de un colibrí garganta de rubí late unas 225 veces por minuto en reposo y más de 1,200 en pleno vuelo, según el Zoológico Nacional del Smithsonian.",
+    "fuente": "Smithsonian National Zoo",
+    "fuenteUrl": "https://nationalzoo.si.edu/migratory-birds/hummingbirds"
+  },
+  {
+    "id": "zoo_015",
+    "tema": "Biología",
+    "texto": "La tortuga laúd es la tortuga más grande del mundo y puede bucear a unos 1,200 metros, más que cualquier otra. No tiene caparazón duro: sus huesos pequeños quedan bajo la piel, según NOAA.",
+    "fuente": "NOAA Fisheries",
+    "fuenteUrl": "https://www.fisheries.noaa.gov/species/leatherback-turtle"
+  },
+  {
+    "id": "zoo_016",
+    "tema": "Biología",
+    "texto": "Las hembras del dragón de Komodo pueden reproducirse sin macho (partenogénesis), pero así solo nacen machos, lo que deja pocas hembras y favorece la endogamia, según National Geographic.",
+    "fuente": "National Geographic",
+    "fuenteUrl": "https://www.nationalgeographic.com/animals/reptiles/facts/komodo-dragon"
+  },
+  {
+    "id": "zoo_017",
+    "tema": "Biología",
+    "texto": "Los pulpos tienen tres corazones: dos envían la sangre a las branquias para captar oxígeno y el tercero la reparte por el resto del cuerpo, según NOAA.",
+    "fuente": "NOAA Ocean Service",
+    "fuenteUrl": "https://oceanservice.noaa.gov/news/feb26/undersea-creatures-valentines-day.html"
+  },
+  {
+    "id": "zoo_018",
+    "tema": "Biología",
+    "texto": "En los caballitos de mar el macho es quien se embaraza: la hembra deposita los huevos en su bolsa y él los incuba, normalmente de dos a cuatro semanas, hasta dar a luz crías ya formadas, según National Geographic.",
+    "fuente": "National Geographic",
+    "fuenteUrl": "https://www.nationalgeographic.com/animals/fish/facts/seahorses"
+  },
+  {
+    "id": "zoo_019",
+    "tema": "Biología",
+    "texto": "Algunos anfibios carecen de pulmones y absorben todo su oxígeno por la piel húmeda. Entre ellos están todas las salamandras de la familia Plethodontidae, con más de 400 especies, según AmphibiaWeb.",
+    "fuente": "AmphibiaWeb (UC Berkeley)",
+    "fuenteUrl": "https://amphibiaweb.org/amphibian/facts.html"
+  },
+  {
+    "id": "zoo_020",
+    "tema": "Biología",
+    "texto": "La zarigüeya de Virginia, conocida en México como tlacuache norteño, es el único marsupial al norte de México. Sus crías miden unos 14 milímetros al nacer y pasan unos dos meses en la bolsa materna (Smithsonian).",
+    "fuente": "Smithsonian National Zoo",
+    "fuenteUrl": "https://nationalzoo.si.edu/animals/virginia-opossum"
+  },
+  {
+    "id": "zoo_021",
+    "tema": "Biología",
+    "texto": "Los búhos pueden girar el cuello hasta 270 grados. Un estudio de Johns Hopkins halló arterias de respaldo que mantienen el flujo de sangre cuando un giro rápido cierra otros vasos, según National Geographic.",
+    "fuente": "National Geographic",
+    "fuenteUrl": "https://www.nationalgeographic.com/animals/article/how-owls-twist-heads-almost-360-degrees"
+  },
+  {
+    "id": "zoo_022",
+    "tema": "Biología",
+    "texto": "El ajolote puede regenerar extremidades, corazón, médula espinal e incluso partes del cerebro sin dejar cicatrices permanentes. Además conserva rasgos juveniles, como las branquias externas, toda su vida (National Geographic).",
+    "fuente": "National Geographic",
+    "fuenteUrl": "https://www.nationalgeographic.com/animals/amphibians/facts/axolotl"
+  },
+  {
+    "id": "zoo_023",
+    "tema": "Biología",
+    "texto": "El monstruo de Gila es uno de los pocos lagartos venenosos del mundo, junto con el lagarto enchaquirado mexicano. No tiene colmillos huecos: el veneno avanza por surcos de sus dientes inferiores (Smithsonian).",
+    "fuente": "Smithsonian National Zoo",
+    "fuenteUrl": "https://nationalzoo.si.edu/animals/gila-monster"
+  },
+  {
+    "id": "zoo_024",
+    "tema": "Apicultura",
+    "texto": "El Día Mundial de las Abejas se celebra el 20 de mayo, fecha del nacimiento de Anton Janša, pionero de la apicultura moderna nacido en Eslovenia en 1734. La ONU lo proclamó en 2017, según la FAO.",
+    "fuente": "FAO",
+    "fuenteUrl": "https://www.fao.org/world-bee-day/en"
+  },
+  {
+    "id": "zoo_025",
+    "tema": "Apicultura",
+    "texto": "Karl von Frisch compartió el Nobel de Medicina en 1973 por descifrar el lenguaje de las abejas: con la danza del meneo, una exploradora indica a la colmena la dirección del alimento respecto al sol.",
+    "fuente": "NobelPrize.org",
+    "fuenteUrl": "https://www.nobelprize.org/prizes/medicine/1973/press-release/"
+  },
+  {
+    "id": "zoo_026",
+    "tema": "Apicultura",
+    "texto": "Cerca del 75% de los tipos de cultivos alimentarios dependen, al menos en parte, de la polinización por insectos y otros animales, según la IPBES.",
+    "fuente": "IPBES",
+    "fuenteUrl": "https://www.ipbes.net/node/11774"
+  },
+  {
+    "id": "zoo_027",
+    "tema": "Apicultura",
+    "texto": "En el mundo hay unas 20,000 especies de abejas. México tiene cerca de 2,000, entre ellas 46 especies de abejas sin aguijón, la mayoría endémicas, según Ciencia UNAM.",
+    "fuente": "Ciencia UNAM",
+    "fuenteUrl": "https://ciencia.unam.mx/leer/894/la-valiosa-miel-de-la-abeja-sin-aguijon-de-cuetzalan-",
+    "activo": false,
+    "revisar": true
+  },
+  {
+    "id": "zoo_028",
+    "tema": "Apicultura",
+    "texto": "La abeja sin aguijón Melipona beecheii, llamada xunán kab (\"señora abeja\") por los mayas, vive en la península de Yucatán. Su miel varía de color y sabor según las flores de cada región (Ciencia UNAM).",
+    "fuente": "Ciencia UNAM",
+    "fuenteUrl": "https://ciencia.unam.mx/leer/894/la-valiosa-miel-de-la-abeja-sin-aguijon-de-cuetzalan-"
+  },
+  {
+    "id": "zoo_029",
+    "tema": "Apicultura",
+    "texto": "Una reina de abeja melífera puede poner hasta unos 1,500 huevos al día en su época de mayor producción. Puede vivir cerca de cinco años, aunque su vida productiva promedio es de dos a tres (Universidad de Delaware).",
+    "fuente": "Universidad de Delaware (MAAREC)",
+    "fuenteUrl": "https://canr.udel.edu/maarec/honey-bee-biology/the-colony-and-its-organization/"
+  },
+  {
+    "id": "zoo_030",
+    "tema": "Apicultura",
+    "texto": "La abeja melífera europea no es nativa de América: llegó con los colonizadores. La Universidad de California documenta que se llevaron colmenas a la colonia de Jamestown, en Virginia, en 1622.",
+    "fuente": "Universidad de California (UC ANR)",
+    "fuenteUrl": "https://ucanr.edu/blog/bug-squad/article/celebrating-honey-bee",
+    "activo": false,
+    "revisar": true
+  },
+  {
+    "id": "zoo_031",
+    "tema": "Apicultura",
+    "texto": "La miel casi no se echa a perder porque tiene muy poca agua y es muy ácida, con un pH de entre 3 y 4.5. Se han hallado en tumbas del antiguo Egipto vasijas con miel de miles de años, según Smithsonian Magazine.",
+    "fuente": "Smithsonian Magazine",
+    "fuenteUrl": "https://www.smithsonianmag.com/science-nature/the-science-behind-honeys-eternal-shelf-life-1218690/"
+  },
+  {
+    "id": "zoo_032",
+    "tema": "Medicina zoológica",
+    "texto": "Según la WOAH, aproximadamente el 60% de las enfermedades infecciosas humanas conocidas tienen origen animal, y casi el 75% de las emergentes. Por eso la salud animal y la humana están ligadas.",
+    "fuente": "WOAH (Oficina Regional para África)",
+    "fuenteUrl": "https://rr-africa.woah.org/en/news/strengthening-veterinary-services-to-implement-the-one-health-approach-for-prevention-of-zoonotic-diseases-in-africa/",
+    "activo": false,
+    "revisar": true
+  },
+  {
+    "id": "zoo_033",
+    "tema": "Medicina zoológica",
+    "texto": "Para la WOAH, el bienestar animal es el estado físico y mental de un animal en relación con las condiciones en las que vive y en las que muere.",
+    "fuente": "WOAH",
+    "fuenteUrl": "https://www.woah.org/en/what-we-do/animal-health-and-welfare/animal-welfare/"
+  },
+  {
+    "id": "zoo_034",
+    "tema": "Medicina zoológica",
+    "texto": "Las Cinco Libertades del bienestar animal se formularon en 1965. Incluyen estar libre de hambre y sed, de miedo y angustia, de dolor y enfermedad, y poder expresar el comportamiento normal, según la WOAH.",
+    "fuente": "WOAH",
+    "fuenteUrl": "https://www.woah.org/en/what-we-do/animal-health-and-welfare/animal-welfare/"
+  },
+  {
+    "id": "zoo_035",
+    "tema": "Medicina zoológica",
+    "texto": "La Organización Mundial de Sanidad Animal (WOAH) se fundó en 1924 como Oficina Internacional de Epizootias, tras la expansión de la peste bovina. Adoptó su nombre actual en 2003.",
+    "fuente": "WOAH",
+    "fuenteUrl": "https://www.woah.org/en/who-we-are/"
+  },
+  {
+    "id": "zoo_036",
+    "tema": "Medicina zoológica",
+    "texto": "La primera escuela de veterinaria del mundo se fundó en Lyon, Francia, en 1761, por Claude Bourgelat, después de las epidemias de peste bovina que azotaron Europa entre 1709 y 1760.",
+    "fuente": "WOAH (artículo del centenario sobre peste bovina)",
+    "fuenteUrl": "https://www.woah.org/app/uploads/2024/01/100thse-05-bodjo-preprint.pdf"
+  },
+  {
+    "id": "zoo_037",
+    "tema": "Medicina zoológica",
+    "texto": "En 2019 la OMS validó a México como el primer país del mundo en eliminar la rabia humana transmitida por perros como problema de salud pública, gracias a campañas masivas de vacunación canina con más del 80% de cobertura.",
+    "fuente": "OMS",
+    "fuenteUrl": "https://www.who.int/news/item/21-12-2019-mexico-is-free-from-human-rabies-transmitted-by-dogs"
+  },
+  {
+    "id": "zoo_038",
+    "tema": "Medicina zoológica",
+    "texto": "Las aves no tienen diafragma: sus nueve sacos aéreos funcionan como fuelles y hacen que el aire fluya en un solo sentido por los pulmones, sin mezclarse con aire \"viejo\". Eso hace muy eficiente su intercambio de oxígeno.",
+    "fuente": "Universidad de California, Davis (Prized Writing)",
+    "fuenteUrl": "https://prizedwriting.ucdavis.edu/sites/g/files/dgvnsk15806/files/media/documents/17%E2%80%9318%20GIN.pdf",
+    "activo": false,
+    "revisar": true
+  },
+  {
+    "id": "zoo_039",
+    "tema": "Medicina zoológica",
+    "texto": "Los rumiantes no tienen cuatro estómagos, sino uno solo dividido en cuatro compartimentos: rumen, retículo, omaso y abomaso. En el rumen, microorganismos fermentan el alimento fibroso, según la Universidad de Georgia.",
+    "fuente": "Universidad de Georgia (UGA Extension)",
+    "fuenteUrl": "https://site.extension.uga.edu/forageteam/2018/03/the-amazing-ruminant/"
+  },
+  {
+    "id": "zoo_040",
+    "tema": "Medicina zoológica",
+    "texto": "Los reptiles son ectotermos: dependen de la temperatura de su entorno para mantener la de su cuerpo, por eso no soportan bien el frío invernal, según el Zoológico Nacional del Smithsonian.",
+    "fuente": "Smithsonian National Zoo",
+    "fuenteUrl": "https://nationalzoo.si.edu/animals/exhibits/reptile-discovery-center?id=38"
+  },
+  {
+    "id": "zoo_041",
+    "tema": "Medicina zoológica",
+    "texto": "Los gatos carecen de un receptor funcional para el sabor dulce: el gen Tas1r2 está dañado en el gato doméstico y también en el tigre y el guepardo, según una investigación del centro Monell reseñada por Nature.",
+    "fuente": "Nature News (investigación del Monell Chemical Senses Center)",
+    "fuenteUrl": "https://www.nature.com/news/2005/050718/full/news050718-16.html"
+  },
+  {
+    "id": "zoo_042",
+    "tema": "Normatividad",
+    "texto": "La NOM-059-SEMARNAT-2010 clasifica a las especies nativas en riesgo en cuatro categorías: probablemente extinta en el medio silvestre (E), en peligro de extinción (P), amenazada (A) y sujeta a protección especial (Pr).",
+    "fuente": "DOF (NOM-059-SEMARNAT-2010)",
+    "fuenteUrl": "https://dof.gob.mx/normasOficiales/4254/semarnat/semarnat.htm"
+  },
+  {
+    "id": "zoo_043",
+    "tema": "Normatividad",
+    "texto": "En la NOM-059, una especie \"probablemente extinta en el medio silvestre\" (E) es nativa de México y ya no se encuentra en vida libre en el territorio nacional, pero sobreviven ejemplares en confinamiento o fuera del país.",
+    "fuente": "DOF (NOM-059-SEMARNAT-2010)",
+    "fuenteUrl": "https://dof.gob.mx/normasOficiales/4254/semarnat/semarnat.htm"
+  },
+  {
+    "id": "zoo_044",
+    "tema": "Normatividad",
+    "texto": "La Ley General de Vida Silvestre establece que las listas de especies en riesgo se revisan y, de ser necesario, se actualizan cada tres años, o antes si hay información suficiente para incluir, excluir o cambiar la categoría de una especie.",
+    "fuente": "Cámara de Diputados (Ley General de Vida Silvestre)",
+    "fuenteUrl": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+  },
+  {
+    "id": "zoo_045",
+    "tema": "Normatividad",
+    "texto": "CITES clasifica las especies en tres apéndices. El Apéndice I reúne a las amenazadas de extinción, como rinocerontes, tigres y tortugas marinas, y su comercio internacional con fines principalmente comerciales está prácticamente prohibido.",
+    "fuente": "U.S. Fish and Wildlife Service (CITES 101)",
+    "fuenteUrl": "https://www.fws.gov/sites/default/files/documents/2024-04/factsheet-cites-101-2024.pdf"
+  },
+  {
+    "id": "zoo_046",
+    "tema": "Normatividad",
+    "texto": "El texto de la Convención CITES se aprobó en Washington en 1973, con representantes de 80 países, y entró en vigor el 1 de julio de 1975, según el Servicio de Pesca y Vida Silvestre de Estados Unidos.",
+    "fuente": "U.S. Fish and Wildlife Service (CITES 101)",
+    "fuenteUrl": "https://www.fws.gov/sites/default/files/documents/2024-04/factsheet-cites-101-2024.pdf"
+  },
+  {
+    "id": "zoo_047",
+    "tema": "Normatividad",
+    "texto": "El Día Mundial de la Vida Silvestre se celebra cada 3 de marzo, fecha en que se firmó en 1973 la Convención CITES, según el sitio oficial de la Secretaría de CITES.",
+    "fuente": "Sitio oficial del Día Mundial de la Vida Silvestre (Secretaría de CITES / ONU)",
+    "fuenteUrl": "https://www.wildlifeday.org/en/about"
+  },
+  {
+    "id": "zoo_048",
+    "tema": "Normatividad",
+    "texto": "La Ley General de Vida Silvestre es de orden público e interés social y se publicó en el Diario Oficial de la Federación el 3 de julio de 2000. Regula la conservación y el aprovechamiento sustentable de la vida silvestre y su hábitat.",
+    "fuente": "Cámara de Diputados (Ley General de Vida Silvestre)",
+    "fuenteUrl": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+  },
+  {
+    "id": "zoo_049",
+    "tema": "Normatividad",
+    "texto": "La Ley General de Vida Silvestre establece que es deber de todos los habitantes del país conservar la vida silvestre y prohíbe cualquier acto que implique su destrucción, daño o perturbación.",
+    "fuente": "Cámara de Diputados (Ley General de Vida Silvestre)",
+    "fuenteUrl": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+  },
+  {
+    "id": "zoo_050",
+    "tema": "Normatividad",
+    "texto": "La Ley General de Vida Silvestre prohíbe estrictamente todo acto de crueldad contra la fauna silvestre y exige medidas de trato digno y respetuoso en su traslado, exhibición, cuarentena, comercialización y sacrificio.",
+    "fuente": "Cámara de Diputados (Ley General de Vida Silvestre)",
+    "fuenteUrl": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+  },
+  {
+    "id": "zoo_051",
+    "tema": "Normatividad",
+    "texto": "Las UMA, Unidades de Manejo para la Conservación de la Vida Silvestre, son predios e instalaciones registrados que operan con un plan de manejo aprobado y dan seguimiento permanente al hábitat y a las poblaciones o ejemplares.",
+    "fuente": "Cámara de Diputados (Ley General de Vida Silvestre)",
+    "fuenteUrl": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+  },
+  {
+    "id": "zoo_052",
+    "tema": "Normatividad",
+    "texto": "Según la Ley General de Vida Silvestre, los zoológicos, espectáculos públicos y colecciones privadas con fauna silvestre solo pueden operar con planes de manejo autorizados por la SEMARNAT y deben actualizar su registro cada año.",
+    "fuente": "Cámara de Diputados (Ley General de Vida Silvestre)",
+    "fuenteUrl": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+  },
+  {
+    "id": "zoo_053",
+    "tema": "Normatividad",
+    "texto": "El artículo 420 del Código Penal Federal castiga con uno a nueve años de prisión, y de 300 a 3,000 días multa, a quien trafique, capture, posea o transporte ilícitamente ejemplares de especies silvestres amenazadas, en peligro o reguladas por tratados internacionales.",
+    "fuente": "Cámara de Diputados (Código Penal Federal)",
+    "fuenteUrl": "https://www.diputados.gob.mx/LeyesBiblio/pdf/CPF.pdf"
+  },
+  {
+    "id": "zoo_054",
+    "tema": "Normatividad",
+    "texto": "Si se trata de la totoaba, sus partes o derivados, el artículo 420 del Código Penal Federal eleva la pena a cinco a quince años de prisión y de 3,000 a 6,000 días multa.",
+    "fuente": "Cámara de Diputados (Código Penal Federal)",
+    "fuenteUrl": "https://www.diputados.gob.mx/LeyesBiblio/pdf/CPF.pdf"
+  },
+  {
+    "id": "zoo_055",
+    "tema": "Conservación",
+    "texto": "La vaquita marina vive solo en el norte del Golfo de California. Se estimaban unas 600 en 1997 y, según NOAA, hoy quedan menos de 30; su mayor amenaza son las redes agalleras, sobre todo las ilegales para pescar totoaba.",
+    "fuente": "NOAA Fisheries",
+    "fuenteUrl": "https://www.fisheries.noaa.gov/species/vaquita",
+    "activo": false,
+    "revisar": true
+  },
+  {
+    "id": "zoo_056",
+    "tema": "Conservación",
+    "texto": "En 2015 un comité científico trinacional estimó que la mariposa monarca necesita unas 6 hectáreas de bosque ocupadas en México para una población viable. El mínimo fue de 0.67 hectáreas en 2013-2014, según la CONANP.",
+    "fuente": "CONANP (comunicado, 30 enero 2019)",
+    "fuenteUrl": "https://www.conanp.gob.mx/comunicados/MMENGLISH.pdf"
+  },
+  {
+    "id": "zoo_057",
+    "tema": "Conservación",
+    "texto": "El lobo mexicano estaba casi extinto en vida silvestre en los años setenta. Un programa de cría con siete fundadores permitió liberarlo desde 1998 y en 2022 se contaron al menos 241 lobos silvestres, según el Servicio de Pesca y Vida Silvestre de EE. UU.",
+    "fuente": "U.S. Fish and Wildlife Service",
+    "fuenteUrl": "https://www.fws.gov/story/2023-10/how-mexican-wolves-were-saved-extinction",
+    "activo": false,
+    "revisar": true
+  },
+  {
+    "id": "zoo_058",
+    "tema": "Conservación",
+    "texto": "En 1982 solo sobrevivían 23 cóndores de California. Hacia 1987 todos los silvestres estaban bajo cría en cautiverio y hoy la población supera los 500 ejemplares, según el Servicio de Pesca y Vida Silvestre de EE. UU.",
+    "fuente": "U.S. Fish and Wildlife Service",
+    "fuenteUrl": "https://www.fws.gov/species/california-condor-gymnogyps-californianus",
+    "activo": false,
+    "revisar": true
+  },
+  {
+    "id": "zoo_059",
+    "tema": "Conservación",
+    "texto": "La tortuga lora anida casi toda en Tamaulipas, México: ahí ocurre el 95% de su anidación mundial. En 1985 los nidos tocaron un mínimo de 702, y la protección logró que aumentaran cerca de 15% al año hasta 2009 (NOAA).",
+    "fuente": "NOAA Fisheries",
+    "fuenteUrl": "https://www.fisheries.noaa.gov/species/kemps-ridley-turtle"
+  },
+  {
+    "id": "zoo_060",
+    "tema": "Conservación",
+    "texto": "La ballena gris del Pacífico Norte oriental salió de la lista estadounidense de especies en peligro en 1994. Cada año migra unas 10,000 millas (unos 16,000 km) ida y vuelta hasta las lagunas de Baja California, donde pare.",
+    "fuente": "NOAA Fisheries",
+    "fuenteUrl": "https://www.fisheries.noaa.gov/species/gray-whale"
+  },
+  {
+    "id": "zoo_061",
+    "tema": "Conservación",
+    "texto": "La tortuga carey es la única tortuga marina que puede vivir sobre todo de esponjas. La caza de su caparazón para hacer objetos de carey casi la extingue y CITES prohíbe hoy su comercio internacional (NOAA).",
+    "fuente": "NOAA Fisheries",
+    "fuenteUrl": "https://www.fisheries.noaa.gov/species/hawksbill-turtle"
+  },
+  {
+    "id": "zoo_062",
+    "tema": "Conservación",
+    "texto": "El Segundo Censo Nacional del Jaguar (2018) estimó unos 4,800 jaguares silvestres en México, 800 más que en 2010, según la CONANP. Se usaron 396 cámaras trampa en 11 sitios del país.",
+    "fuente": "CONANP (gob.mx)",
+    "fuenteUrl": "https://www.gob.mx/conanp/prensa/aumenta-la-poblacion-de-jaguar-en-mexico"
+  },
+  {
+    "id": "zoo_063",
+    "tema": "Conservación",
+    "texto": "El bisonte americano fue exterminado en México en la segunda mitad del siglo XIX. En 2020, 19 bisontes de la Reserva de la Biosfera Janos, en Chihuahua, formaron en Coahuila la segunda manada de conservación del país (CONANP).",
+    "fuente": "CONANP (gob.mx)",
+    "fuenteUrl": "https://www.gob.mx/conanp/prensa/bisonte-americano-es-reintroducido-exitosamente-en-el-norte-de-mexico"
+  },
+  {
+    "id": "zoo_064",
+    "tema": "Conservación",
+    "texto": "El manatí, que puede medir hasta tres metros, sobrevive en México sobre todo en Veracruz, la cuenca Grijalva-Usumacinta y el Caribe de Quintana Roo. La NOM-059 lo cataloga en peligro de extinción, según la CONANP.",
+    "fuente": "CONANP (gob.mx)",
+    "fuenteUrl": "https://www.gob.mx/conanp/prensa/la-conanp-realiza-acciones-de-conservacion-del-manati?idiom=es-MX"
+  }
 ]

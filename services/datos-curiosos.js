@@ -13,7 +13,7 @@ const path = require('path');
 const { limpiarTexto, texto, urlHttps, aIso } = require('./texto');
 const { crearNotificacionGlobal } = require('./avisos');
 
-const RUTA_BANCO = path.join(__dirname, '..', 'data', 'datos-curiosos-banco.json');
+const RUTA_BANCO = process.env.DATOS_CURIOSOS_BANCO_RUTA || path.join(__dirname, '..', 'data', 'datos-curiosos-banco.json');
 const LARGO = Object.freeze({ min: 20, max: 300 });
 const DIAS_DE_ENVIO = Object.freeze([2, 5]); // 0 = domingo ... 2 = martes, 5 = viernes
 const ENLACE_AVISO = 'club-dashboard.html';
@@ -77,7 +77,7 @@ function leerBanco(ruta = RUTA_BANCO, { incluirPrueba = false } = {}) {
     const r = validarDato({ texto: e.texto, tema: e.tema, fuente: e.fuente, fuenteUrl: e.fuenteUrl });
     if (r.error) continue;
     ids.add(id);
-    validos.push({ id, fuente: '', fuenteUrl: '', ...r.datos, ...(e.prueba === true ? { prueba: true } : {}) });
+    validos.push({ id, fuente: '', fuenteUrl: '', ...r.datos, ...(e.prueba === true ? { prueba: true } : {}), ...(e.activo === false ? { activo: false } : {}) });
   }
   return validos;
 }
@@ -92,7 +92,8 @@ async function sembrarSiVacia(db, { banco, ahora = new Date(), incluirPrueba = f
   for (const d of lista) {
     lote.set(db.collection('datosCuriosos').doc(d.id), {
       texto: d.texto, tema: d.tema, fuente: d.fuente || '', fuenteUrl: d.fuenteUrl || '',
-      activo: true, veces: 0, ultimoEnvio: null, origen: 'base', creadoEn: ahora
+      // Los datos marcados activo:false (pendientes de revisión de un especialista) se siembran en pausa y no se envían.
+      activo: d.activo !== false, veces: 0, ultimoEnvio: null, origen: 'base', creadoEn: ahora
     });
   }
   await lote.commit();

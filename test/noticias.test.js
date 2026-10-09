@@ -1,4 +1,6 @@
 'use strict';
+// Estas pruebas cuentan con cuatro fuentes conocidas: usan una lista de prueba, no la lista real de data/.
+process.env.NOTICIAS_FUENTES_RUTA = require('node:path').join(__dirname, 'fixtures', 'noticias-fuentes-prueba.json');
 
 // Noticias del sector: lector RSS/Atom, filtros, extracto, sincronización (sin internet), limpieza y noticias del equipo.
 const test = require('node:test');
@@ -154,14 +156,24 @@ test('idDeLink: determinista, ignora parámetros de seguimiento, mayúsculas del
 });
 
 // ── Fuentes ──
-test('data/noticias-fuentes.json es válido y trae las fuentes de partida', () => {
+test('la lista de prueba es válida', () => {
   const f = N.leerFuentes();
-  assert.ok(f.length >= 4);
+  assert.equal(f.length, 4);
   assert.deepEqual(f.map(x => x.id).slice(0, 3), ['mongabay-latam', 'dw-ambiente', 'natgeo-animales']);
-  for (const x of f) {
+});
+
+test('data/noticias-fuentes.json (la lista REAL): https, ids únicos, categorías conocidas y sin medios que prohíben reutilizar', () => {
+  const real = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'noticias-fuentes.json'), 'utf8'));
+  assert.ok(real.length >= 5);
+  const ids = new Set();
+  for (const x of real) {
     assert.match(x.url, /^https:\/\//);
     assert.ok(N.CATEGORIAS[x.categoria], x.id);
+    assert.ok(!ids.has(x.id), 'id repetido ' + x.id);
+    ids.add(x.id);
+    assert.ok(!x.restringida, x.id + ' está marcada como restringida');
   }
+  for (const prohibido of ['animals-health', 'ecoticias', 'noticias-onu-clima']) assert.ok(!ids.has(prohibido), prohibido + ' prohíbe reproducir sin permiso');
 });
 
 test('leerFuentes descarta lo inválido (http, categoría desconocida, repetidos) y no lanza con archivo roto', () => {

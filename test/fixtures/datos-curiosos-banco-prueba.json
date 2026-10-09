@@ -1,0 +1,8 @@
+[
+  { "id": "prueba-01", "prueba": true, "tema": "Abejas", "texto": "[PRUEBA] Una abeja obrera visita cientos de flores en un solo viaje de recolección.", "fuente": "Dato de prueba (reemplazar por el banco verificado)", "fuenteUrl": "" },
+  { "id": "prueba-02", "prueba": true, "tema": "Tortugas marinas", "texto": "[PRUEBA] Las tortugas marinas regresan a desovar a las playas donde nacieron.", "fuente": "Dato de prueba (reemplazar por el banco verificado)", "fuenteUrl": "" },
+  { "id": "prueba-03", "prueba": true, "tema": "Murciélagos", "texto": "[PRUEBA] Muchos murciélagos polinizan plantas y dispersan semillas durante la noche.", "fuente": "Dato de prueba (reemplazar por el banco verificado)", "fuenteUrl": "" },
+  { "id": "prueba-04", "prueba": true, "tema": "Jaguar", "texto": "[PRUEBA] El jaguar es el felino más grande de América y vive en selvas y humedales.", "fuente": "Dato de prueba (reemplazar por el banco verificado)", "fuenteUrl": "" },
+  { "id": "prueba-05", "prueba": true, "tema": "Manglares", "texto": "[PRUEBA] Los manglares sirven de criadero a peces jóvenes y protegen la costa de las tormentas.", "fuente": "Dato de prueba (reemplazar por el banco verificado)", "fuenteUrl": "" },
+  { "id": "prueba-06", "prueba": true, "tema": "Mariposa monarca", "texto": "[PRUEBA] La mariposa monarca migra miles de kilómetros desde Norteamérica hasta los bosques de México.", "fuente": "Dato de prueba (reemplazar por el banco verificado)", "fuenteUrl": "" }
+]

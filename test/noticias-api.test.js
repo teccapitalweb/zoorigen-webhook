@@ -1,4 +1,8 @@
 'use strict';
+// Estas pruebas usan un banco de prueba de 6 datos, no el banco real de data/.
+process.env.DATOS_CURIOSOS_BANCO_RUTA = require('node:path').join(__dirname, 'fixtures', 'datos-curiosos-banco-prueba.json');
+// Estas pruebas cuentan con cuatro fuentes conocidas: usan una lista de prueba, no la lista real de data/.
+process.env.NOTICIAS_FUENTES_RUTA = require('node:path').join(__dirname, 'fixtures', 'noticias-fuentes-prueba.json');
 
 // Endpoints de noticias, datos curiosos y avisos: seguridad (401 / 403 / 400), contrato de respuestas y tarea manual.
 const test = require('node:test');

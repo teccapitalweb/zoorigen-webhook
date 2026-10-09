@@ -1,4 +1,6 @@
 'use strict';
+// Estas pruebas usan un banco de prueba de 6 datos, no el banco real de data/.
+process.env.DATOS_CURIOSOS_BANCO_RUTA = require('node:path').join(__dirname, 'fixtures', 'datos-curiosos-banco-prueba.json');
 
 // Tarea diaria: cálculo de la próxima 13:00 UTC, pasos aislados, aviso de noticias y programador sin timers abiertos.
 const test = require('node:test');

@@ -1,4 +1,6 @@
 'use strict';
+// Estas pruebas usan un banco de prueba de 6 datos, no el banco real de data/.
+process.env.DATOS_CURIOSOS_BANCO_RUTA = require('node:path').join(__dirname, 'fixtures', 'datos-curiosos-banco-prueba.json');
 
 // Datos curiosos: banco, siembra, elección, días de envío (martes y viernes, hora de México) e idempotencia.
 const test = require('node:test');
@@ -224,4 +226,22 @@ test('crearDato siembra primero el banco si la colección estaba vacía (así el
   // el banco real aún no llega: con datos de prueba solo se siembra a petición, pero el orden es: sembrar -> crear
   await D.crearDato(db, { texto: texto(1), tema: 'Tema' }, { ahora: VIERNES });
   assert.equal((await D.listarDatos(db)).length, 1);
+});
+
+test('el banco REAL (data/datos-curiosos-banco.json): datos válidos con fuente, sin repetidos, y los pendientes de revisión van en pausa', () => {
+  const real = JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'data', 'datos-curiosos-banco.json'), 'utf8'));
+  assert.ok(real.length >= 60, 'hay al menos 60 datos');
+  const ids = new Set(); const textos = new Set();
+  for (const e of real) {
+    assert.ok(!ids.has(e.id), 'id repetido ' + e.id); ids.add(e.id);
+    assert.ok(!textos.has(e.texto), 'texto repetido ' + e.id); textos.add(e.texto);
+    assert.ok(e.fuente && e.fuente.length >= 3, e.id + ' sin fuente');
+    assert.ok(!e.prueba, e.id + ' marcado como prueba');
+    assert.ok(!/[\u{1F300}-\u{1FAFF}☀-➿]/u.test(e.texto), e.id + ' trae emoji');
+    if (e.fuenteUrl) assert.match(e.fuenteUrl, /^https?:\/\//);
+    const r = D.validarDato({ texto: e.texto, tema: e.tema, fuente: e.fuente, fuenteUrl: e.fuenteUrl.startsWith('https://') ? e.fuenteUrl : '' });
+    assert.ok(!r.error, e.id + ': ' + r.error);
+    if (e.revisar) assert.equal(e.activo, false, e.id + ' pendiente de revisión debe ir en pausa');
+  }
+  assert.ok(real.filter(e => e.activo !== false).length >= 50, 'al menos 50 datos activos');
 });
