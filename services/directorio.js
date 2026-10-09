@@ -2,11 +2,11 @@
 
 // ══ DIRECTORIO DE LA COMUNIDAD (reglas puras) ══
 // Cada miembro puede tener UNA tarjeta profesional (directorio/{uid}, solo del servidor). Todo lo que
-// llega del navegador se valida (tipo, largo, forma) y se escapa antes de guardarse.
+// llega del navegador se valida (tipo, largo, forma) y se limpia de caracteres de control.
 //
-// Los textos se guardan YA ESCAPADOS (& < > " ' pasan a entidades HTML): el sitio puede ponerlos con
-// innerHTML sin riesgo, pero NO debe volver a escaparlos (saldría "&amp;lt;"). Los enlaces y el correo
-// no se escapan: se validan con una forma estricta y se guardan normalizados.
+// Los textos se guardan TAL CUAL (sin convertir < > & a entidades): quien los muestre es el responsable de
+// ESCAPARLOS al dibujarlos (el sitio lo hace). Así un nombre como "D'Angelo & Hijos" se ve bien y no depende
+// de que nadie recuerde "no volver a escapar". Los enlaces y el correo se validan con una forma estricta.
 
 const LIMITES = Object.freeze({ nombre: 80, profesion: 80, sector: 60, ciudad: 80, bio: 400, email: 120, url: 200 });
 const MAX_TARJETAS = 300;
@@ -95,8 +95,8 @@ function validarTarjeta(cuerpo) {
 
   return {
     tarjeta: {
-      nombre: escaparHtml(nombre.valor), profesion: escaparHtml(campos.profesion), sector: escaparHtml(campos.sector),
-      ciudad: escaparHtml(campos.ciudad), bio: escaparHtml(campos.bio), contacto
+      nombre: nombre.valor, profesion: campos.profesion, sector: campos.sector,
+      ciudad: campos.ciudad, bio: campos.bio, contacto
     }
   };
 }
@@ -116,8 +116,8 @@ const plano = t => String(t == null ? '' : t).normalize('NFD').replace(/[̀-ͯ]/
 
 // Filtra por sector (igual, sin importar mayúsculas ni acentos) y por texto libre
 function filtrar(tarjetas, { sector = '', q = '' } = {}) {
-  const sec = plano(escaparHtml(String(sector).trim()));
-  const texto = plano(escaparHtml(String(q).trim()));
+  const sec = plano(String(sector).trim());
+  const texto = plano(String(q).trim());
   return tarjetas.filter(t => {
     if (sec && plano(t.sector) !== sec) return false;
     if (!texto) return true;

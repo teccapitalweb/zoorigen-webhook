@@ -94,7 +94,7 @@ leerlas ni escribirlas. Hay que publicar el servidor, no las reglas.
 | `referidos/{uidInvitado}` | `anfitrionUid, codigo, deviceId, huella, ip, ua, creadoEn, estado, motivo, hitos` |
 | `dispositivosAnfitrion/{uid}` | `ids, huellas, combos` (huella\|ip) de los dispositivos del anfitrión (últimos 20) |
 | `codigosReferido/{CODIGO}` | `{ uid }`: para encontrar al anfitrión por su código sin recorrer `miembros` |
-| `directorio/{uid}` | La tarjeta profesional (ya validada y escapada) |
+| `directorio/{uid}` | La tarjeta profesional (validada; el texto va tal cual y el sitio lo escapa al mostrarlo) |
 
 Consultas que usa y que Firestore resuelve sin índices compuestos: `certificados where memberUid==`, `foroPosts where authorUid==`,
 `referidos where anfitrionUid==`, `premiosUsuario where xpTotal> orderBy xpTotal` (+ `count()`), `directorio orderBy actualizado`
@@ -224,7 +224,7 @@ no se detecta (aunque necesita una cuenta distinta con correo confirmado). La IP
 `GET /api/directorio?sector=&q=` → `{ ok, membresia, tarjetas:[{uid,nombre,profesion,sector,ciudad,bio,contacto:{whatsapp,email,linkedin,web,instagram},actualizado}], mia }` (hasta 300, la más reciente primero; filtros sin importar acentos).
 Sin membresía: `membresia:false` y 3 tarjetas ficticias. `POST /api/directorio` (crea o reemplaza la tarjeta propia; requiere membresía; 20 cambios por minuto) y `DELETE /api/directorio` (borra la propia, también sin membresía).
 Límites: nombre 2-80, profesión 80, sector 60, ciudad 80, bio 400, correo 120, enlaces 200 (http/https, sin usuario:clave; LinkedIn solo de linkedin.com), WhatsApp 8-15 dígitos, Instagram usuario. Los campos extra se ignoran.
-**Los textos se guardan ya escapados** (`&lt;`, `&amp;`...): el sitio los puede poner con `innerHTML` pero no debe volver a escaparlos.
+**Los textos se guardan tal cual** (sin convertir a entidades): quien los muestre debe ESCAPARLOS al dibujarlos (el sitio de Zoorigen lo hace). Nunca los pongas con innerHTML sin escapar.
 
 ### Qué tan confiable es cada fuente de XP
 

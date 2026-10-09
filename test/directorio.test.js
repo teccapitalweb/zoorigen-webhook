@@ -15,14 +15,14 @@ test('escape de HTML: & < > " \' y ` pasan a entidades', () => {
   assert.equal(D.escaparHtml(5), '5');
 });
 
-test('tarjeta válida: se limpian espacios y caracteres invisibles, se escapa el texto y se normaliza el contacto', () => {
+test('tarjeta válida: se limpian espacios y caracteres invisibles, se guarda el texto tal cual y se normaliza el contacto', () => {
   const r = D.validarTarjeta({
     nombre: '  Ana   <b>Pérez</b>  ', profesion: 'Bióloga​', sector: 'Conservación', ciudad: 'Mérida, Yuc.', bio: 'Línea 1\r\n\r\n\r\n\r\nLínea 2\u0000‮ fin',
     contacto: { whatsapp: '+52 (55) 1234-5678', email: ' ana@example.com ', web: 'zoorigen.com/club?x=1', linkedin: 'https://www.linkedin.com/in/ana', instagram: '@ana_p' }
   });
   assert.equal(r.error, undefined);
   assert.deepEqual(r.tarjeta, {
-    nombre: 'Ana &lt;b&gt;Pérez&lt;/b&gt;', profesion: 'Bióloga', sector: 'Conservación', ciudad: 'Mérida, Yuc.', bio: 'Línea 1\n\nLínea 2 fin',
+    nombre: 'Ana <b>Pérez</b>', profesion: 'Bióloga', sector: 'Conservación', ciudad: 'Mérida, Yuc.', bio: 'Línea 1\n\nLínea 2 fin',
     contacto: { whatsapp: '525512345678', email: 'ana@example.com', linkedin: 'https://www.linkedin.com/in/ana', web: 'https://zoorigen.com/club?x=1', instagram: 'ana_p' }
   });
 });
@@ -63,7 +63,7 @@ test('tarjeta: los campos extra que mande el navegador se ignoran', () => {
 test('filtros: por sector exacto y por texto sin importar mayúsculas ni acentos', () => {
   const t = [
     { uid: 'a', nombre: 'María Pérez', profesion: 'Bióloga', sector: 'Conservación', ciudad: 'Mérida', bio: '' },
-    { uid: 'b', nombre: 'Luis Gómez', profesion: 'Veterinario', sector: 'Medicina veterinaria', ciudad: 'León', bio: 'Fauna exótica y &quot;rescate&quot;' }
+    { uid: 'b', nombre: 'Luis Gómez', profesion: 'Veterinario', sector: 'Medicina veterinaria', ciudad: 'León', bio: 'Fauna exótica y "rescate"' }
   ];
   const ids = f => D.filtrar(t, f).map(x => x.uid);
   assert.deepEqual(ids({}), ['a', 'b']);
@@ -74,7 +74,7 @@ test('filtros: por sector exacto y por texto sin importar mayúsculas ni acentos
   assert.deepEqual(ids({ q: 'LEON' }), ['b']);
   assert.deepEqual(ids({ q: 'bióloga' }), ['a']);
   assert.deepEqual(ids({ q: 'rescate' }), ['b']);
-  assert.deepEqual(ids({ q: '"rescate"' }), ['b'], 'se busca igual que se guarda (escapado)');
+  assert.deepEqual(ids({ q: '"rescate"' }), ['b'], 'se busca sobre el texto tal cual se guardó');
   assert.deepEqual(ids({ q: 'nada', sector: 'Conservación' }), []);
   assert.deepEqual(ids({ q: '   ' }), ['a', 'b']);
 });
@@ -195,7 +195,7 @@ test('POST: 400 con datos inválidos y no se guarda nada', async () => {
   assert.equal(db.value('directorio/ana'), undefined);
 });
 
-test('POST: crea la tarjeta propia, devuelve la tarjeta guardada y escapa el HTML', async () => {
+test('POST: crea la tarjeta propia, devuelve la tarjeta guardada con el texto tal cual (el sitio lo escapa)', async () => {
   const { app, db } = cargarServidor({ tokens, seed: baseSeed() });
   const res = await guardar(app, {
     nombre: 'Ana <script>alert(1)</script> Pérez', profesion: '<img src=x onerror=alert(1)>', sector: 'Conservación', ciudad: 'Mérida', bio: 'Hola "mundo" & \'amigos\'',
@@ -207,10 +207,9 @@ test('POST: crea la tarjeta propia, devuelve la tarjeta guardada y escapa el HTM
   const guardado = db.value('directorio/ana');
   assert.equal(guardado.uid, 'ana');
   assert.ok(guardado.actualizado);
-  const texto = JSON.stringify(guardado);
-  assert.ok(!texto.includes('<script') && !texto.includes('<img') && !/[<>]/.test(guardado.nombre + guardado.profesion + guardado.bio));
-  assert.equal(guardado.nombre, 'Ana &lt;script&gt;alert(1)&lt;/script&gt; Pérez');
-  assert.equal(guardado.bio, 'Hola &quot;mundo&quot; &amp; &#39;amigos&#39;');
+  // El texto se guarda TAL CUAL: el sitio es quien lo escapa al mostrarlo (así 'D'Angelo & Hijos' se ve bien)
+  assert.equal(guardado.nombre, 'Ana <script>alert(1)</script> Pérez');
+  assert.equal(guardado.bio, `Hola "mundo" & 'amigos'`);
   assert.equal((await ver(app)).body.mia.nombre, guardado.nombre);
 });
 
