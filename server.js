@@ -9,6 +9,7 @@ const Stripe = require('stripe');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
 const bunnyCatalog = require('./data/zoorigen-bunny-catalog.json');
+const pruebaGratuita = require('./services/prueba-gratuita');
 
 // ── Config ──────────────────────────────────────────────
 const rawKey = (process.env.STRIPE_SECRET_KEY || '').trim().replace(/^["']|["']$/g, '');
@@ -406,20 +407,24 @@ function tieneAccesoVigente(data = {}) {
 // ── Índice de videos desde Firestore (caché en memoria) ──
 // conocidos: videoId de cualquier lección de `cursos`.
 // gratis: videoId de lecciones con gratis === true dentro de un curso con cursoMuestraGratis === true.
-let indiceVideos = null;         // último índice leído con éxito: { conocidos, gratis, cargadoEn }
+// cursos: por cada curso, la lista ORDENADA de videoIds y qué clases libera la prueba gratuita
+//   (ver services/prueba-gratuita.js). elegibles / porDefectoId salen de ese mapa.
+let indiceVideos = null;         // último índice leído con éxito: { conocidos, gratis, cursos, ..., cargadoEn }
 let ultimaLecturaVideos = 0;     // momento del último intento de lectura (éxito o fallo)
 let lecturaVideosEnCurso = null; // evita lecturas simultáneas duplicadas
 
 function indiceVacio() {
-  return { conocidos: new Set(), gratis: new Set(), cargadoEn: 0 };
+  return { conocidos: new Set(), gratis: new Set(), cursos: new Map(), elegibles: [], porDefectoId: null, cargadoEn: 0 };
 }
 
 async function leerIndiceVideosDeFirestore() {
   const snapshot = await db.collection('cursos').get();
   const conocidos = new Set();
   const gratis = new Set();
+  const cursos = new Map();
   for (const doc of snapshot.docs) {
     const curso = doc.data() || {};
+    cursos.set(doc.id, pruebaGratuita.resumirCurso(curso, id => BUNNY_FREE_VIDEO_IDS.has(id)));
     if (!Array.isArray(curso.lecciones)) continue;
     for (const leccion of curso.lecciones) {
       const id = leccion && typeof leccion.videoId === 'string' ? leccion.videoId.trim() : '';
@@ -429,7 +434,8 @@ async function leerIndiceVideosDeFirestore() {
       if (curso.cursoMuestraGratis === true && leccion.gratis === true) gratis.add(id);
     }
   }
-  return { conocidos, gratis, cargadoEn: Date.now() };
+  const { elegibles, porDefectoId } = pruebaGratuita.resumenDeCursos(cursos, id => BUNNY_FREE_VIDEO_IDS.has(id));
+  return { conocidos, gratis, cursos, elegibles, porDefectoId, cargadoEn: Date.now() };
 }
 
 // Devuelve siempre un índice (vacío si Firestore nunca respondió): jamás lanza, para que un
@@ -460,12 +466,131 @@ async function videoEsConocido(videoId) {
   return (await obtenerIndiceVideos({ forzar: true })).conocidos.has(videoId);
 }
 
-async function videoEsGratis(videoId, { refrescar = false } = {}) {
-  if (BUNNY_FREE_VIDEO_IDS.has(videoId)) return true;
+// `incluirFija: false` quita solo el video gratis fijo de siempre (para quien debe elegir su prueba
+// o ya eligió); las clases marcadas gratis desde el panel no cambian.
+async function videoEsGratis(videoId, { refrescar = false, incluirFija = true } = {}) {
+  if (incluirFija && BUNNY_FREE_VIDEO_IDS.has(videoId)) return true;
   if ((await obtenerIndiceVideos()).gratis.has(videoId)) return true;
   if (!refrescar) return false;
   return (await obtenerIndiceVideos({ forzar: true })).gratis.has(videoId);
 }
+
+// ── Prueba gratuita: un curso a elección ──
+// Quien nunca ha pagado elige UN curso; todas sus clases menos la última son gratis. La elección
+// vive en `pruebasGratuitas/{uid}`, una colección que solo escribe este servidor (las reglas de
+// Firestore niegan lo que no listan, así que el navegador no puede crearla ni cambiarla).
+// Las reglas puras están en services/prueba-gratuita.js.
+function errorHttp(status, mensaje) {
+  return Object.assign(new Error(mensaje), { status });
+}
+
+// Mismo cálculo de siempre: acceso vigente en `miembros` o en el documento legado `usuarios`.
+function tienePlanVigente(miembroDoc, usuarioDoc) {
+  return Boolean((miembroDoc.exists && tieneAccesoVigente(miembroDoc.data())) ||
+    (usuarioDoc.exists && tieneAccesoVigente(usuarioDoc.data())));
+}
+
+async function leerEleccionPrueba(uid) {
+  const snap = await db.collection('pruebasGratuitas').doc(uid).get();
+  const cursoId = snap.exists && snap.data() ? snap.data().cursoId : null;
+  return typeof cursoId === 'string' && cursoId ? cursoId : null;
+}
+
+// Para quien NO es admin ni tiene plan: ¿la prueba le abre este video?, ¿se le quita la clase gratis fija?
+// Si algo falla aquí no se concede nada extra y todo queda como antes de la prueba.
+async function reglasPruebaParaVideo(uid, videoId, miembroDoc, usuarioDoc) {
+  try {
+    const eleccion = await leerEleccionPrueba(uid);
+    if (eleccion) {
+      let curso = (await obtenerIndiceVideos()).cursos.get(eleccion);
+      if (!curso) curso = (await obtenerIndiceVideos({ forzar: true })).cursos.get(eleccion);
+      // La clase fija deja de ser gratis desde que elige; solo se abren las clases 1..n-1 de SU curso.
+      return { permite: Boolean(curso && curso.gratisPrueba.has(videoId)), quitaClaseFija: true };
+    }
+    const miembro = miembroDoc.exists ? miembroDoc.data() : null;
+    if (pruebaGratuita.nuncaHaTenidoPlan(miembro, usuarioDoc.exists ? usuarioDoc.data() : null)) {
+      // Todavía debe elegir: la clase fija ya no es gratis (si hay cursos que pueda elegir).
+      const indice = await obtenerIndiceVideos();
+      return { permite: false, quitaClaseFija: indice.elegibles.length > 0 };
+    }
+  } catch (error) {
+    console.error('[Prueba gratuita] No se pudo evaluar la prueba; queda como antes:', error);
+  }
+  return { permite: false, quitaClaseFija: false };
+}
+
+async function estadoPruebaGratuita(uid, indice) {
+  const [adminDoc, miembroDoc, usuarioDoc, eleccion] = await Promise.all([
+    db.collection('admins').doc(uid).get(),
+    db.collection('miembros').doc(uid).get(),
+    db.collection('usuarios').doc(uid).get(),
+    leerEleccionPrueba(uid)
+  ]);
+  return pruebaGratuita.evaluarPruebaGratuita({
+    miembro: miembroDoc.exists ? miembroDoc.data() : null,
+    usuario: usuarioDoc.exists ? usuarioDoc.data() : null,
+    esAdmin: esAdminPorDocumentos(adminDoc, miembroDoc),
+    tienePlan: tienePlanVigente(miembroDoc, usuarioDoc),
+    eleccion,
+    cursosElegibles: indice.elegibles
+  });
+}
+
+app.get('/api/prueba-gratuita', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    const decoded = await autenticarFirebase(req, res);
+    if (!decoded) return;
+    const indice = await obtenerIndiceVideos();
+    const estado = await estadoPruebaGratuita(decoded.uid, indice);
+    return res.json({
+      elegible: estado.elegible,
+      elegida: estado.elegida,
+      motivo: estado.motivo,
+      cursosElegibles: estado.elegible ? indice.elegibles : [],
+      cursoPorDefectoId: indice.porDefectoId
+    });
+  } catch (error) {
+    console.error('[Prueba gratuita] consulta:', error);
+    return res.status(500).json({ error: 'No se pudo consultar tu prueba gratuita' });
+  }
+});
+
+app.post('/api/prueba-gratuita', express.json(), async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    const decoded = await autenticarFirebase(req, res);
+    if (!decoded) return;
+    const cursoId = typeof req.body?.cursoId === 'string' ? req.body.cursoId.trim() : '';
+    if (!cursoId) return res.status(400).json({ error: 'Falta el curso que quieres elegir' });
+
+    // Al elegir se pide un índice fresco (limitado a una lectura cada 10 s) para no aceptar un curso ya retirado.
+    const indice = await obtenerIndiceVideos({ forzar: true });
+    if (!indice.cargadoEn) {
+      return res.status(503).json({ error: 'No pudimos cargar los cursos. Intenta de nuevo en un momento' });
+    }
+    const estado = await estadoPruebaGratuita(decoded.uid, indice);
+    if (!estado.elegible) {
+      return res.status(estado.codigo === 'ya-elegida' ? 409 : 403).json({ error: estado.motivo });
+    }
+    if (!indice.elegibles.includes(cursoId)) {
+      return res.status(400).json({ error: 'Ese curso no se puede elegir como prueba gratuita' });
+    }
+
+    // Transacción: si dos solicitudes llegan a la vez, solo la primera guarda; la otra ve la elección y recibe 409.
+    const ref = db.collection('pruebasGratuitas').doc(decoded.uid);
+    await db.runTransaction(async tx => {
+      const actual = await tx.get(ref);
+      if (actual.exists) throw errorHttp(409, pruebaGratuita.MOTIVOS_PRUEBA['ya-elegida']);
+      tx.set(ref, { uid: decoded.uid, cursoId, elegidoEn: admin.firestore.FieldValue.serverTimestamp() });
+    });
+    return res.json({ ok: true, cursoId });
+  } catch (error) {
+    if (error && error.status) return res.status(error.status).json({ error: error.message });
+    console.error('[Prueba gratuita] elección:', error);
+    return res.status(500).json({ error: 'No se pudo guardar tu prueba gratuita' });
+  }
+});
 
 // Reproductor privado: el navegador nunca recibe la clave secreta de Bunny.
 app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
@@ -497,10 +622,15 @@ app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
       db.collection('usuarios').doc(decoded.uid).get()
     ]);
     const esAdmin = esAdminPorDocumentos(adminDoc, miembroDoc);
-    const tienePlan = (miembroDoc.exists && tieneAccesoVigente(miembroDoc.data())) ||
-      (usuarioDoc.exists && tieneAccesoVigente(usuarioDoc.data()));
+    const tienePlan = tienePlanVigente(miembroDoc, usuarioDoc);
+    const sinAcceso = !esAdmin && !tienePlan;
+    // Prueba gratuita: solo se evalúa para quien no es admin ni tiene plan (a ellos no les cambia nada).
+    const prueba = sinAcceso
+      ? await reglasPruebaParaVideo(decoded.uid, videoId, miembroDoc, usuarioDoc)
+      : { permite: false, quitaClaseFija: false };
     // A quien ya tiene acceso no le hace falta forzar un refresco solo para saber si es gratis.
-    const esClaseGratis = await videoEsGratis(videoId, { refrescar: !esAdmin && !tienePlan });
+    const esClaseGratis = prueba.permite ||
+      await videoEsGratis(videoId, { refrescar: sinAcceso, incluirFija: !prueba.quitaClaseFija });
 
     if (!esClaseGratis && !esAdmin && !tienePlan) {
       return res.status(403).json({ error: 'Necesitas una membresía activa para ver esta clase' });

@@ -15,6 +15,8 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `POST /reactivate-subscription` | Quita la cancelación programada | Token de Firebase |
 | `POST /api/bunny/embed-token` | Enlace firmado de video (5 min) | Token de Firebase + membresía |
 | `POST /api/referidos` | Invitados del miembro (solo nombre de pila) | Token de Firebase |
+| `GET /api/prueba-gratuita` | Si la persona puede elegir su prueba gratuita y qué cursos puede elegir | Token de Firebase |
+| `POST /api/prueba-gratuita` | Elige UN curso como prueba (`{ cursoId }`); no se puede cambiar | Token de Firebase |
 | `GET /api/admin/bunny-catalogo` | Colecciones y videos listos de Bunny, en vivo (solo lectura) | Token de Firebase + administrador |
 | `GET /` | Health check | — |
 
@@ -27,6 +29,36 @@ estático (`data/zoorigen-bunny-catalog.json`) o en alguna lección (`lecciones[
 lección no cuenta). El índice se guarda en memoria 60 s; si un video no aparece y el caché tiene más de 10 s se
 refresca una vez (nunca más de una lectura cada 10 s). Solo lee Firestore; si la lectura falla se registra el
 error y siguen funcionando el catálogo estático y el video gratis fijo.
+
+### Prueba gratuita de un curso a elección
+
+Aplica a quien **nunca ha tenido un plan** (miembros que jamás pagaron y miembros nuevos). No aplica a quien ya
+pagó alguna vez (activo, cancelado o vencido) ni a administradores. La persona elige UN curso, confirma y no
+puede cambiarlo. En ese curso **todas las clases son gratis menos la última** (la última del arreglo `lecciones`,
+sean 3 o 5); la última se desbloquea con la membresía.
+
+- `GET /api/prueba-gratuita` devuelve `{ elegible, elegida: null | { cursoId }, motivo, cursosElegibles, cursoPorDefectoId }`.
+- `POST /api/prueba-gratuita` con `{ cursoId }`: 200 `{ ok, cursoId }`; 400 curso inválido o no elegible;
+  403 la persona no es elegible (el `error` trae el motivo); 409 `Ya elegiste tu prueba gratuita y no se puede cambiar`
+  (la elección se guarda en una transacción, así que dos solicitudes a la vez guardan solo una).
+- Un curso es elegible si existe en `cursos`, tiene 2 o más lecciones, **todas** con `videoId` UUID de Bunny (los de
+  Drive no se pueden proteger), no es `disponibleSiempre` y no es el curso por defecto (el que trae el video gratis
+  fijo `befd1641…` o tiene `cursoMuestraGratis: true`).
+- "Nunca ha tenido plan" es `nuncaHaTenidoPlan` en `services/prueba-gratuita.js`: ninguna señal de plan en
+  `miembros` ni en `usuarios` (`planVence`/`fechaExpiracion`, `planInicio`, `ultimoPago`, `stripeSubscriptionId`,
+  `planTipo`, `activadoManualmente`, `shopifyOrderId`, `planActivo`, un `planStatus` real, cancelación...). `stripeCustomerId`
+  **no** cuenta: Stripe lo crea al abrir el pago aunque nunca se complete.
+- `/api/bunny/embed-token`: quien no es admin ni tiene plan y eligió un curso abre solo las clases 1..n-1 de ese
+  curso (`freePreview: true`); la última y los demás cursos responden 403 como siempre. Mientras la persona sea
+  elegible (nunca pagó y hay cursos que elegir) o ya haya elegido, el video gratis fijo deja de ser gratis para ella;
+  para quien pagó antes y no tiene plan sigue gratis como hoy. Las clases marcadas gratis en el panel
+  (`cursoMuestraGratis` + `gratis`) no cambian para nadie. Miembros con plan vigente y administradores no pasan por
+  esta lógica (ni siquiera se lee la colección nueva).
+- Si Firestore falla, la prueba no concede nada extra y lo demás queda como antes.
+- **Colección `pruebasGratuitas/{uid}`** = `{ uid, cursoId, elegidoEn }`. La escribe solo este servidor (Admin SDK).
+  Las reglas de Firestore niegan todo lo que no listan (catch-all `match /{document=**} { allow read, write: if false }`),
+  así que el navegador no puede leerla ni crearla; por eso la elección **no** se guarda en `miembros`, donde el dueño
+  de la cuenta sí puede escribir campos. No hace falta tocar las reglas para publicar esto.
 
 ## Variables de entorno (Railway)
 

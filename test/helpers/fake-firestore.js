@@ -42,12 +42,16 @@ class FakeDocumentReference {
     const current = this._db._data.get(this.path);
     const next = options && options.merge ? { ...(current || {}), ...clone(value) } : clone(value);
     this._db._data.set(this.path, next);
+    this._db._versiones.set(this.path, this._db._version(this.path) + 1);
   }
   async update(value) {
     if (!this._db._data.has(this.path)) throw new Error(`missing document ${this.path}`);
     await this.set(value, { merge: true });
   }
-  async delete() { this._db._data.delete(this.path); }
+  async delete() {
+    this._db._data.delete(this.path);
+    this._db._versiones.set(this.path, this._db._version(this.path) + 1);
+  }
 }
 
 class FakeQuery {
@@ -87,6 +91,28 @@ class FakeCollectionReference extends FakeQuery {
 class FakeFirestore {
   constructor(seed = {}) {
     this._data = new Map(Object.entries(seed).map(([path, value]) => [path, clone(value)]));
+    this._versiones = new Map(); // cuántas veces cambió cada documento (para las transacciones)
+  }
+  _version(path) { return this._versiones.get(path) || 0; }
+  // Transacción optimista como la de Firestore: si un documento leído cambió antes de confirmar,
+  // se reintenta toda la función. Las escrituras se aplican juntas y sin await entre la
+  // comprobación y la aplicación, así dos transacciones simultáneas nunca pisan la misma lectura.
+  async runTransaction(fn, { intentos = 5 } = {}) {
+    for (let intento = 0; intento < intentos; intento++) {
+      const leidos = new Map();
+      const pendientes = [];
+      const tx = {
+        get: async ref => { leidos.set(ref.path, this._version(ref.path)); return ref.get(); },
+        set: (ref, value, options) => { pendientes.push(() => ref.set(value, options)); return tx; },
+        update: (ref, value) => { pendientes.push(() => ref.update(value)); return tx; },
+        delete: ref => { pendientes.push(() => ref.delete()); return tx; }
+      };
+      const resultado = await fn(tx);
+      if ([...leidos].some(([path, version]) => this._version(path) !== version)) continue;
+      for (const aplicar of pendientes) aplicar(); // cada set/delete cambia el Map de inmediato (sin esperar)
+      return resultado;
+    }
+    throw new Error('Transacción abortada por contención');
   }
   collection(name) { return new FakeCollectionReference(this, name); }
   batch() {
