@@ -28,12 +28,13 @@ function permitirSolicitud(mapa, clave, ventanaMs, maximo) {
 
 function montarRutasClub(app, deps) {
   const {
-    express, db, admin, autenticarFirebase, esAdminPorDocumentos, tienePlanVigente,
+    express, db, auth, admin, autenticarFirebase, esAdminPorDocumentos, tienePlanVigente,
     obtenerIndiceVideos, leerEleccionPrueba, errorHttp
   } = deps;
   const FieldValue = admin.firestore.FieldValue;
 
-  const limites = { lecturas: new Map(), retos: new Map(), premios: new Map() };
+  const limites = { lecturas: new Map(), retos: new Map(), premios: new Map(), referidos: new Map() };
+  const REGISTROS_POR_MINUTO = 10;
   const LECTURAS_POR_MINUTO = 60;
   const RETOS_POR_MINUTO = 60;       // contrato: 60 solicitudes por minuto por usuario
   const CANJES_POR_MINUTO = 10;
@@ -127,9 +128,127 @@ function montarRutasClub(app, deps) {
     };
   }
 
-  // ── Referidos: se completa en el bloque de referidos (por ahora, sin invitados) ──
-  async function resumenReferidos(/* uid */) {
-    return { validos: 0, xp: 0 };
+  // ── Referidos ──
+  // referidos/{uidInvitado}, dispositivosAnfitrion/{uid} y codigosReferido/{CODIGO}: solo del servidor.
+  const MAX_INVITADOS_LEIDOS = 200;
+  const ESTADOS = referidos.ESTADOS;
+
+  async function leerUsuariosAuth(uids) {
+    const mapa = new Map();
+    for (let i = 0; i < uids.length; i += 100) {
+      try {
+        const r = await auth.getUsers(uids.slice(i, i + 100).map(uid => ({ uid })));
+        for (const u of r.users || []) {
+          mapa.set(u.uid, { emailVerified: u.emailVerified === true, creationTime: u.metadata && u.metadata.creationTime });
+        }
+      } catch (error) {
+        console.error('[Club referidos] No se pudo consultar Firebase Auth:', error && error.message);
+      }
+    }
+    return mapa;
+  }
+
+  // Código -> uid del anfitrión. Primero el registro de códigos; si no está (códigos viejos que nadie
+  // ha abierto aún), busca el miembro cuyo id empieza con esas 6 letras (todas las combinaciones de
+  // mayúsculas y minúsculas) y deja el código registrado para la próxima.
+  async function buscarAnfitrion(codigo) {
+    const registro = await db.collection('codigosReferido').doc(codigo).get();
+    const uidRegistrado = registro.exists ? registro.data().uid : null;
+    if (typeof uidRegistrado === 'string' && uidRegistrado) {
+      if ((await db.collection('miembros').doc(uidRegistrado).get()).exists) return uidRegistrado;
+    }
+    const id = admin.firestore.FieldPath.documentId();
+    const consultas = referidos.variantesDePrefijo(codigo).map(p =>
+      db.collection('miembros').where(id, '>=', p).where(id, '<', p + '\uf8ff').limit(1).get());
+    const encontrado = (await Promise.all(consultas)).flatMap(r => r.docs).find(d => referidos.codigoDeUid(d.id) === codigo);
+    if (!encontrado) return null;
+    await db.collection('codigosReferido').doc(codigo).set({ uid: encontrado.id, codigo, creadoEn: FieldValue.serverTimestamp() });
+    return encontrado.id;
+  }
+
+  async function asegurarCodigo(uid) {
+    const codigo = referidos.codigoDeUid(uid);
+    const ref = db.collection('codigosReferido').doc(codigo);
+    const actual = await ref.get();
+    if (!actual.exists) await ref.set({ uid, codigo, creadoEn: FieldValue.serverTimestamp() });
+    return codigo;
+  }
+
+  // Dispositivos conocidos del anfitrión: los que guardó al abrir su pantalla de referidos más el
+  // dispositivo con el que él mismo se registró como invitado (si lo hizo).
+  async function dispositivosDeAnfitrion(uid) {
+    const [guardado, propio] = await Promise.all([
+      db.collection('dispositivosAnfitrion').doc(uid).get(),
+      db.collection('referidos').doc(uid).get()
+    ]);
+    let disp = referidos.normalizarDispositivosAnfitrion(guardado.exists ? guardado.data() : null);
+    if (propio.exists) disp = referidos.agregarDispositivo(disp, propio.data());
+    return disp;
+  }
+
+  async function guardarDispositivoAnfitrion(uid, dispositivo) {
+    const ref = db.collection('dispositivosAnfitrion').doc(uid);
+    await db.runTransaction(async tx => {
+      const snap = await tx.get(ref);
+      const actual = snap.exists ? snap.data() : null;
+      const nuevo = referidos.agregarDispositivo(actual, dispositivo);
+      const previo = referidos.normalizarDispositivosAnfitrion(actual);
+      if (snap.exists && JSON.stringify(nuevo) === JSON.stringify(previo)) return;
+      tx.set(ref, { uid, ...nuevo, actualizadoEn: FieldValue.serverTimestamp() }, { merge: true });
+    });
+  }
+
+  const idDe = req => {
+    const v = req.get('x-device-id');
+    return typeof v === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(v.trim()) ? v.trim() : null;
+  };
+
+  // Pone al día los invitados de un anfitrión y los devuelve (del más antiguo al más nuevo):
+  //  · pendiente-correo -> valido (o rechazado) cuando Firebase Auth dice que ya confirmó su correo
+  //  · hitos (pagó, 5 retos, 15 retos) de los invitados válidos que suman XP; un hito logrado no se pierde
+  async function sincronizarInvitados(hostUid) {
+    const snap = await db.collection('referidos').where('anfitrionUid', '==', hostUid).limit(MAX_INVITADOS_LEIDOS).get();
+    const invitados = referidos.ordenarInvitados(snap.docs.map(d => ({ ...d.data(), uid: d.id })));
+    if (!invitados.length) return invitados;
+
+    const pendientes = invitados.filter(i => i.estado === ESTADOS.PENDIENTE);
+    if (pendientes.length) {
+      const dispositivos = await dispositivosDeAnfitrion(hostUid);
+      const verificados = await leerUsuariosAuth(pendientes.map(i => i.uid));
+      for (const i of pendientes) {
+        const info = verificados.get(i.uid);
+        if (!info || !info.emailVerified) continue;
+        const motivo = referidos.evaluarDispositivo({ ...i, anfitrionUid: hostUid }, dispositivos, invitados);
+        const cambios = motivo ? { estado: ESTADOS.RECHAZADO, motivo: referidos.MOTIVOS[motivo] } : { estado: ESTADOS.VALIDO, motivo: null };
+        await db.collection('referidos').doc(i.uid).set(cambios, { merge: true });
+        Object.assign(i, cambios);
+      }
+    }
+
+    // Hitos: solo los primeros invitados válidos que suman XP
+    const conXp = invitados.filter(i => i.estado === ESTADOS.VALIDO).slice(0, referidos.MAX_INVITADOS_CON_XP);
+    if (conXp.length) {
+      const refs = conXp.flatMap(i => [
+        db.collection('miembros').doc(i.uid), db.collection('usuarios').doc(i.uid), db.collection('retosUsuario').doc(i.uid)
+      ]);
+      const docs = await db.getAll(...refs);
+      for (const [n, i] of conXp.entries()) {
+        const [miembroDoc, usuarioDoc, retosDoc] = docs.slice(n * 3, n * 3 + 3);
+        const pago = referidos.invitadoPago(
+          miembroDoc.exists ? miembroDoc.data() : null, usuarioDoc.exists ? usuarioDoc.data() : null, tienePlanVigente(miembroDoc, usuarioDoc));
+        const retosSuperados = retos.normalizarEstado(retosDoc.exists ? retosDoc.data() : null).superados;
+        const { hitos, nuevos } = referidos.actualizarHitos(i.hitos, { pago, retosSuperados });
+        if (nuevos.length) await db.collection('referidos').doc(i.uid).set({ hitos }, { merge: true });
+        i.hitos = hitos;
+      }
+    }
+    return invitados;
+  }
+
+  async function resumenReferidos(uid) {
+    const invitados = await sincronizarInvitados(uid);
+    const r = referidos.resumirInvitados(invitados);
+    return { validos: r.validos, xp: r.xp };
   }
 
   // ── Premios guardados (colección premiosUsuario, solo servidor) ──
@@ -412,6 +531,147 @@ function montarRutasClub(app, deps) {
       return res.json({ ok: true, cursoId, clave });
     } catch (error) {
       return responderError(res, error, 'No se pudo usar el premio', 'premios');
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // REFERIDOS
+  // ════════════════════════════════════════════════════════════
+  // POST /api/referidos/registrar — el invitado se registra con el código de quien lo invitó.
+  // Lo que el navegador escriba en miembros.referredBy ya no cuenta: solo cuenta este registro.
+  // Es idempotente: cada invitado se registra una sola vez.
+  app.post('/api/referidos/registrar', express.json(), async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarFirebase(req, res);
+      if (!decoded) return;
+      const uid = decoded.uid;
+      limitar(limites.referidos, uid, REGISTROS_POR_MINUTO);
+      const cuerpo = req.body && typeof req.body === 'object' ? req.body : {};
+      const codigo = referidos.normalizarCodigo(cuerpo.codigo);
+      if (!codigo) throw errorHttp(400, 'El código de invitación no es válido');
+      const dispositivo = referidos.validarDispositivo(cuerpo);
+      if (!dispositivo) throw errorHttp(400, 'No pudimos identificar tu dispositivo');
+      const respuesta = (estado, motivo) => res.json({ ok: true, estado, ...(motivo ? { motivo } : {}) });
+
+      // Idempotente: si ya se registró, se devuelve su estado (y se revisa si ya confirmó su correo)
+      const previo = await db.collection('referidos').doc(uid).get();
+      if (previo.exists) {
+        const lista = await sincronizarInvitados(previo.data().anfitrionUid);
+        const mio = lista.find(i => i.uid === uid) || previo.data();
+        return respuesta(mio.estado, mio.motivo);
+      }
+
+      const anfitrionUid = await buscarAnfitrion(codigo);
+      if (!anfitrionUid) return respuesta(ESTADOS.RECHAZADO, referidos.MOTIVOS['codigo-inexistente']);
+      if (anfitrionUid === uid) return respuesta(ESTADOS.RECHAZADO, referidos.MOTIVOS['mismo-usuario']);
+
+      const ip = referidos.ipDeSolicitud(req.headers, req.ip);
+      const ua = String(req.get('user-agent') || '').slice(0, 200);
+      const info = (await leerUsuariosAuth([uid])).get(uid);
+      const correoConfirmado = info ? info.emailVerified : decoded.email_verified === true;
+
+      const [dispositivosAnfitrion, snapInvitados] = await Promise.all([
+        dispositivosDeAnfitrion(anfitrionUid),
+        db.collection('referidos').where('anfitrionUid', '==', anfitrionUid).limit(MAX_INVITADOS_LEIDOS).get()
+      ]);
+      const otros = snapInvitados.docs.map(d => ({ ...d.data(), uid: d.id }));
+      const yo = { uid, anfitrionUid, ...dispositivo, ip, creadoEn: Date.now() };
+
+      let motivo = null;
+      if (info && !referidos.cuentaNueva(info.creationTime)) motivo = 'cuenta-antigua';
+      else motivo = referidos.evaluarDispositivo(yo, dispositivosAnfitrion, otros);
+      const estado = motivo ? ESTADOS.RECHAZADO : (correoConfirmado ? ESTADOS.VALIDO : ESTADOS.PENDIENTE);
+
+      const ref = db.collection('referidos').doc(uid);
+      const resultado = await db.runTransaction(async tx => {
+        const snap = await tx.get(ref);
+        if (snap.exists) return { existente: snap.data() };
+        tx.set(ref, {
+          anfitrionUid, codigo, ...dispositivo, ip, ua, creadoEn: FieldValue.serverTimestamp(),
+          estado, motivo: motivo ? referidos.MOTIVOS[motivo] : null, hitos: referidos.normalizarHitos(null)
+        });
+        return { nuevo: true };
+      });
+      if (resultado.existente) return respuesta(resultado.existente.estado, resultado.existente.motivo);
+
+      // El dispositivo con el que se registra también cuenta como suyo si algún día invita a alguien
+      await guardarDispositivoAnfitrion(uid, { ...dispositivo, ip });
+
+      // Dos invitados que se registran a la vez desde el mismo dispositivo: se queda el que llegó primero
+      if (estado === ESTADOS.VALIDO) {
+        const actual = await db.collection('referidos').where('anfitrionUid', '==', anfitrionUid).limit(MAX_INVITADOS_LEIDOS).get();
+        const todos = actual.docs.map(d => ({ ...d.data(), uid: d.id }));
+        const yoGuardado = todos.find(i => i.uid === uid);
+        const choque = yoGuardado && referidos.evaluarDispositivo({ ...yoGuardado, anfitrionUid }, dispositivosAnfitrion, todos, { soloAnteriores: true });
+        if (choque) {
+          const cambios = { estado: ESTADOS.RECHAZADO, motivo: referidos.MOTIVOS[choque] };
+          await ref.set(cambios, { merge: true });
+          return respuesta(cambios.estado, cambios.motivo);
+        }
+      }
+      return respuesta(estado, motivo ? referidos.MOTIVOS[motivo] : null);
+    } catch (error) {
+      return responderError(res, error, 'No se pudo registrar tu invitación', 'referidos');
+    }
+  });
+
+  // GET /api/referidos/estado — la pantalla de referidos del anfitrión. Solo alias (primer nombre e
+  // inicial); jamás correos ni teléfonos de los invitados.
+  app.get('/api/referidos/estado', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarFirebase(req, res);
+      if (!decoded) return;
+      const uid = decoded.uid;
+      limitar(limites.lecturas, uid, LECTURAS_POR_MINUTO);
+
+      // El dispositivo desde el que el anfitrión mira su pantalla queda registrado como suyo
+      const deviceId = idDe(req);
+      if (deviceId) {
+        const huella = req.get('x-huella');
+        await guardarDispositivoAnfitrion(uid, {
+          deviceId, ip: referidos.ipDeSolicitud(req.headers, req.ip),
+          huella: typeof huella === 'string' && /^[A-Za-z0-9+/=_-]{6,128}$/.test(huella.trim()) ? huella.trim() : null
+        });
+      }
+      const codigo = await asegurarCodigo(uid);
+      const invitados = await sincronizarInvitados(uid);
+      const resumen = referidos.resumirInvitados(invitados);
+
+      const perfiles = invitados.length
+        ? await db.getAll(...invitados.map(i => db.collection('miembros').doc(i.uid)))
+        : [];
+      const lista = invitados.map((i, n) => {
+        const perfil = perfiles[n] && perfiles[n].exists ? perfiles[n].data() : {};
+        const fecha = i.creadoEn && typeof i.creadoEn.toDate === 'function' ? i.creadoEn.toDate().toISOString() : null;
+        const d = resumen.detalle[n];
+        const item = {
+          alias: referidos.aliasDeNombre(perfil.name || perfil.nombreCompleto), fecha, estado: i.estado,
+          hitos: referidos.listaDeHitos(i.hitos, i.estado === ESTADOS.VALIDO), puntos: d.puntos
+        };
+        if (i.motivo) item.motivo = i.motivo;
+        if (i.estado === ESTADOS.VALIDO && !d.conPuntos) item.sinPuntos = true;  // pasó el tope de invitados con XP
+        return item;
+      });
+
+      const guardado = await guardarProgreso(uid, {
+        claves: premios.clavesQueCumple({ nivelId: 1, invitadosValidos: resumen.validos }), xpTotal: 0, conRanking: false
+      });
+      const premiosReferidos = premios.PREMIOS.filter(p => p.clave.startsWith('referidos-')).map(p => {
+        const uso = guardado.usados.find(u => u.clave === p.clave);
+        return {
+          clave: p.clave, requisito: p.requisito, faltan: p.faltan({ invitadosValidos: resumen.validos }),
+          ganado: guardado.ganados.includes(p.clave), usado: uso ? { cursoId: uso.cursoId, fecha: uso.fecha } : null
+        };
+      });
+      return res.json({
+        ok: true, codigo, enlace: referidos.enlaceDeCodigo(codigo),
+        validos: resumen.validos, pendientes: resumen.pendientes, rechazados: resumen.rechazados,
+        invitados: lista, puntosTotales: resumen.xp, premios: premiosReferidos
+      });
+    } catch (error) {
+      return responderError(res, error, 'No se pudieron cargar tus invitados', 'referidos');
     }
   });
 
