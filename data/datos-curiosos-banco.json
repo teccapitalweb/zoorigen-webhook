@@ -11,9 +11,7 @@
     "tema": "Biodiversidad",
     "texto": "Según la CONABIO, México ocupa el segundo lugar mundial en riqueza de reptiles y el tercero en mamíferos, entre los países con mayor diversidad biológica del planeta.",
     "fuente": "CONABIO",
-    "fuenteUrl": "https://www.biodiversidad.gob.mx/pais/quees",
-    "activo": false,
-    "revisar": true
+    "fuenteUrl": "https://www.biodiversidad.gob.mx/pais/quees"
   },
   {
     "id": "zoo_003",
@@ -41,9 +39,7 @@
     "tema": "Biodiversidad",
     "texto": "El tiburón ballena, el pez más grande del mundo, mide unos 12 metros o más y cada individuo tiene un patrón único de manchas. En el Caribe mexicano se le observa de mayo a septiembre, según la CONANP.",
     "fuente": "CONANP (gob.mx)",
-    "fuenteUrl": "https://www.gob.mx/conanp/articulos/datos-curiosos-del-navegante-de-los-mares?idiom=es",
-    "activo": false,
-    "revisar": true
+    "fuenteUrl": "https://www.gob.mx/conanp/articulos/datos-curiosos-del-navegante-de-los-mares?idiom=es"
   },
   {
     "id": "zoo_007",
@@ -57,9 +53,7 @@
     "tema": "Biodiversidad",
     "texto": "El teporingo o zacatuche es uno de los conejos más pequeños del mundo, pues pesa entre 450 y 700 gramos. Vive entre 2,800 y 4,250 metros de altitud en volcanes del centro de México, según la CONANP.",
     "fuente": "CONANP (ficha de identificación)",
-    "fuenteUrl": "https://www.conanp.gob.mx/pdf_especies/teporingo.pdf",
-    "activo": false,
-    "revisar": true
+    "fuenteUrl": "https://www.conanp.gob.mx/pdf_especies/teporingo.pdf"
   },
   {
     "id": "zoo_009",
@@ -192,9 +186,7 @@
     "tema": "Apicultura",
     "texto": "En el mundo hay unas 20,000 especies de abejas. México tiene cerca de 2,000, entre ellas 46 especies de abejas sin aguijón, la mayoría endémicas, según Ciencia UNAM.",
     "fuente": "Ciencia UNAM",
-    "fuenteUrl": "https://ciencia.unam.mx/leer/894/la-valiosa-miel-de-la-abeja-sin-aguijon-de-cuetzalan-",
-    "activo": false,
-    "revisar": true
+    "fuenteUrl": "https://ciencia.unam.mx/leer/894/la-valiosa-miel-de-la-abeja-sin-aguijon-de-cuetzalan-"
   },
   {
     "id": "zoo_028",
@@ -215,9 +207,7 @@
     "tema": "Apicultura",
     "texto": "La abeja melífera europea no es nativa de América: llegó con los colonizadores. La Universidad de California documenta que se llevaron colmenas a la colonia de Jamestown, en Virginia, en 1622.",
     "fuente": "Universidad de California (UC ANR)",
-    "fuenteUrl": "https://ucanr.edu/blog/bug-squad/article/celebrating-honey-bee",
-    "activo": false,
-    "revisar": true
+    "fuenteUrl": "https://ucanr.edu/blog/bug-squad/article/celebrating-honey-bee"
   },
   {
     "id": "zoo_031",
@@ -231,9 +221,7 @@
     "tema": "Medicina zoológica",
     "texto": "Según la WOAH, aproximadamente el 60% de las enfermedades infecciosas humanas conocidas tienen origen animal, y casi el 75% de las emergentes. Por eso la salud animal y la humana están ligadas.",
     "fuente": "WOAH (Oficina Regional para África)",
-    "fuenteUrl": "https://rr-africa.woah.org/en/news/strengthening-veterinary-services-to-implement-the-one-health-approach-for-prevention-of-zoonotic-diseases-in-africa/",
-    "activo": false,
-    "revisar": true
+    "fuenteUrl": "https://rr-africa.woah.org/en/news/strengthening-veterinary-services-to-implement-the-one-health-approach-for-prevention-of-zoonotic-diseases-in-africa/"
   },
   {
     "id": "zoo_033",
@@ -275,9 +263,7 @@
     "tema": "Medicina zoológica",
     "texto": "Las aves no tienen diafragma: sus nueve sacos aéreos funcionan como fuelles y hacen que el aire fluya en un solo sentido por los pulmones, sin mezclarse con aire \"viejo\". Eso hace muy eficiente su intercambio de oxígeno.",
     "fuente": "Universidad de California, Davis (Prized Writing)",
-    "fuenteUrl": "https://prizedwriting.ucdavis.edu/sites/g/files/dgvnsk15806/files/media/documents/17%E2%80%9318%20GIN.pdf",
-    "activo": false,
-    "revisar": true
+    "fuenteUrl": "https://prizedwriting.ucdavis.edu/sites/g/files/dgvnsk15806/files/media/documents/17%E2%80%9318%20GIN.pdf"
   },
   {
     "id": "zoo_039",
@@ -394,11 +380,9 @@
   {
     "id": "zoo_055",
     "tema": "Conservación",
-    "texto": "La vaquita marina vive solo en el norte del Golfo de California. Se estimaban unas 600 en 1997 y, según NOAA, hoy quedan menos de 30; su mayor amenaza son las redes agalleras, sobre todo las ilegales para pescar totoaba.",
+    "texto": "La vaquita marina vive solo en el norte del Golfo de California. Se estimaban unas 600 en 1997 y, según NOAA, quedan menos de 30; su mayor amenaza son las redes agalleras, sobre todo las ilegales para pescar totoaba.",
     "fuente": "NOAA Fisheries",
-    "fuenteUrl": "https://www.fisheries.noaa.gov/species/vaquita",
-    "activo": false,
-    "revisar": true
+    "fuenteUrl": "https://www.fisheries.noaa.gov/species/vaquita"
   },
   {
     "id": "zoo_056",
@@ -412,18 +396,14 @@
     "tema": "Conservación",
     "texto": "El lobo mexicano estaba casi extinto en vida silvestre en los años setenta. Un programa de cría con siete fundadores permitió liberarlo desde 1998 y en 2022 se contaron al menos 241 lobos silvestres, según el Servicio de Pesca y Vida Silvestre de EE. UU.",
     "fuente": "U.S. Fish and Wildlife Service",
-    "fuenteUrl": "https://www.fws.gov/story/2023-10/how-mexican-wolves-were-saved-extinction",
-    "activo": false,
-    "revisar": true
+    "fuenteUrl": "https://www.fws.gov/story/2023-10/how-mexican-wolves-were-saved-extinction"
   },
   {
     "id": "zoo_058",
     "tema": "Conservación",
-    "texto": "En 1982 solo sobrevivían 23 cóndores de California. Hacia 1987 todos los silvestres estaban bajo cría en cautiverio y hoy la población supera los 500 ejemplares, según el Servicio de Pesca y Vida Silvestre de EE. UU.",
+    "texto": "En 1982 solo sobrevivían 23 cóndores de California. Hacia 1987 todos los silvestres estaban bajo cría en cautiverio y, según el Servicio de Pesca y Vida Silvestre de EE. UU., la población ya supera los 500 ejemplares.",
     "fuente": "U.S. Fish and Wildlife Service",
-    "fuenteUrl": "https://www.fws.gov/species/california-condor-gymnogyps-californianus",
-    "activo": false,
-    "revisar": true
+    "fuenteUrl": "https://www.fws.gov/species/california-condor-gymnogyps-californianus"
   },
   {
     "id": "zoo_059",
