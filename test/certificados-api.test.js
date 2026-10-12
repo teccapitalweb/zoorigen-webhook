@@ -456,21 +456,25 @@ test('legado: un curso terminado SIN certificado deja la última clase pendiente
   assert.match(fin.body.certificado.folio, FOLIO);
 });
 
-test('legado: sin la variable LEGACY_PROGRESS_IMPORT_BEFORE no se importa nada', async () => {
+// El certificado anterior del curso c2 sí lo deja completado (aunque no se importe el progreso viejo): ver
+// test/certificados-anteriores.test.js. Lo demás del progreso viejo (c1, c3) no se importa.
+const soloPorCertificado = { c2: { sesionesVistas: [0, 1], quizzesAprobados: [], completado: true, certificadoFolio: 'ZOO-2026-12345', completadoEn: '2026-04-01T10:00:00.000Z' } };
+
+test('legado: sin la variable LEGACY_PROGRESS_IMPORT_BEFORE no se importa el progreso viejo (solo se reconoce el curso con certificado)', async () => {
   const { app, db } = servidor({ usuariosAuth: authAntigua, seed: seedLegado() });
   const r = await get(app, '/api/cursos/progreso');
-  assert.deepEqual(r.body, { cursos: {}, legadoImportado: false });
+  assert.deepEqual(r.body, { cursos: soloPorCertificado, legadoImportado: false });
   assert.equal(db.value('miembros/ana').progresoLegadoImportado, undefined);
-  assert.deepEqual(claves(db, 'miembros/ana/progresoCursos'), []);
+  assert.deepEqual(claves(db, 'miembros/ana/progresoCursos'), ['miembros/ana/progresoCursos/c2']);
 });
 
 test('legado: una cuenta creada después del corte, o sin dato en Auth, no importa', async () => {
   const nueva = servidor({ env: ENV_LEGADO, usuariosAuth: { ana: { creationTime: '2026-10-05T00:00:00Z' } }, seed: seedLegado() });
-  assert.deepEqual((await get(nueva.app, '/api/cursos/progreso')).body, { cursos: {}, legadoImportado: false });
+  assert.deepEqual((await get(nueva.app, '/api/cursos/progreso')).body, { cursos: soloPorCertificado, legadoImportado: false });
   const sinAuth = servidor({ env: ENV_LEGADO, usuariosAuth: {}, seed: seedLegado() });
-  assert.deepEqual((await get(sinAuth.app, '/api/cursos/progreso')).body, { cursos: {}, legadoImportado: false });
+  assert.deepEqual((await get(sinAuth.app, '/api/cursos/progreso')).body, { cursos: soloPorCertificado, legadoImportado: false });
   const fechaMala = servidor({ env: { LEGACY_PROGRESS_IMPORT_BEFORE: 'no-es-fecha' }, usuariosAuth: authAntigua, seed: seedLegado() });
-  assert.deepEqual((await get(fechaMala.app, '/api/cursos/progreso')).body, { cursos: {}, legadoImportado: false });
+  assert.deepEqual((await get(fechaMala.app, '/api/cursos/progreso')).body, { cursos: soloPorCertificado, legadoImportado: false });
 });
 
 test('legado: el avance ya guardado por el servidor no se pierde al importar', async () => {
@@ -535,9 +539,9 @@ test('verificación pública: 404 si no existe', async () => {
   assert.equal(r.body.error, 'Certificado no encontrado');
 });
 
-test('verificación pública: 404 para los certificados del navegador (sin firma del servidor)', async () => {
+test('verificación pública: 404 para un certificado del navegador que no pasa la revisión (aquí, de un curso que ya no existe)', async () => {
   const { app } = servidor({ seed: {
-    'certificados/ZOO-2026-12345': { folio: 'ZOO-2026-12345', memberUid: 'ana', courseId: 'c1', courseTitle: 'Curso', memberName: 'Ana', issuedAt: '2026-01-01T00:00:00.000Z' }
+    'certificados/ZOO-2026-12345': { folio: 'ZOO-2026-12345', memberUid: 'ana', courseId: 'borrado', courseTitle: 'Curso', memberName: 'Ana', issuedAt: '2026-01-01T00:00:00.000Z' }
   } });
   const r = await request(app).get('/api/certificados/ZOO-2026-12345');
   assert.equal(r.status, 404);
@@ -553,7 +557,9 @@ test('verificación pública: una firma o un dato firmado alterado se rechaza (4
   assert.equal(await probar({}), 200);
   assert.equal(await probar({ firmaBackend: 'a'.repeat(64) }), 404);
   assert.equal(await probar({ firmaBackend: 'no-es-firma' }), 404);
-  assert.equal(await probar({ firmaBackend: undefined }), 404);
+  // sin firma ya no hay nada que alterar: es un certificado anterior y pasa la revisión como cualquier otro
+  const sinFirma = await probar({ firmaBackend: undefined });
+  assert.equal(sinFirma, 200);
   assert.equal(await probar({ cursoId: 'c2' }), 404);
   assert.equal(await probar({ uid: 'beto' }), 404);
   assert.equal(await probar({ emitido: '2020-01-01T00:00:00.000Z' }), 404);

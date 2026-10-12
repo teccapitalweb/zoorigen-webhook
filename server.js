@@ -35,6 +35,10 @@ const STRIPE_PRICES = Object.freeze({
 const CERTIFICATE_SIGNING_KEY = (process.env.CERTIFICATE_SIGNING_KEY || '').trim().replace(/^["']|["']$/g, '');
 // Fecha ISO: las cuentas de Firebase Auth creadas ANTES de ella importan una sola vez su progreso viejo (miembros.courseProgress).
 const LEGACY_PROGRESS_IMPORT_BEFORE = (process.env.LEGACY_PROGRESS_IMPORT_BEFORE || '').trim().replace(/^["']|["']$/g, '');
+// Fecha ISO: los certificados anteriores (escritos por el navegador, sin firma) solo se aceptan si se emitieron hasta ella.
+// Sin definir = modo transición (sin límite de fecha). Definirla después de publicar las reglas de Firestore que impiden
+// que el navegador escriba `certificados`.
+const CERTIFICADOS_ANTERIORES_HASTA = (process.env.CERTIFICADOS_ANTERIORES_HASTA || '').trim().replace(/^["']|["']$/g, '');
 const BUNNY_STREAM_LIBRARY_ID = String(process.env.BUNNY_STREAM_LIBRARY_ID || '731751').trim();
 const BUNNY_TOKEN_AUTH_KEY = (process.env.BUNNY_TOKEN_AUTH_KEY || '').trim().replace(/^["']|["']$/g, '');
 // Clave de GESTIÓN de Bunny Stream (solo lectura del catálogo). Es distinta de BUNNY_TOKEN_AUTH_KEY,
@@ -936,7 +940,7 @@ montarRutasAuth(app, { auth, autenticarFirebase, errorHttp, panelUrl: process.en
 app.certificados = montarRutasCertificados(app, {
   db, admin, auth, autenticarFirebase, autenticarAdmin, esAdminPorDocumentos, tienePlanVigente,
   reglasPruebaParaVideo, videoEsGratis, obtenerIndiceVideos, errorHttp, club,
-  firmaClave: CERTIFICATE_SIGNING_KEY, corteLegado: LEGACY_PROGRESS_IMPORT_BEFORE,
+  firmaClave: CERTIFICATE_SIGNING_KEY, corteLegado: LEGACY_PROGRESS_IMPORT_BEFORE, limiteAnteriores: CERTIFICADOS_ANTERIORES_HASTA,
   panelUrl: process.env.PANEL_URL || 'https://www.zoorigen.com'
 });
 
@@ -956,6 +960,9 @@ if (require.main === module) {
     console.log(CERTIFICATE_SIGNING_KEY
       ? 'Certificados: firma configurada'
       : 'Certificados: falta CERTIFICATE_SIGNING_KEY (el progreso funciona, pero no se emiten ni verifican certificados)');
+    console.log(CERTIFICADOS_ANTERIORES_HASTA
+      ? `Certificados anteriores sin firma: se aceptan los emitidos hasta ${CERTIFICADOS_ANTERIORES_HASTA}`
+      : 'Certificados anteriores sin firma: modo transición (sin límite de fecha); define CERTIFICADOS_ANTERIORES_HASTA al publicar las reglas v6');
     // Tarea diaria (noticias y dato curioso). Se apaga con NOTICIAS_TAREA=off; las pruebas importan `app` y nunca llegan aquí.
     const tarea = iniciarProgramador(db);
     console.log(tarea.activo ? '📰 Tarea diaria de noticias: activa (13:00 UTC y al arrancar)' : '📰 Tarea diaria de noticias: apagada');

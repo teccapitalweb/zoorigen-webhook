@@ -41,11 +41,12 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `POST /api/registro/ejemplares`, `PATCH/DELETE /api/registro/ejemplares/:id` | Alta o nacimiento de un ejemplar, corregirlo, borrarlo (con sus eventos) | Token de Firebase + membresía |
 | `POST /api/registro/ejemplares/:id/eventos`, `DELETE /api/registro/eventos/:id` | Baja, muerte, traslado o nota; deshacer un evento | Token de Firebase + membresía |
 | `GET /api/registro/informe?anio=AAAA` | Informe anual: existencias al 1 de enero, altas, nacimientos, bajas, muertes, traslados y existencias al 31 de diciembre, por especie y total | Token de Firebase + membresía |
-| `GET /api/cursos/progreso` | Avance de la persona en todos sus cursos (`sesionesVistas`, `quizzesAprobados`, `completado`, `certificadoFolio`, `completadoEn`); importa una sola vez el progreso viejo | Token de Firebase |
+| `GET /api/cursos/progreso` | Avance de la persona en todos sus cursos (`sesionesVistas`, `quizzesAprobados`, `completado`, `certificadoFolio`, `completadoEn`); importa una sola vez el progreso viejo, firma en su lugar los certificados anteriores de la persona y marca completados los cursos que ya tienen certificado | Token de Firebase |
 | `POST /api/cursos/:cursoId/progreso` | Marca una clase como vista (`{ sessionIndex }`); al completar el curso emite el certificado firmado, el aviso, el correo con PDF y el XP | Token de Firebase + membresía (o clase gratis / prueba) |
 | `POST /api/cursos/:cursoId/quiz` | Califica las preguntas de una clase (`{ sessionIndex, respuestas }`); es de práctica | Token de Firebase + membresía (o clase gratis / prueba) |
-| `GET /api/certificados/:folio` | Verificación PÚBLICA de un certificado (30 consultas cada 10 minutos por IP) | — |
+| `GET /api/certificados/:folio` | Verificación PÚBLICA de un certificado, firmado o anterior aceptable (`anterior: true`); 30 consultas cada 10 minutos por IP | — |
 | `POST /api/admin/certificados` | El administrador emite (o recupera) un certificado (`{ uid, cursoId, nombre?, horas?, sesiones? }`) | Token de Firebase + administrador |
+| `GET /api/admin/certificados/pendientes` | Certificados sin firma válida con su diagnóstico y un resumen de conteos (solo lectura) | Token de Firebase + administrador |
 | `GET /cron/noticias?key=CRON_KEY` | Corre la tarea diaria a mano (también cabecera `x-cron-key`) | `CRON_KEY` |
 | `GET /` | Health check | — |
 
@@ -435,6 +436,10 @@ el navegador no se muestra en la verificación pública.
 
 - `GET /api/cursos/progreso` → `{ cursos: { [cursoId]: { sesionesVistas, quizzesAprobados, completado, certificadoFolio, completadoEn } }, legadoImportado }`.
   `completadoEn` es la fecha ISO de término del curso (la del progreso o, si no la trae, la de emisión de su certificado) y `null` si no está completo.
+  Además (ver «Certificados anteriores»): todo curso con certificado vigente (firmado o anterior aceptable) aparece `completado: true` con su
+  `certificadoFolio`, aunque no se haya importado el progreso viejo y aunque falte `LEGACY_PROGRESS_IMPORT_BEFORE`; los anteriores aceptables
+  de esa persona se firman en su lugar (si hay `CERTIFICATE_SIGNING_KEY`). Máximo 50 certificados por consulta; un error de este paso
+  solo se registra y nunca rompe la respuesta.
 - `POST /api/cursos/:cursoId/progreso` con `{ sessionIndex }` → `{ ok, sesionesVistas, completado, certificado: null | { folio, nombre, curso, area, horas, sesiones, instructor, emitido }, bono? }`.
   - 404 si el curso o la clase no existen; 403 si no es administrador, no tiene plan vigente y la clase no es gratis ni de su prueba gratuita
     (las mismas reglas de `/api/bunny/embed-token`).
@@ -442,7 +447,9 @@ el navegador no se muestra en la verificación pública.
     `Completa primero la clase anterior` (orden secuencial). Repetir una clase ya vista no cambia nada.
   - Al ver la última clase, dentro de la misma transacción, se crea UNA sola vez `certificados/{folio}`. Repetir la última clase (o dos
     solicitudes a la vez) devuelve el mismo certificado sin duplicarlo ni reenviar el correo. Si la persona ya tenía un certificado válido
-    de ese curso (por ejemplo, emitido por el administrador), se reutiliza.
+    de ese curso (por ejemplo, emitido por el administrador), se reutiliza. Si tiene un certificado **anterior** aceptable (escrito por el
+    navegador) se reutiliza su folio: se firma en su lugar y no se crea otro documento, aviso ni correo. Si el anterior existe pero no es
+    aceptable (firma alterada, sin nombre, etc.) responde `409` («El folio existente requiere auditoría antes de continuar») y no guarda la clase.
   - Solo al emitirse por primera vez: aviso en la campana, correo con el PDF adjunto (en segundo plano; un error solo se registra) y el XP
     del curso, calculado con la misma lógica de logros de siempre (`bono: { xp, ordinal }`; no se informa a administradores ni a quien no
     tiene plan).
@@ -453,10 +460,16 @@ el navegador no se muestra en la verificación pública.
   **válidas** (las incompletas se saltan igual que en el sitio) y `detalle` trae una fila por cada pregunta válida. Es de **práctica**: equivocarse muestra la
   correcta pero no frena; basta con haberlo contestado (queda en `quizzesAprobados`) para poder completar la clase.
 - `GET /api/certificados/:folio` (pública): folio `^ZOO-[0-9]{4}-[A-Z0-9]{5,16}$` en mayúsculas (acepta el formato viejo `ZOO-2026-12345`)
-  → `{ valido: true, certificado: { folio, nombre, curso, area, horas, sesiones, instructor, emitido } }`. 400 folio inválido, 404 si no existe
-  o no está firmado, 429 pasadas 30 consultas en 10 minutos por IP. Sin `CERTIFICATE_SIGNING_KEY` responde 503 (no se puede verificar).
+  → `{ valido: true, certificado: { folio, nombre, curso, area, horas, sesiones, instructor, emitido } }`; para un certificado anterior
+  aceptable la respuesta lleva además `anterior: true` en la raíz (no escribe nada en Firestore). 400 folio inválido, 404 si no existe, no
+  está firmado y no es un anterior aceptable, 429 pasadas 30 consultas en 10 minutos por IP. Sin `CERTIFICATE_SIGNING_KEY` responde 503.
 - `POST /api/admin/certificados` (solo administradores) con `{ uid, cursoId, nombre?, horas?, sesiones? }` → `{ ok, certificado }`. Busca
   primero un certificado válido del mismo uid y curso (en cualquier año) antes de emitir otro.
+- `GET /api/admin/certificados/pendientes` (solo administradores, solo lectura) → `{ modoTransicion, limiteAnteriores, truncado, resumen:
+  { total, firmados, aceptables, noAceptables, porRazon }, certificados: [{ folio, aceptable, razones, uid, cursoId, nombre, curso, emitido }] }`.
+  Lista los certificados sin firma válida con el mismo criterio que usa el servidor: `razones` vacío = aceptable; si no, por qué no
+  (`curso-no-encontrado`, `miembro-no-encontrado`, `folio-inconsistente`, `duplicado-uid-curso`, `firma-alterada`, `posterior-al-limite`...).
+  Máximo 5000 certificados (`truncado: true` si hay más). 503 sin `CERTIFICATE_SIGNING_KEY`.
 
 ### Importación única del progreso viejo
 
@@ -469,6 +482,7 @@ completedAt? } }`). Sin importarlo, el orden secuencial dejaría a esas cuentas 
 - solo se importan clases que existen en el curso; **nunca** se emite un certificado: si el curso estaba completo y existe un certificado
   de esa persona y curso (`memberUid`/`courseId` o `uid`/`cursoId`), queda completado con ese folio; si estaba completo sin certificado,
   se deja la última clase pendiente para que el flujo normal emita el certificado firmado. El campo viejo no se borra.
+Independientemente de esta importación, los cursos que tienen certificado vigente aparecen completados (ver «Certificados anteriores»).
 
 ### PDF y correo
 
@@ -478,22 +492,57 @@ dorado `#E8A317`, mismos textos y estructura que `pages/ver-certificado.html`); 
 sale en texto). El correo (`enviarCorreoCertificado` en `services/correo.js`, por Resend) lleva la felicitación, el curso, el folio, el
 botón a `/pages/club-certificados.html`, el enlace de verificación y el PDF adjunto; sin `RESEND_API_KEY` o `MAIL_FROM` no se envía nada.
 
-### Certificados viejos (escritos por el navegador)
+### Certificados anteriores (escritos por el navegador): modo transición
 
-Los que ya existen no tienen firma, así que la verificación pública los rechaza hasta que se regularicen. `npm run audit:certificates`
-(requiere `FIREBASE_SERVICE_ACCOUNT` y `CERTIFICATE_SIGNING_KEY`):
+Antes el navegador escribía `certificados/{folio}` sin firma, y esas personas ya los imprimieron o compartieron. **No hace falta ninguna
+acción manual** para que sigan funcionando: el servidor acepta como *anterior* un certificado sin firma que cumple TODO esto
+(`certificadoAnteriorAceptable`, en `services/certificados.js`):
+
+- no trae `firmaBackend` (con una firma presente pero inválida es una alteración y NO se acepta);
+- su campo `folio` es igual al id del documento y tiene el formato `ZOO-AAAA-XXXXX` (5 a 16 letras mayúsculas o dígitos);
+- tiene titular (`memberUid` o `uid`), curso (`courseId` o `cursoId`), nombre, título del curso y una fecha de emisión válida
+  (`issuedAt` o `emitido`; no futura), y los nombres viejos y nuevos, si vienen los dos, coinciden;
+- el curso existe en `cursos` y el miembro existe en `miembros` (o en `usuarios`, el legado);
+- su fecha de emisión es anterior o igual a `CERTIFICADOS_ANTERIORES_HASTA`, si está definida (sin ella no hay límite: *modo transición*);
+- no es un duplicado: de una misma persona y curso se conserva el firmado o, si no, el más antiguo.
+
+Qué pasa con un anterior aceptable:
+
+1. **Verificación pública** (`GET /api/certificados/:folio`): responde 200 con `anterior: true`, sin escribir nada.
+2. **Se firma solo cuando su titular abre el sitio**: `GET /api/cursos/progreso` lo normaliza y firma EN SU LUGAR (mismo folio, mismo documento):
+   agrega `uid, cursoId, nombre, curso, area, horas, sesiones, instructor, emitido, year, verificado: true, origen: 'legacy-validado',
+   validadoBackend: true, migradoAutomaticamente: true, validadoEn, firmaBackend` y no borra ni cambia ningún campo viejo. Es idempotente y,
+   sin `CERTIFICATE_SIGNING_KEY`, no firma (pero tampoco falla).
+3. **El curso aparece completado** con su folio y su fecha de emisión, aunque no se haya importado el progreso viejo.
+4. **Completar el curso no crea otro folio**: reutiliza el existente (ver `POST /api/cursos/:cursoId/progreso`).
+
+Un anterior que NO es aceptable sigue sin verificarse (404) y bloquea con 409 al completar ese curso hasta que se revise; la ruta de
+administrador `GET /api/admin/certificados/pendientes` y el script de auditoría dicen exactamente por qué (un solo criterio).
+
+**`CERTIFICADOS_ANTERIORES_HASTA` (recomendación)**: mientras siga permitido que el navegador escriba `certificados`, un miembro podría crear
+un certificado sin firma que el modo transición aceptaría. Después de publicar las reglas de Firestore v6 (que niegan esa escritura),
+define `CERTIFICADOS_ANTERIORES_HASTA` en Railway con la fecha ISO de esa publicación (por ejemplo `2026-11-01T00:00:00Z`). Desde
+entonces solo valen los anteriores emitidos hasta ese momento; los firmados por el servidor no dependen de la variable. Una fecha mal
+escrita no abre la ventana: no se acepta ningún anterior (el servidor lo avisa en el registro al arrancar).
+
+### Auditoría global (opcional)
+
+El script ya no es necesario para que los anteriores funcionen: queda como **revisión global opcional** con el mismo criterio de
+aceptación. `npm run audit:certificates` (requiere `FIREBASE_SERVICE_ACCOUNT` y `CERTIFICATE_SIGNING_KEY`; usa también
+`CERTIFICADOS_ANTERIORES_HASTA` si la defines en tu terminal):
 
 1. **Sin argumentos es solo lectura (dry-run)**: lista cada certificado con su estado (`ya-valido`, `revisar-manualmente` o `rechazar`) y
-   sus problemas (`miembro-no-encontrado`, `curso-no-encontrado`, `folio-inconsistente`, `duplicado-uid-curso`,
-   `campos-obligatorios-incompletos`...). No imprime nombres ni correos.
+   sus problemas (`miembro-no-encontrado`, `curso-no-encontrado`, `folio-inconsistente`, `duplicado-uid-curso`, `firma-alterada`,
+   `posterior-al-limite`, `campos-obligatorios-incompletos`...). No imprime nombres ni correos.
 2. Revisa el reporte y arma un archivo JSON con los folios que apruebes (por ejemplo `["ZOO-2026-12345"]`).
 3. `npm run audit:certificates -- --apply --allowlist=folios.json` firma **solo** esos folios (y solo si pasaron la revisión): rellena
    `uid, cursoId, nombre, curso, area, sesiones, emitido, year` a partir de `memberUid, courseId, memberName, courseTitle, courseArea,
    totalClases, issuedAt`, marca `origen: 'legacy-validado'`, `validadoBackend: true`, `verificado: true` y no borra ningún campo viejo.
 
 Nunca lo corras sin haber revisado el reporte. Las reglas de Firestore **no** se tocan desde este servidor: mientras sigan permitiendo que
-el navegador escriba `certificados`, un miembro podría alterar los campos no firmados (nombre, curso) de su propio certificado; conviene
-publicar las reglas que niegan esa escritura cuando el sitio nuevo ya esté en línea.
+el navegador escriba `certificados`, un miembro podría alterar los campos no firmados (nombre, curso) de su propio certificado anterior
+antes de que se firme; conviene publicar las reglas que niegan esa escritura cuando el sitio nuevo ya esté en línea y entonces definir
+`CERTIFICADOS_ANTERIORES_HASTA`.
 
 ## Variables de entorno (Railway)
 
@@ -518,6 +567,10 @@ Certificados y progreso de cursos:
   proyecto, directamente en Railway. Si falta, el servidor arranca igual pero no emite ni verifica certificados (503).
 - `LEGACY_PROGRESS_IMPORT_BEFORE` (opcional): fecha ISO (por ejemplo `2026-11-01T00:00:00Z`). Las cuentas creadas antes importan una sola vez
   su progreso viejo. Sin ella no se importa nada.
+- `CERTIFICADOS_ANTERIORES_HASTA` (opcional): fecha ISO (por ejemplo `2026-11-01T00:00:00Z`). Los certificados anteriores sin firma solo se
+  aceptan si se emitieron hasta esa fecha (inclusive). Sin ella: modo transición, sin límite. Recomendación: definirla con la fecha en que se
+  publiquen las reglas de Firestore v6, para cerrar la ventana a certificados nuevos escritos por el navegador. Si no es una fecha válida,
+  no se acepta ningún anterior. No afecta a los certificados firmados por el servidor.
 - Reutiliza `RESEND_API_KEY`, `MAIL_FROM` y `PANEL_URL` (arriba) para el correo con el PDF del certificado.
 
 ### `BUNNY_API_KEY` (clave de gestión de Bunny)
@@ -542,6 +595,6 @@ credenciales ni tocan datos reales.
 ## Utilidades de mantenimiento (requieren credenciales)
 
 - `npm run audit:memberships`: auditoría de solo lectura de Firestore contra Stripe.
-- `npm run audit:certificates`: auditoría de certificados sin firma (dry-run); con `--apply --allowlist=folios.json` firma solo los aprobados (ver «Certificados y progreso de cursos»).
+- `npm run audit:certificates`: revisión global opcional de certificados sin firma (dry-run); con `--apply --allowlist=folios.json` firma solo los aprobados (ver «Certificados y progreso de cursos»).
 - `npm run normalize:membership-dates`: pasa `planVence` de texto a Timestamp (agrega `--apply` para escribir).
 - `npm run sync:memberships -- --subscription=sub_...`: repara suscripciones puntuales (agrega `--apply` para escribir).

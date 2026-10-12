@@ -1,13 +1,16 @@
 'use strict';
 
 // ══ Auditoría de certificados (npm run audit:certificates) ══
-// Los certificados que escribía el navegador no llevan firma del servidor. Este script los revisa:
+// Los certificados que escribía el navegador no llevan firma del servidor. Desde que el servidor acepta y firma
+// SOLO a los anteriores que pasan la revisión (cuando su titular abre el sitio, y los verifica en público), este script
+// es una REVISIÓN GLOBAL OPCIONAL con el mismo criterio (certificadoAnteriorAceptable). Los revisa:
 //   · por defecto es SOLO LECTURA (dry-run): lista cada certificado con su estado y sus problemas;
 //   · con --apply --allowlist=folios.json firma y marca como "legacy-validado" SOLO los folios de esa lista
 //     (un arreglo JSON de folios) que pasaron la revisión. No borra ningún campo viejo.
 //
 // Variables de entorno: FIREBASE_SERVICE_ACCOUNT (o FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL /
-// FIREBASE_PRIVATE_KEY) y CERTIFICATE_SIGNING_KEY (la MISMA que usa el servidor en Railway).
+// FIREBASE_PRIVATE_KEY) y CERTIFICATE_SIGNING_KEY (la MISMA que usa el servidor en Railway). Opcional:
+// CERTIFICADOS_ANTERIORES_HASTA (la MISMA fecha ISO del servidor) para que el criterio incluya el límite de fecha.
 // Las reglas están en services/certificados.js (con pruebas); aquí solo se leen y escriben documentos.
 
 const fs = require('fs');
@@ -55,16 +58,19 @@ async function main(argv = process.argv) {
 
   const admin = iniciarFirebase();
   const db = admin.firestore();
-  const [certs, cursos, miembros] = await Promise.all([
+  const [certs, cursos, miembros, usuarios] = await Promise.all([
     db.collection('certificados').get(),
     db.collection('cursos').select().get(),
-    db.collection('miembros').select().get()
+    db.collection('miembros').select().get(),
+    db.collection('usuarios').select().get() // cuentas anteriores: el servidor también las reconoce como miembro
   ]);
   const filas = certificados.auditarCertificados({
     certificados: certs.docs.map(d => ({ id: d.id, data: d.data() })),
     cursosIds: new Set(cursos.docs.map(d => d.id)),
-    miembrosIds: new Set(miembros.docs.map(d => d.id)),
-    llave
+    miembrosIds: new Set([...miembros.docs, ...usuarios.docs].map(d => d.id)),
+    llave,
+    ahora: new Date(),
+    limite: String(process.env.CERTIFICADOS_ANTERIORES_HASTA || '').trim().replace(/^["']|["']$/g, '')
   });
 
   const porFolio = new Map(certs.docs.map(d => [d.id, d]));

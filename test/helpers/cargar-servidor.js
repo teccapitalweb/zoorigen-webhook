@@ -45,7 +45,7 @@ function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {}, 
   // Una BUNNY_API_KEY real del equipo no debe filtrarse a las pruebas; se restaura al terminar.
   guardado.BUNNY_API_KEY = process.env.BUNNY_API_KEY; delete process.env.BUNNY_API_KEY;
   // Lo mismo con las llaves de certificados y de correo (cada prueba pone las suyas en `env`).
-  for (const k of ['CERTIFICATE_SIGNING_KEY', 'LEGACY_PROGRESS_IMPORT_BEFORE', 'RESEND_API_KEY', 'MAIL_FROM', 'PANEL_URL']) {
+  for (const k of ['CERTIFICATE_SIGNING_KEY', 'LEGACY_PROGRESS_IMPORT_BEFORE', 'CERTIFICADOS_ANTERIORES_HASTA', 'RESEND_API_KEY', 'MAIL_FROM', 'PANEL_URL']) {
     guardado[k] = process.env[k]; delete process.env[k];
   }
   for (const [k, v] of Object.entries(entorno)) { if (!(k in guardado)) guardado[k] = process.env[k]; process.env[k] = v; }

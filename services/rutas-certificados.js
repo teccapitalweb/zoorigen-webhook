@@ -14,6 +14,9 @@
 //    determinista y firma HMAC-SHA256. Sin CERTIFICATE_SIGNING_KEY el servidor arranca igual, pero no
 //    emite ni verifica certificados (503) y la última clase no se guarda, para reintentar después.
 //  - La verificación pública solo muestra nombre, curso, área, horas, sesiones, instructor y fecha.
+//  - Certificados anteriores (escritos por el navegador, sin firma): si pasan certificadoAnteriorAceptable se verifican
+//    en público (anterior: true), se firman EN SU LUGAR (mismo folio) cuando su titular consulta el progreso y, al
+//    completar el curso, se reutilizan en vez de emitir otro folio. Ver CERTIFICADOS_ANTERIORES_HASTA en el README.
 
 const express = require('express');
 const { permitirSolicitud } = require('./rutas-club');
@@ -38,6 +41,13 @@ function montarRutasCertificados(app, deps) {
   } = deps;
   const firmaClave = String(deps.firmaClave || '').trim();
   const corteLegado = String(deps.corteLegado || '').trim();
+  // CERTIFICADOS_ANTERIORES_HASTA (ISO): los certificados anteriores sin firma solo se aceptan si se emitieron hasta
+  // esa fecha. Sin definir = modo transición (sin límite). Definida pero inválida: no se acepta ningún anterior.
+  const limiteTexto = String(deps.limiteAnteriores || '').trim().replace(/^["']|["']$/g, '').trim();
+  const limiteAnteriores = cert.limiteEnMs(limiteTexto);
+  if (Number.isNaN(limiteAnteriores)) {
+    console.warn('[Certificados] CERTIFICADOS_ANTERIORES_HASTA no es una fecha válida: no se aceptará ningún certificado anterior sin firma');
+  }
   const panelUrl = deps.panelUrl || correo.SITIO;
   const enviarCorreo = deps.enviarCorreoCertificado || correo.enviarCorreoCertificado;
   const Timestamp = admin.firestore.Timestamp;
@@ -205,6 +215,94 @@ function montarRutasCertificados(app, deps) {
   }
 
   // ════════════════════════════════════════════════════════════
+  // Certificados anteriores (escritos por el navegador) de la persona: firma en su lugar y progreso coherente
+  // ════════════════════════════════════════════════════════════
+  const MAX_CERTIFICADOS_POR_CONSULTA = 50;
+
+  async function certificadosDelTitular(uid) {
+    const [porUid, porMiembro] = await Promise.all([
+      colCertificados().where('uid', '==', uid).limit(MAX_CERTIFICADOS_POR_CONSULTA).get(),
+      colCertificados().where('memberUid', '==', uid).limit(MAX_CERTIFICADOS_POR_CONSULTA).get()
+    ]);
+    const unicos = new Map();
+    for (const d of [...porUid.docs, ...porMiembro.docs]) if (!unicos.has(d.id)) unicos.set(d.id, { id: d.id, data: d.data() || {} });
+    return [...unicos.values()].sort((a, b) => (a.id < b.id ? -1 : 1)).slice(0, MAX_CERTIFICADOS_POR_CONSULTA);
+  }
+
+  // Firma en su lugar (mismo folio, mismo documento) un anterior aceptable. Nunca cambia ni borra campos viejos.
+  // Devuelve true si lo firmó. Una transacción por documento: si alguien lo firmó o lo cambió en el intertanto, no hace nada.
+  async function firmarAnteriorEnSuLugar(fila, contexto) {
+    const ref = colCertificados().doc(fila.id);
+    return db.runTransaction(async tx => {
+      const actual = await tx.get(ref);
+      if (!actual.exists) return false;
+      const datos = actual.data() || {};
+      if (cert.certificadoValido(datos, firmaClave)) return false;
+      const [reevaluada] = cert.evaluarCertificados([{ id: fila.id, data: datos }], contexto);
+      if (!reevaluada || reevaluada.estado !== 'aceptable') return false;
+      const r = cert.parcheAnteriorAutomatico(fila.id, datos, firmaClave);
+      if (!r.ok) return false;
+      tx.set(ref, { ...r.parche, validadoEn: FieldValue.serverTimestamp() }, { merge: true });
+      return true;
+    });
+  }
+
+  // Con los certificados vigentes de la persona (firmados o anteriores aceptables):
+  //  1) firma en su lugar los anteriores (solo con CERTIFICATE_SIGNING_KEY);
+  //  2) devuelve, por curso, la vista de progreso completada (y la guarda de forma idempotente).
+  // Todo el paso está protegido: nunca lanza ni rompe la respuesta del progreso (solo registra una advertencia).
+  async function sincronizarCertificadosAnteriores(uid, { miembroExiste, progresos }) {
+    const vistas = new Map();
+    try {
+      const docs = await certificadosDelTitular(uid);
+      if (!docs.length) return vistas;
+      const cursoIds = [...new Set(docs.map(d => String(d.data.cursoId || d.data.courseId || '')).filter(id => cert.ID_CURSO_REGEX.test(id)))];
+      const cursoSnaps = await Promise.all(cursoIds.map(id => db.collection('cursos').doc(id).get()));
+      const cursos = new Map(cursoSnaps.map((s, i) => [cursoIds[i], s.exists ? (s.data() || {}) : null]));
+      let existeMiembro = miembroExiste;
+      if (!existeMiembro) existeMiembro = (await db.collection('usuarios').doc(uid).get()).exists;
+
+      const contexto = {
+        llave: firmaClave, ahora: new Date(), limite: limiteAnteriores,
+        cursoExiste: id => Boolean(cursos.get(id)),
+        miembroExiste: id => id === uid && existeMiembro
+      };
+      const filas = cert.evaluarCertificados(docs, contexto)
+        .filter(f => f.uid === uid && f.estado !== 'no-aceptable' && cert.ID_CURSO_REGEX.test(f.cursoId));
+      if (!filas.length) return vistas;
+
+      if (firmaClave) {
+        for (const fila of filas) {
+          if (fila.estado !== 'aceptable') continue;
+          try {
+            await firmarAnteriorEnSuLugar(fila, contexto);
+          } catch (error) {
+            console.warn('[Certificados] No se pudo firmar un certificado anterior:', fila.id, error && error.message);
+          }
+        }
+      }
+
+      const plan = cert.planearProgresoDesdeCertificados({ uid, vigentes: filas, progresos, cursos });
+      for (const item of plan) {
+        vistas.set(item.cursoId, item.vista);
+        if (!item.escribir) continue;
+        try {
+          const datos = { ...item.doc, actualizadoEn: FieldValue.serverTimestamp() };
+          const fecha = item.doc.completadoEnIso ? new Date(item.doc.completadoEnIso) : null;
+          delete datos.completadoEnIso;
+          if (fecha && !Number.isNaN(fecha.getTime())) datos.completadoEn = Timestamp.fromDate(fecha);
+          await refProgreso(uid, item.cursoId).set(datos, { merge: true });
+        } catch (error) {
+          console.warn('[Certificados] No se pudo guardar el progreso de un certificado anterior:', item.cursoId, error && error.message);
+        }
+      }
+    } catch (error) {
+      console.warn('[Certificados] No se pudieron revisar los certificados anteriores:', error && error.message);
+    }
+    return vistas;
+  }
+
+  // ════════════════════════════════════════════════════════════
   // GET /api/cursos/progreso — avance de la persona en todos sus cursos
   // ════════════════════════════════════════════════════════════
   app.get('/api/cursos/progreso', conSesion('lecturas', 'No se pudo cargar tu progreso', 'progreso', async (req, res, decoded) => {
@@ -214,6 +312,11 @@ function montarRutasCertificados(app, deps) {
       db.collection('miembros').doc(uid).collection('progresoCursos').get(),
       db.collection('miembros').doc(uid).get()
     ]);
+    // Certificados vigentes (firmados o anteriores aceptables): firma los anteriores y deja el progreso coherente
+    const desdeCertificados = await sincronizarCertificadosAnteriores(uid, {
+      miembroExiste: miembroSnap.exists,
+      progresos: new Map(snap.docs.map(d => [d.id, d.data() || {}]))
+    });
     // completadoEn: cuándo terminó el curso (la del progreso o, si no la trae, la emisión de su certificado)
     const fechas = new Map();
     const sinFecha = [];
@@ -244,6 +347,7 @@ function montarRutasCertificados(app, deps) {
         completadoEn: p.completado ? (fechas.get(doc.id) || null) : null
       };
     }
+    for (const [cursoId, vista] of desdeCertificados) cursos[cursoId] = vista;
     const miembro = miembroSnap.exists ? (miembroSnap.data() || {}) : {};
     return res.json({ cursos, legadoImportado: miembro.progresoLegadoImportado === true });
   }));
@@ -359,28 +463,54 @@ function montarRutasCertificados(app, deps) {
       // Curso completo: hace falta la llave ANTES de guardar nada (así la última clase no se pierde)
       if (!firmaClave) throw sinCertificados();
       const folioNuevo = cert.folioCertificado(uid, cursoId, ahora);
-      const [delProgreso, delFolio, delaPersona] = await Promise.all([
+      const [delProgreso, delFolio, porUid, porMiembro] = await Promise.all([
         /^[A-Za-z0-9_-]{1,64}$/.test(previo.certificadoFolio || '') && previo.certificadoFolio !== folioNuevo ? tx.get(colCertificados().doc(previo.certificadoFolio)) : null,
         tx.get(colCertificados().doc(folioNuevo)),
-        tx.get(colCertificados().where('uid', '==', uid))
+        tx.get(colCertificados().where('uid', '==', uid)),
+        // los que escribía el navegador usan memberUid
+        tx.get(colCertificados().where('memberUid', '==', uid).limit(200))
       ]);
-      const candidatos = [];
-      for (const d of [delProgreso, delFolio, ...delaPersona.docs]) {
-        if (d && d.exists) {
-          const c = d.data();
-          if (c && String(c.folio) === d.id) candidatos.push(c);
+      const docs = [];
+      const vistos = new Set();
+      for (const d of [delProgreso, delFolio, ...porUid.docs, ...porMiembro.docs]) {
+        if (d && d.exists && !vistos.has(d.id)) {
+          vistos.add(d.id);
+          docs.push({ id: d.id, data: d.data() || {} });
         }
       }
-      let existente = cert.certificadoValidoDeCurso(candidatos, uid, cursoId, firmaClave);
+      // Los de esta persona y este curso: firmados, anteriores aceptables (se firman en su lugar) y no aceptables
+      const filas = cert.evaluarCertificados(docs, {
+        llave: firmaClave, ahora, limite: limiteAnteriores,
+        cursoExiste: id => id === cursoId,
+        miembroExiste: id => id === uid && Boolean(acceso.miembro || acceso.usuario)
+      }).filter(f => f.uid === uid && f.cursoId === cursoId);
+      const elegir = estado => filas.filter(f => f.estado === estado).sort(cert.compararVigentes)[0] || null;
+
+      let existente = null;
+      const firmado = elegir('firmado');
+      if (firmado) existente = firmado.data;
       let nuevo = false;
+      let fechaCompletado = ahora;
       if (!existente) {
-        if (delFolio.exists) throw errorHttp(409, 'El folio existente requiere auditoría antes de continuar');
-        existente = cert.construirCertificado({ uid, cursoId, curso, nombre, email, emitido: ahora, llave: firmaClave });
-        tx.set(colCertificados().doc(existente.folio), { ...existente, createdAt: Timestamp.fromDate(ahora) });
-        nuevo = true;
+        const anterior = elegir('aceptable');
+        if (anterior) {
+          // Certificado anterior (escrito por el navegador): se conserva su folio; no se crea otro ni se avisa de nuevo
+          const r = cert.parcheAnteriorAutomatico(anterior.id, anterior.data, firmaClave);
+          if (!r.ok) throw errorHttp(409, 'El folio existente requiere auditoría antes de continuar');
+          tx.set(colCertificados().doc(anterior.id), { ...r.parche, validadoEn: FieldValue.serverTimestamp() }, { merge: true });
+          existente = { ...anterior.data, ...r.parche };
+          const emision = new Date(anterior.emitido);
+          if (!Number.isNaN(emision.getTime())) fechaCompletado = emision;
+        } else {
+          // Hay un documento de esta persona y curso (o en el folio nuevo) que no es válido ni aceptable
+          if (delFolio.exists || filas.length) throw errorHttp(409, 'El folio existente requiere auditoría antes de continuar');
+          existente = cert.construirCertificado({ uid, cursoId, curso, nombre, email, emitido: ahora, llave: firmaClave });
+          tx.set(colCertificados().doc(existente.folio), { ...existente, createdAt: Timestamp.fromDate(ahora) });
+          nuevo = true;
+        }
       }
       datos.certificadoFolio = existente.folio;
-      if (!previo.completado) datos.completadoEn = Timestamp.fromDate(ahora);
+      if (!previo.completado) datos.completadoEn = Timestamp.fromDate(fechaCompletado);
       if (avance.cambia || !previo.completado || previo.certificadoFolio !== existente.folio) tx.set(ref, datos, { merge: true });
       return {
         sesionesVistas: avance.sesionesVistas, completado: true, certificado: cert.certificadoPublico(existente), nuevo,
@@ -402,6 +532,38 @@ function montarRutasCertificados(app, deps) {
   // ════════════════════════════════════════════════════════════
   // GET /api/certificados/:folio — verificación PÚBLICA (sin sesión)
   // ════════════════════════════════════════════════════════════
+  // Datos públicos de un certificado anterior aceptable, o null. Solo lecturas (el firmado lo hace el titular al
+  // abrir el sitio). Mismo criterio que el resto: forma del documento, curso y miembro existentes, límite de fecha
+  // y que no sea un duplicado de otro certificado vigente de la misma persona y curso.
+  async function verificarAnterior(folio, datos) {
+    const sinExistencias = cert.certificadoAnteriorAceptable(datos, {
+      id: folio, cursoExiste: true, miembroExiste: true, ahora: new Date(), limite: limiteAnteriores
+    });
+    if (!sinExistencias.aceptable) return null; // forma inválida, firma alterada o fuera de límite: sin más lecturas
+    const { uid, cursoId } = sinExistencias;
+    const [cursoSnap, miembroSnap] = await Promise.all([
+      db.collection('cursos').doc(cursoId).get(),
+      db.collection('miembros').doc(uid).get()
+    ]);
+    if (!cursoSnap.exists) return null;
+    if (!miembroSnap.exists && !(await db.collection('usuarios').doc(uid).get()).exists) return null;
+
+    const [porUid, porMiembro] = await Promise.all([
+      colCertificados().where('uid', '==', uid).limit(MAX_CERTIFICADOS_POR_CONSULTA).get(),
+      colCertificados().where('memberUid', '==', uid).limit(MAX_CERTIFICADOS_POR_CONSULTA).get()
+    ]);
+    const docs = new Map([[folio, { id: folio, data: datos }]]);
+    for (const d of [...porUid.docs, ...porMiembro.docs]) if (!docs.has(d.id)) docs.set(d.id, { id: d.id, data: d.data() || {} });
+    const filas = cert.evaluarCertificados([...docs.values()], {
+      llave: firmaClave, ahora: new Date(), limite: limiteAnteriores,
+      cursoExiste: id => id === cursoId,
+      miembroExiste: id => id === uid
+    });
+    const fila = filas.find(f => f.id === folio);
+    if (!fila || fila.estado !== 'aceptable') return null;
+    return cert.certificadoPublico(fila.campos);
+  }
+
   app.get('/api/certificados/:folio', async (req, res) => {
     res.set('Cache-Control', 'no-store');
     try {
@@ -414,11 +576,14 @@ function montarRutasCertificados(app, deps) {
       if (!firmaClave) throw errorHttp(503, 'La verificación de certificados aún no está configurada');
       const snap = await colCertificados().doc(folio).get();
       const datos = snap.exists ? snap.data() : null;
-      // Solo cuentan los firmados por el servidor y cuyo folio coincide con su documento
-      if (!datos || String(datos.folio) !== folio || !cert.certificadoValido(datos, firmaClave)) {
-        throw errorHttp(404, 'Certificado no encontrado');
+      // Cuentan los firmados por el servidor y cuyo folio coincide con su documento
+      if (datos && String(datos.folio) === folio && cert.certificadoValido(datos, firmaClave)) {
+        return res.json({ valido: true, certificado: cert.certificadoPublico(datos) });
       }
-      return res.json({ valido: true, certificado: cert.certificadoPublico(datos) });
+      // Y los anteriores (escritos por el navegador) que pasan la revisión: solo lectura, no se escribe nada aquí
+      const anterior = datos ? await verificarAnterior(folio, datos) : null;
+      if (!anterior) throw errorHttp(404, 'Certificado no encontrado');
+      return res.json({ valido: true, anterior: true, certificado: anterior });
     } catch (error) {
       return responderError(res, error, 'No se pudo verificar el certificado', 'verificar');
     }
@@ -483,6 +648,54 @@ function montarRutasCertificados(app, deps) {
       return res.json({ ok: true, certificado: cert.certificadoPublico(final) });
     } catch (error) {
       return responderError(res, error, 'No se pudo emitir el certificado', 'admin');
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // GET /api/admin/certificados/pendientes — certificados sin firma válida y su diagnóstico (solo lectura)
+  // ════════════════════════════════════════════════════════════
+  // Misma función de aceptación que la verificación pública, el progreso y el script de auditoría. No modifica nada.
+  const MAX_CERTIFICADOS_ADMIN = 5000;
+  app.get('/api/admin/certificados/pendientes', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarAdmin(req, res);
+      if (!decoded) return undefined;
+      limitar('admin', decoded.uid);
+      if (!firmaClave) throw sinCertificados();
+      const [certs, cursos, miembros, usuarios] = await Promise.all([
+        colCertificados().limit(MAX_CERTIFICADOS_ADMIN + 1).get(),
+        db.collection('cursos').select().get(),
+        db.collection('miembros').select().get(),
+        db.collection('usuarios').select().get()
+      ]);
+      const truncado = certs.docs.length > MAX_CERTIFICADOS_ADMIN;
+      const filas = cert.auditarCertificados({
+        certificados: certs.docs.slice(0, MAX_CERTIFICADOS_ADMIN).map(d => ({ id: d.id, data: d.data() })),
+        cursosIds: new Set(cursos.docs.map(d => d.id)),
+        miembrosIds: new Set([...miembros.docs, ...usuarios.docs].map(d => d.id)),
+        llave: firmaClave, ahora: new Date(), limite: limiteAnteriores
+      });
+      const resumen = { total: filas.length, firmados: 0, aceptables: 0, noAceptables: 0, porRazon: {} };
+      const pendientes = [];
+      for (const f of filas) {
+        if (f.accion === 'ya-valido') { resumen.firmados += 1; continue; }
+        if (f.aceptable) resumen.aceptables += 1; else resumen.noAceptables += 1;
+        for (const razon of f.razones) resumen.porRazon[razon] = (resumen.porRazon[razon] || 0) + 1;
+        pendientes.push({
+          folio: f.folio, aceptable: f.aceptable, razones: f.razones, uid: f.uid, cursoId: f.cursoId,
+          nombre: f.nombre, curso: f.curso, emitido: f.emitido || null
+        });
+      }
+      return res.json({
+        modoTransicion: limiteTexto === '',
+        limiteAnteriores: limiteTexto || null,
+        truncado,
+        resumen,
+        certificados: pendientes
+      });
+    } catch (error) {
+      return responderError(res, error, 'No se pudo revisar los certificados pendientes', 'pendientes');
     }
   });
 

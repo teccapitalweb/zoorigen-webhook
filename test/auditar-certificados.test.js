@@ -113,3 +113,29 @@ test('script: --apply firma solo los folios de la lista, conserva los campos vie
   assert.equal(c.certificadoValido(db.value('certificados/ZOO-2026-22222'), LLAVE), false);
   assert.equal(db.value('certificados/ZOO-2026-33333').firmaBackend, undefined);
 });
+
+test('script: usa el mismo criterio que el servidor (miembros en usuarios y CERTIFICADOS_ANTERIORES_HASTA)', async () => {
+  const { script } = entorno({
+    'usuarios/viejo': { name: 'Persona Vieja' },
+    'cursos/c1': { title: 'Curso 1' },
+    'certificados/ZOO-2026-11111': viejo({ memberUid: 'viejo' }),
+    'certificados/ZOO-2026-22222': viejo({ folio: 'ZOO-2026-22222', memberUid: 'viejo', courseId: 'c9' }),
+    'certificados/ZOO-2026-33333': viejo({ folio: 'ZOO-2026-33333', memberUid: 'viejo', firmaBackend: 'a'.repeat(64) })
+  });
+  const sinLimite = await ejecutar(script, []);
+  const por = Object.fromEntries(sinLimite.resultado.certificados.map(f => [f.folio, f]));
+  assert.equal(por['ZOO-2026-11111'].accion, 'revisar-manualmente', 'un miembro que solo está en usuarios cuenta');
+  assert.deepEqual(por['ZOO-2026-22222'].razones, ['curso-no-encontrado']);
+  assert.deepEqual(por['ZOO-2026-33333'].razones, ['firma-alterada']);
+
+  const antes = process.env.CERTIFICADOS_ANTERIORES_HASTA;
+  process.env.CERTIFICADOS_ANTERIORES_HASTA = '2026-01-01T00:00:00Z';
+  try {
+    const conLimite = await ejecutar(script, []);
+    const p = Object.fromEntries(conLimite.resultado.certificados.map(f => [f.folio, f]));
+    assert.deepEqual(p['ZOO-2026-11111'].razones, ['posterior-al-limite']);
+    assert.equal(p['ZOO-2026-11111'].accion, 'rechazar');
+  } finally {
+    if (antes === undefined) delete process.env.CERTIFICADOS_ANTERIORES_HASTA; else process.env.CERTIFICADOS_ANTERIORES_HASTA = antes;
+  }
+});

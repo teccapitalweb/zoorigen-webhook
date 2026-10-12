@@ -7,8 +7,9 @@
 //
 // Idea general (igual que en Alintec): el servidor es la única fuente de verdad del avance y de los
 // certificados. Un certificado vale solo si lleva una firma HMAC-SHA256 hecha con CERTIFICATE_SIGNING_KEY
-// sobre `folio\nuid\ncursoId\nemitido\nyear`; los que escribía el navegador no la tienen y se
-// regularizan con el script de auditoría (a mano, con una lista de folios aprobados).
+// sobre `folio\nuid\ncursoId\nemitido\nyear`; los que escribía el navegador no la tienen: si pasan la revisión de
+// certificadoAnteriorAceptable el servidor los acepta y los firma en su lugar (sin acción manual); el script de
+// auditoría es solo una revisión global opcional.
 
 const crypto = require('crypto');
 const { texto } = require('./texto');
@@ -428,58 +429,229 @@ function parcheLegadoValidado(docId, datos, llave) {
   return { ok: true, parche: { ...validado, firmaBackend: firmar(validado, llave) } };
 }
 
-// certificados: [{ id, data }] · cursosIds / miembrosIds: Set de ids · llave: CERTIFICATE_SIGNING_KEY
-// Devuelve una fila por certificado: { folio, accion, razones, uid, cursoId, nombre, curso }.
-// acciones: 'ya-valido' | 'revisar-manualmente' (se puede aprobar con la lista) | 'rechazar'
-function auditarCertificados({ certificados, cursosIds, miembrosIds, llave }) {
-  const lista = (Array.isArray(certificados) ? certificados : []).map(({ id, data }) => {
-    const d = data || {};
-    return {
-      id, data: d,
-      uid: String(d.uid || d.memberUid || ''),
-      cursoId: String(d.cursoId || d.courseId || ''),
-      valido: certificadoValido(d, llave) && String(d.folio || '') === id
+// ── Certificados anteriores: aceptación SIN acción manual ───────
+// Los certificados que ya escribió el navegador (usuarios reales, ya impresos o compartidos) no llevan firma.
+// En vez de dejarlos "en validación" hasta que alguien corra la auditoría, el servidor los acepta cuando pasan
+// una revisión objetiva (esta función) y los firma EN SU LUGAR cuando su titular abre el sitio. Un único
+// criterio: lo usan la verificación pública, el progreso, la finalización de curso, la ruta de administrador
+// y el script de auditoría.
+
+const TOLERANCIA_FUTURO_MS = 24 * 60 * 60 * 1000;
+
+// CERTIFICADOS_ANTERIORES_HASTA -> milisegundos. Sin definir (modo transición): Infinity, no hay límite.
+// Definida pero que no es una fecha: NaN (se rechaza todo anterior; es más seguro que abrir la ventana por un error de dedo).
+function limiteEnMs(valor) {
+  if (valor === undefined || valor === null) return Infinity;
+  if (valor instanceof Date) return valor.getTime();
+  if (typeof valor === 'number') return valor === Infinity ? Infinity : (Number.isFinite(valor) ? valor : NaN);
+  const s = String(valor).trim().replace(/^["']|["']$/g, '').trim();
+  if (!s) return Infinity;
+  const t = Date.parse(s);
+  return Number.isFinite(t) ? t : NaN;
+}
+
+const tieneFirma = d => d.firmaBackend !== undefined && d.firmaBackend !== null && d.firmaBackend !== '';
+const comoPredicado = v => (typeof v === 'function' ? id => Boolean(v(id)) : () => Boolean(v));
+
+// Decide si un certificado SIN firma válida puede aceptarse como anterior. Pura.
+//   doc: los datos del documento (si trae `id`, se usa como id del documento)
+//   opciones: { id, cursoExiste, miembroExiste, ahora, limite }
+//     cursoExiste / miembroExiste: boolean, o función (id) => boolean
+//     ahora: Date (por defecto la actual) · limite: ISO / Date / ms; sin valor no hay límite de fecha
+// Devuelve { aceptable, razones:[...], campos|null, uid, cursoId, emitido } (campos = esquema nuevo ya normalizado).
+// Un documento con firmaBackend (válida o no) nunca es "anterior": si la firma es válida lo reconoce
+// certificadoValido y si no lo es, se trata como alteración.
+function certificadoAnteriorAceptable(doc, opciones = {}) {
+  const d = esObjeto(doc) ? doc : {};
+  const op = esObjeto(opciones) ? opciones : {};
+  const id = String(op.id !== undefined && op.id !== null ? op.id : (d.id !== undefined && d.id !== null ? d.id : ''));
+  const cursoExiste = comoPredicado(op.cursoExiste);
+  const miembroExiste = comoPredicado(op.miembroExiste);
+  const ahora = op.ahora instanceof Date && !Number.isNaN(op.ahora.getTime()) ? op.ahora : new Date();
+  const limite = limiteEnMs(op.limite);
+  const razones = [];
+
+  if (tieneFirma(d)) razones.push('firma-alterada');
+
+  if (!FOLIO_REGEX.test(id)) razones.push('folio-con-formato-invalido');
+  if (!d.folio || String(d.folio) !== id) razones.push('folio-inconsistente');
+
+  const uidA = String(d.uid || '');
+  const uidB = String(d.memberUid || '');
+  const cursoA = String(d.cursoId || '');
+  const cursoB = String(d.courseId || '');
+  if (uidA && uidB && uidA !== uidB) razones.push('titular-inconsistente');
+  if (cursoA && cursoB && cursoA !== cursoB) razones.push('curso-inconsistente');
+  const uid = uidA || uidB;
+  const cursoId = cursoA || cursoB;
+
+  if (!uid) razones.push('miembro-no-encontrado');
+  else if (!UID_REGEX.test(uid)) razones.push('uid-invalido');
+  else if (!miembroExiste(uid)) razones.push('miembro-no-encontrado');
+
+  if (!cursoId) razones.push('curso-no-encontrado');
+  else if (!ID_CURSO_REGEX.test(cursoId)) razones.push('curso-invalido');
+  else if (!cursoExiste(cursoId)) razones.push('curso-no-encontrado');
+
+  const r = camposDesdeLegado(id, d);
+  if (!r.ok && r.razon !== 'uid-invalido' && r.razon !== 'curso-vacio') razones.push(r.razon);
+  const campos = r.ok ? r.campos : null;
+
+  const emitido = campos ? campos.emitido : '';
+  if (emitido) {
+    const t = Date.parse(emitido);
+    if (t > ahora.getTime() + TOLERANCIA_FUTURO_MS) razones.push('fecha-futura');
+    if (Number.isNaN(limite)) razones.push('limite-invalido');
+    else if (t > limite) razones.push('posterior-al-limite');
+  }
+
+  const aceptable = razones.length === 0 && Boolean(campos);
+  return { aceptable, razones, campos: aceptable ? campos : null, uid, cursoId, emitido };
+}
+
+// Evalúa un conjunto de certificados (todos los de la colección, o los de una persona).
+//   docs: [{ id, data }] · contexto: { llave, cursoExiste, miembroExiste, ahora, limite }
+// Una fila por documento: { id, folio, uid, cursoId, estado, razones, campos, emitido, data }
+//   estado: 'firmado' (firma válida) | 'aceptable' (anterior que el servidor firmará) | 'no-aceptable'
+// Duplicados: una persona y un curso con más de un certificado vigente conservan uno (el firmado o, si no, el más
+// antiguo); los demás anteriores quedan 'no-aceptable' con la razón 'duplicado-uid-curso'.
+function evaluarCertificados(docs, contexto = {}) {
+  const ctx = esObjeto(contexto) ? contexto : {};
+  const filas = (Array.isArray(docs) ? docs : []).map(({ id, data }) => {
+    const d = esObjeto(data) ? data : {};
+    const folioId = String(id);
+    const base = {
+      id: folioId, folio: folioId,
+      uid: String(d.uid || d.memberUid || ''), cursoId: String(d.cursoId || d.courseId || ''),
+      emitido: fechaIso(d.emitido || d.issuedAt), data: d
     };
-  });
-
-  // Duplicados: una persona y un curso con más de un certificado. Se conserva el válido, o el más antiguo.
-  const porClave = new Map();
-  for (const c of lista) {
-    if (!c.uid || !c.cursoId) continue;
-    const k = `${c.uid}|${c.cursoId}`;
-    if (!porClave.has(k)) porClave.set(k, []);
-    porClave.get(k).push(c);
-  }
-  const duplicados = new Set();
-  for (const grupo of porClave.values()) {
-    if (grupo.length < 2) continue;
-    const orden = grupo.slice().sort((a, b) => {
-      if (a.valido !== b.valido) return a.valido ? -1 : 1;
-      const fa = fechaIso(a.data.emitido || a.data.issuedAt) || '9999';
-      const fb = fechaIso(b.data.emitido || b.data.issuedAt) || '9999';
-      if (fa !== fb) return fa < fb ? -1 : 1;
-      return a.id < b.id ? -1 : 1;
-    });
-    for (const sobrante of orden.slice(1)) duplicados.add(sobrante.id);
-  }
-
-  return lista.map(c => {
-    const razones = [];
-    if (!c.valido) {
-      if (!FOLIO_REGEX.test(c.id)) razones.push('folio-con-formato-invalido');
-      if (c.data.folio && String(c.data.folio) !== c.id) razones.push('folio-inconsistente');
-      if (!c.uid || !miembrosIds.has(c.uid)) razones.push('miembro-no-encontrado');
-      if (!c.cursoId || !cursosIds.has(c.cursoId)) razones.push('curso-no-encontrado');
-      const r = camposDesdeLegado(c.id, c.data);
-      if (!r.ok && r.razon !== 'uid-invalido' && r.razon !== 'curso-vacio') razones.push(r.razon);
-      if (duplicados.has(c.id)) razones.push('duplicado-uid-curso');
+    if (String(d.folio || '') === folioId && certificadoValido(d, ctx.llave)) {
+      return { ...base, estado: 'firmado', razones: [], campos: null };
     }
-    const accion = c.valido ? 'ya-valido' : (razones.length ? 'rechazar' : 'revisar-manualmente');
-    return {
-      folio: c.id, accion, razones, uid: c.uid, cursoId: c.cursoId,
-      nombre: String(c.data.nombre || c.data.memberName || ''), curso: String(c.data.curso || c.data.courseTitle || '')
-    };
+    const r = certificadoAnteriorAceptable(d, {
+      id: folioId, cursoExiste: ctx.cursoExiste, miembroExiste: ctx.miembroExiste, ahora: ctx.ahora, limite: ctx.limite
+    });
+    return { ...base, estado: r.aceptable ? 'aceptable' : 'no-aceptable', razones: r.razones, campos: r.campos };
   });
+
+  const grupos = new Map();
+  for (const f of filas) {
+    if (f.estado === 'no-aceptable' || !f.uid || !f.cursoId) continue;
+    const k = `${f.uid}|${f.cursoId}`;
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(f);
+  }
+  for (const grupo of grupos.values()) {
+    if (grupo.length < 2) continue;
+    grupo.sort(compararVigentes);
+    for (const sobrante of grupo.slice(1)) {
+      if (sobrante.estado === 'aceptable') {
+        sobrante.estado = 'no-aceptable';
+        sobrante.razones = [...sobrante.razones, 'duplicado-uid-curso'];
+        sobrante.campos = null;
+      }
+    }
+  }
+  return filas;
+}
+
+// Orden de preferencia entre certificados vigentes de una misma persona y curso: el firmado, luego el más antiguo
+function compararVigentes(a, b) {
+  if ((a.estado === 'firmado') !== (b.estado === 'firmado')) return a.estado === 'firmado' ? -1 : 1;
+  const fa = a.emitido || '9999';
+  const fb = b.emitido || '9999';
+  if (fa !== fb) return fa < fb ? -1 : 1;
+  return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0);
+}
+
+// Lo que se escribe al firmar en su lugar un certificado anterior aceptable: la normalización y firma de la
+// auditoría más la marca de que fue automática. No borra ni cambia ningún campo viejo.
+function parcheAnteriorAutomatico(docId, datos, llave) {
+  const r = parcheLegadoValidado(docId, datos, llave);
+  if (!r.ok) return r;
+  return { ok: true, parche: { ...r.parche, migradoAutomaticamente: true } };
+}
+
+// Progreso coherente con los certificados vigentes de una persona (firmados o anteriores aceptables).
+//   vigentes: [{ id, cursoId, emitido }] · progresos: Map(cursoId -> datos crudos del progreso | null)
+//   cursos: Map(cursoId -> datos del curso | null)
+// Devuelve [{ cursoId, folio, vista, escribir, doc }]:
+//   vista: lo que ve la persona { sesionesVistas, quizzesAprobados, completado:true, certificadoFolio, completadoEn }
+//   escribir/doc: si hay que guardarlo en miembros/{uid}/progresoCursos/{cursoId} (merge) y qué guardar.
+// Idempotente: con el progreso ya coherente `escribir` es false. Nunca quita avance.
+function planearProgresoDesdeCertificados({ uid, vigentes, progresos, cursos }) {
+  const porCurso = new Map();
+  for (const v of Array.isArray(vigentes) ? vigentes : []) {
+    if (!v || !v.cursoId || !v.id) continue;
+    if (!porCurso.has(v.cursoId)) porCurso.set(v.cursoId, []);
+    porCurso.get(v.cursoId).push(v);
+  }
+  const salida = [];
+  for (const [cursoId, lista] of porCurso) {
+    lista.sort((a, b) => {
+      const fa = a.emitido || '9999';
+      const fb = b.emitido || '9999';
+      if (fa !== fb) return fa < fb ? -1 : 1;
+      return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0);
+    });
+    const crudo = progresos instanceof Map && esObjeto(progresos.get(cursoId)) ? progresos.get(cursoId) : null;
+    const p = normalizarProgreso(crudo);
+    const elegido = lista.find(v => v.id === p.certificadoFolio) || lista[0];
+    const curso = cursos instanceof Map ? cursos.get(cursoId) : null;
+    const total = leccionesDe(curso).length;
+    const todas = Array.from({ length: total }, (_, i) => i);
+    const propia = crudo ? fechaIso(crudo.completadoEn) : '';
+    const completadoEn = propia || elegido.emitido || null;
+
+    // Con el curso ya completado se respeta lo guardado; si no, todas las clases cuentan como vistas
+    const completarClases = !crudo || !p.completado;
+    const sesionesVistas = completarClases ? enteros([...p.sesionesVistas, ...todas]) : p.sesionesVistas;
+    const quizzesAprobados = !crudo
+      ? todas.filter(i => preguntasDeLeccion(leccionDe(curso, i)).length > 0)
+      : p.quizzesAprobados;
+    const vista = { sesionesVistas, quizzesAprobados, completado: true, certificadoFolio: elegido.id, completadoEn };
+
+    const coherente = Boolean(crudo) && p.completado && p.certificadoFolio === elegido.id && (Boolean(propia) || !elegido.emitido);
+    // Un curso que ya no existe y sin progreso previo: se muestra, pero no hay nada coherente que guardar
+    const escribir = !coherente && (Boolean(crudo) || Boolean(curso));
+    const item = { cursoId, folio: elegido.id, vista, escribir, doc: null };
+    if (escribir) {
+      item.doc = { cursoId, uid, completado: true, certificadoFolio: elegido.id, origenLegado: true };
+      if (completarClases) {
+        item.doc.sesionesVistas = sesionesVistas;
+        if (!crudo) item.doc.quizzesAprobados = quizzesAprobados;
+      }
+      if (!propia && elegido.emitido) item.doc.completadoEnIso = elegido.emitido;
+    }
+    salida.push(item);
+  }
+  return salida;
+}
+
+// certificados: [{ id, data }] · cursosIds / miembrosIds: Set de ids · llave: CERTIFICATE_SIGNING_KEY
+// ahora / limite (opcionales): los mismos que usa el servidor (CERTIFICADOS_ANTERIORES_HASTA)
+// Devuelve una fila por certificado: { folio, accion, aceptable, razones, uid, cursoId, nombre, curso, emitido }.
+// acciones: 'ya-valido' | 'revisar-manualmente' (aceptable: se puede aprobar con la lista) | 'rechazar'
+function auditarCertificados({ certificados, cursosIds, miembrosIds, llave, ahora, limite }) {
+  const filas = evaluarCertificados(
+    (Array.isArray(certificados) ? certificados : []).map(({ id, data }) => ({ id, data: data || {} })),
+    {
+      llave, ahora, limite,
+      cursoExiste: id => Boolean(cursosIds && cursosIds.has(id)),
+      miembroExiste: id => Boolean(miembrosIds && miembrosIds.has(id))
+    }
+  );
+  return filas.map(f => ({
+    folio: f.id,
+    accion: f.estado === 'firmado' ? 'ya-valido' : (f.estado === 'aceptable' ? 'revisar-manualmente' : 'rechazar'),
+    aceptable: f.estado === 'aceptable',
+    razones: f.razones,
+    uid: f.uid,
+    cursoId: f.cursoId,
+    nombre: String(f.data.nombre || f.data.memberName || ''),
+    curso: String(f.data.curso || f.data.courseTitle || ''),
+    emitido: f.emitido
+  }));
 }
 
 module.exports = {
@@ -492,5 +664,7 @@ module.exports = {
   preguntasDeLeccion, calificarQuiz,
   normalizarProgreso, evaluarAvance, todasVistas,
   corteLegado, cuentaElegibleParaLegado, planearImportacionLegado, unirProgreso,
-  camposDesdeLegado, parcheLegadoValidado, auditarCertificados
+  camposDesdeLegado, parcheLegadoValidado, auditarCertificados,
+  TOLERANCIA_FUTURO_MS, limiteEnMs, certificadoAnteriorAceptable, evaluarCertificados, compararVigentes,
+  parcheAnteriorAutomatico, planearProgresoDesdeCertificados
 };

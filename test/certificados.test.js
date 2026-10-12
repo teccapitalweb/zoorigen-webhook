@@ -423,3 +423,169 @@ test('auditarCertificados: dos viejos de la misma persona y curso, solo el más 
   assert.equal(por['ZOO-2026-AAAAA'], 'revisar-manualmente');
   assert.equal(por['ZOO-2026-BBBBB'], 'rechazar');
 });
+
+// ── Certificados anteriores: aceptación sin acción manual ──
+
+// Lo que escribía el navegador, exactamente (sin firmaBackend)
+const delNavegador = (extra = {}) => ({
+  folio: 'ZOO-2026-48213', courseId: 'c1', courseTitle: 'Curso 1', courseArea: 'Manejo', courseDuration: '',
+  memberUid: ANA, memberName: 'Ana Pérez', memberEmail: 'ana@example.com', issuedAt: '2026-03-04T15:00:00.000Z', totalClases: 3, ...extra
+});
+const AHORA = new Date('2026-10-12T12:00:00Z');
+const ctx = (extra = {}) => ({ id: 'ZOO-2026-48213', cursoExiste: true, miembroExiste: true, ahora: AHORA, ...extra });
+
+test('certificadoAnteriorAceptable: acepta el certificado del navegador y normaliza sus campos', () => {
+  const r = c.certificadoAnteriorAceptable(delNavegador(), ctx());
+  assert.equal(r.aceptable, true);
+  assert.deepEqual(r.razones, []);
+  assert.deepEqual(
+    { folio: r.campos.folio, uid: r.campos.uid, cursoId: r.campos.cursoId, nombre: r.campos.nombre, curso: r.campos.curso, area: r.campos.area,
+      horas: r.campos.horas, sesiones: r.campos.sesiones, instructor: r.campos.instructor, emitido: r.campos.emitido, year: r.campos.year },
+    { folio: 'ZOO-2026-48213', uid: ANA, cursoId: 'c1', nombre: 'Ana Pérez', curso: 'Curso 1', area: 'Manejo', horas: 0, sesiones: 3,
+      instructor: 'Equipo Zoorigen', emitido: '2026-03-04T15:00:00.000Z', year: 2026 }
+  );
+  // horas con el parser que ya existe
+  assert.equal(c.certificadoAnteriorAceptable(delNavegador({ courseDuration: '4h 30m' }), ctx()).campos.horas, 4.5);
+});
+
+test('certificadoAnteriorAceptable: acepta los dos juegos de nombres (uid/cursoId/nombre/curso/emitido)', () => {
+  const admin = { folio: 'ZOO-2026-77001', uid: 'beto', cursoId: 'c2', nombre: 'Beto Ruiz', curso: 'Etología', emitido: '2026-05-01T10:00:00.000Z' };
+  const r = c.certificadoAnteriorAceptable(admin, ctx({ id: 'ZOO-2026-77001' }));
+  assert.equal(r.aceptable, true);
+  assert.equal(r.uid, 'beto');
+  assert.equal(r.campos.nombre, 'Beto Ruiz');
+  // el id puede venir en el propio documento
+  assert.equal(c.certificadoAnteriorAceptable({ ...admin, id: 'ZOO-2026-77001' }, { cursoExiste: true, miembroExiste: true, ahora: AHORA }).aceptable, true);
+});
+
+test('certificadoAnteriorAceptable: cada regla rechaza con su razón', () => {
+  const razones = (doc, extra) => c.certificadoAnteriorAceptable(doc, ctx(extra)).razones;
+  assert.deepEqual(razones(delNavegador({ firmaBackend: 'a'.repeat(64) })), ['firma-alterada']);
+  assert.deepEqual(razones(delNavegador({ firmaBackend: 'no-es-firma' })), ['firma-alterada']);
+  assert.deepEqual(razones(delNavegador({ folio: 'ZOO-2026-99999' })), ['folio-inconsistente']);
+  assert.deepEqual(razones(delNavegador({ folio: undefined })), ['folio-inconsistente']);
+  assert.ok(razones(delNavegador({ folio: 'abc' }), { id: 'abc' }).includes('folio-con-formato-invalido'));
+  assert.deepEqual(razones(delNavegador(), { miembroExiste: false }), ['miembro-no-encontrado']);
+  assert.deepEqual(razones(delNavegador(), { cursoExiste: false }), ['curso-no-encontrado']);
+  assert.deepEqual(razones(delNavegador({ memberUid: '' })), ['miembro-no-encontrado']);
+  assert.deepEqual(razones(delNavegador({ courseId: '' })), ['curso-no-encontrado']);
+  assert.deepEqual(razones(delNavegador({ memberUid: 'a/b' })), ['uid-invalido']);
+  assert.deepEqual(razones(delNavegador({ courseId: '../x' })), ['curso-invalido']);
+  assert.deepEqual(razones(delNavegador({ memberName: '' })), ['campos-obligatorios-incompletos']);
+  assert.deepEqual(razones(delNavegador({ courseTitle: '' })), ['campos-obligatorios-incompletos']);
+  assert.deepEqual(razones(delNavegador({ issuedAt: 'ayer' })), ['fecha-invalida']);
+  assert.deepEqual(razones(delNavegador({ uid: 'beto' })), ['titular-inconsistente']);
+  assert.deepEqual(razones(delNavegador({ cursoId: 'c2' })), ['curso-inconsistente']);
+  assert.deepEqual(razones(delNavegador({ issuedAt: '2026-10-14T12:00:00.000Z' })), ['fecha-futura']);
+  assert.deepEqual(razones(delNavegador({ issuedAt: '2026-10-13T11:00:00.000Z' })), [], 'hasta un día por desfase de reloj');
+  assert.equal(c.certificadoAnteriorAceptable(null, {}).aceptable, false);
+});
+
+test('certificadoAnteriorAceptable: existencias como función y límite de fecha inclusivo', () => {
+  const soloAna = id => id === ANA;
+  const soloC1 = id => id === 'c1';
+  assert.equal(c.certificadoAnteriorAceptable(delNavegador(), ctx({ miembroExiste: soloAna, cursoExiste: soloC1 })).aceptable, true);
+  assert.equal(c.certificadoAnteriorAceptable(delNavegador({ memberUid: 'otro' }), ctx({ miembroExiste: soloAna, cursoExiste: soloC1 })).aceptable, false);
+
+  const emitido = '2026-03-04T15:00:00.000Z';
+  assert.equal(c.certificadoAnteriorAceptable(delNavegador(), ctx({ limite: emitido })).aceptable, true, 'el límite es inclusivo');
+  const despues = c.certificadoAnteriorAceptable(delNavegador(), ctx({ limite: '2026-03-04T14:59:59.999Z' }));
+  assert.deepEqual(despues.razones, ['posterior-al-limite']);
+  assert.equal(c.certificadoAnteriorAceptable(delNavegador(), ctx({ limite: '' })).aceptable, true, 'sin límite: modo transición');
+  assert.equal(c.certificadoAnteriorAceptable(delNavegador(), ctx({ limite: undefined })).aceptable, true);
+  assert.equal(c.certificadoAnteriorAceptable(delNavegador(), ctx({ limite: new Date(emitido) })).aceptable, true);
+  assert.deepEqual(c.certificadoAnteriorAceptable(delNavegador(), ctx({ limite: 'no-es-fecha' })).razones, ['limite-invalido']);
+});
+
+test('limiteEnMs: sin valor no hay límite, una fecha válida es el corte y una inválida es NaN', () => {
+  assert.equal(c.limiteEnMs(undefined), Infinity);
+  assert.equal(c.limiteEnMs(null), Infinity);
+  assert.equal(c.limiteEnMs('  '), Infinity);
+  assert.equal(c.limiteEnMs('2026-03-01T00:00:00Z'), Date.parse('2026-03-01T00:00:00Z'));
+  assert.equal(c.limiteEnMs('"2026-03-01T00:00:00Z"'), Date.parse('2026-03-01T00:00:00Z'));
+  assert.equal(Number.isNaN(c.limiteEnMs('mañana')), true);
+});
+
+test('evaluarCertificados: firmado, aceptable y duplicado (el firmado o el más antiguo se conserva)', () => {
+  const firmado = emitir({ cursoId: 'c1' });
+  const filas = c.evaluarCertificados([
+    { id: firmado.folio, data: firmado },
+    { id: 'ZOO-2026-48213', data: delNavegador() }, // misma persona y curso que el firmado: duplicado
+    { id: 'ZOO-2026-50001', data: delNavegador({ folio: 'ZOO-2026-50001', memberUid: 'beto', issuedAt: '2026-05-01T00:00:00.000Z' }) },
+    { id: 'ZOO-2026-50002', data: delNavegador({ folio: 'ZOO-2026-50002', memberUid: 'beto', issuedAt: '2026-04-01T00:00:00.000Z' }) },
+    { id: 'ZOO-2026-50003', data: delNavegador({ folio: 'ZOO-2026-50003', memberUid: 'beto', memberName: '', issuedAt: '2026-01-01T00:00:00.000Z' }) }
+  ], { llave: LLAVE, cursoExiste: true, miembroExiste: true, ahora: AHORA });
+  const por = Object.fromEntries(filas.map(f => [f.id, f]));
+  assert.equal(por[firmado.folio].estado, 'firmado');
+  assert.equal(por['ZOO-2026-48213'].estado, 'no-aceptable');
+  assert.deepEqual(por['ZOO-2026-48213'].razones, ['duplicado-uid-curso']);
+  assert.equal(por['ZOO-2026-50002'].estado, 'aceptable', 'el más antiguo');
+  assert.equal(por['ZOO-2026-50001'].estado, 'no-aceptable');
+  assert.equal(por['ZOO-2026-50003'].estado, 'no-aceptable', 'un inválido más antiguo no impide aceptar al bueno');
+  assert.deepEqual(por['ZOO-2026-50003'].razones, ['campos-obligatorios-incompletos']);
+});
+
+test('parcheAnteriorAutomatico: igual que la auditoría más migradoAutomaticamente; el resultado valida y no toca campos viejos', () => {
+  const datos = delNavegador();
+  const r = c.parcheAnteriorAutomatico('ZOO-2026-48213', datos, LLAVE);
+  assert.equal(r.ok, true);
+  assert.equal(r.parche.migradoAutomaticamente, true);
+  assert.equal(r.parche.origen, 'legacy-validado');
+  assert.equal(c.certificadoValido({ ...datos, ...r.parche }, LLAVE), true);
+  assert.equal('memberUid' in r.parche, false);
+  assert.equal(c.parcheAnteriorAutomatico('ZOO-2026-48213', delNavegador({ memberName: '' }), LLAVE).ok, false);
+});
+
+test('planearProgresoDesdeCertificados: completa sin documento previo, respeta lo guardado y es idempotente', () => {
+  const cursos = new Map([
+    ['c1', { title: 'C1', lecciones: [{}, {}, {}] }],
+    ['c3', { title: 'C3', lecciones: [{ preguntas: [{ pregunta: '¿Sí?', tipo: 'vof', correcta: 1 }] }, {}] }]
+  ]);
+  const vigentes = [
+    { id: 'ZOO-2026-48213', cursoId: 'c1', emitido: '2026-03-04T15:00:00.000Z' },
+    { id: 'ZOO-2026-50001', cursoId: 'c3', emitido: '2026-04-01T00:00:00.000Z' },
+    { id: 'ZOO-2026-50009', cursoId: 'borrado', emitido: '2026-04-01T00:00:00.000Z' }
+  ];
+  const plan = c.planearProgresoDesdeCertificados({ uid: ANA, vigentes, progresos: new Map(), cursos });
+  const por = Object.fromEntries(plan.map(p => [p.cursoId, p]));
+  assert.deepEqual(por.c1.vista, {
+    sesionesVistas: [0, 1, 2], quizzesAprobados: [], completado: true, certificadoFolio: 'ZOO-2026-48213', completadoEn: '2026-03-04T15:00:00.000Z'
+  });
+  assert.equal(por.c1.escribir, true);
+  assert.equal(por.c1.doc.origenLegado, true);
+  assert.deepEqual(por.c3.vista.quizzesAprobados, [0]);
+  assert.equal(por.borrado.escribir, false, 'un curso que ya no existe se muestra pero no se guarda');
+  assert.deepEqual(por.borrado.vista.sesionesVistas, []);
+
+  // ya coherente: nada que escribir y la vista conserva lo guardado
+  const guardado = { cursoId: 'c1', uid: ANA, sesionesVistas: [0, 1], quizzesAprobados: [], completado: true, certificadoFolio: 'ZOO-2026-48213', completadoEn: new Date('2026-03-04T15:00:00.000Z') };
+  const otra = c.planearProgresoDesdeCertificados({ uid: ANA, vigentes: [vigentes[0]], progresos: new Map([['c1', guardado]]), cursos });
+  assert.equal(otra[0].escribir, false);
+  assert.deepEqual(otra[0].vista.sesionesVistas, [0, 1]);
+
+  // con documento previo sin completar: se completa y nunca se pierde avance
+  const parcial = { cursoId: 'c1', uid: ANA, sesionesVistas: [0, 7], quizzesAprobados: [0], completado: false };
+  const completa = c.planearProgresoDesdeCertificados({ uid: ANA, vigentes: [vigentes[0]], progresos: new Map([['c1', parcial]]), cursos });
+  assert.equal(completa[0].escribir, true);
+  assert.deepEqual(completa[0].vista.sesionesVistas, [0, 1, 2, 7]);
+  assert.deepEqual(completa[0].vista.quizzesAprobados, [0]);
+  assert.equal(completa[0].doc.completadoEnIso, '2026-03-04T15:00:00.000Z');
+});
+
+test('auditarCertificados: reutiliza la misma aceptación (límite de fecha y firma alterada)', () => {
+  const filas = c.auditarCertificados({
+    llave: LLAVE, cursosIds: new Set(['c1']), miembrosIds: new Set([ANA, 'beto']), ahora: AHORA, limite: '2026-03-01T00:00:00Z',
+    certificados: [
+      { id: 'ZOO-2026-48213', data: delNavegador() },
+      { id: 'ZOO-2026-60001', data: delNavegador({ folio: 'ZOO-2026-60001', memberUid: 'beto', issuedAt: '2026-02-01T00:00:00.000Z' }) },
+      { id: 'ZOO-2026-60002', data: delNavegador({ folio: 'ZOO-2026-60002', memberUid: 'beto', issuedAt: '2026-02-02T00:00:00.000Z', firmaBackend: 'a'.repeat(64) }) }
+    ]
+  });
+  const por = Object.fromEntries(filas.map(f => [f.folio, f]));
+  assert.deepEqual(por['ZOO-2026-48213'].razones, ['posterior-al-limite']);
+  assert.equal(por['ZOO-2026-48213'].accion, 'rechazar');
+  assert.equal(por['ZOO-2026-60001'].accion, 'revisar-manualmente');
+  assert.equal(por['ZOO-2026-60001'].aceptable, true);
+  assert.deepEqual(por['ZOO-2026-60002'].razones, ['firma-alterada']);
+  assert.equal(por['ZOO-2026-60002'].accion, 'rechazar');
+});
