@@ -411,6 +411,12 @@ Noticias y avisos:
 - `NEWSDATA_API_KEY` (opcional): activa NewsData.io como fuente extra. Nunca sale en respuestas ni en registros.
 - `NOTICIAS_TAREA=off` (opcional): apaga la tarea diaria dentro del proceso.
 
+Correo de verificación de cuenta (opcional):
+- `RESEND_API_KEY`: llave de Resend (resend.com). Con ella el servidor envía el correo de verificación con la plantilla de Zoorigen (ruta `POST /api/auth/send-verification`). Nunca sale en respuestas ni en registros. Solo la configura la persona dueña del proyecto, directamente en Railway.
+- `MAIL_FROM`: remitente ya verificado en Resend, por ejemplo `Zoorigen <no-reply@zoorigen.com>`.
+- `PANEL_URL` (opcional): dirección base del sitio para armar el enlace del correo; por defecto `https://www.zoorigen.com`.
+- Sin `RESEND_API_KEY` o `MAIL_FROM` el servidor arranca igual: el envío responde 503 y el sitio usa el correo estándar de Firebase como respaldo.
+
 ### `BUNNY_API_KEY` (clave de gestión de Bunny)
 
 Sirve solo para `GET /api/admin/bunny-catalogo`, que alimenta el botón "Sincronizar con Bunny" del panel
