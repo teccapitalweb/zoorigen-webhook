@@ -114,7 +114,7 @@ test('GET progreso: vacío al inicio y con las formas del contrato después; sin
 
   await completar(app, 'c1', 0, 1);
   const r = await get(app, '/api/cursos/progreso');
-  assert.deepEqual(r.body.cursos.c1, { sesionesVistas: [0, 1], quizzesAprobados: [], completado: false, certificadoFolio: null });
+  assert.deepEqual(r.body.cursos.c1, { sesionesVistas: [0, 1], quizzesAprobados: [], completado: false, certificadoFolio: null, completadoEn: null });
   assert.equal(r.body.legadoImportado, false);
 });
 
@@ -208,7 +208,7 @@ test('progreso: al completar el curso emite UN certificado firmado con todos los
 
   // el progreso guarda el folio y queda completado
   const prog = await get(app, '/api/cursos/progreso');
-  assert.deepEqual(prog.body.cursos.c1, { sesionesVistas: [0, 1, 2], quizzesAprobados: [], completado: true, certificadoFolio: c.folio });
+  assert.deepEqual(prog.body.cursos.c1, { sesionesVistas: [0, 1, 2], quizzesAprobados: [], completado: true, certificadoFolio: c.folio, completadoEn: c.emitido });
 });
 
 test('progreso: el nombre del certificado es el que la persona eligió (nombreCertificado)', async () => {
@@ -427,9 +427,9 @@ test('legado: con la variable y una cuenta anterior al corte importa el progreso
   const r = await get(app, '/api/cursos/progreso');
   assert.equal(r.status, 200);
   assert.equal(r.body.legadoImportado, true);
-  assert.deepEqual(r.body.cursos.c1, { sesionesVistas: [0, 1], quizzesAprobados: [], completado: false, certificadoFolio: null });
-  assert.deepEqual(r.body.cursos.c3, { sesionesVistas: [0], quizzesAprobados: [0], completado: false, certificadoFolio: null });
-  assert.deepEqual(r.body.cursos.c2, { sesionesVistas: [0, 1], quizzesAprobados: [], completado: true, certificadoFolio: 'ZOO-2026-12345' });
+  assert.deepEqual(r.body.cursos.c1, { sesionesVistas: [0, 1], quizzesAprobados: [], completado: false, certificadoFolio: null, completadoEn: null });
+  assert.deepEqual(r.body.cursos.c3, { sesionesVistas: [0], quizzesAprobados: [0], completado: false, certificadoFolio: null, completadoEn: null });
+  assert.deepEqual(r.body.cursos.c2, { sesionesVistas: [0, 1], quizzesAprobados: [], completado: true, certificadoFolio: 'ZOO-2026-12345', completadoEn: '2026-04-01T10:00:00.000Z' });
   assert.equal(r.body.cursos.inexistente, undefined);
   assert.equal(db.value('miembros/ana').progresoLegadoImportado, true);
   assert.ok(db.value('miembros/ana').courseProgress, 'el campo viejo no se borra');
@@ -449,7 +449,7 @@ test('legado: un curso terminado SIN certificado deja la última clase pendiente
     seed: { 'miembros/ana': miembroConPlan({ name: 'Ana Pérez', courseProgress: { c1: { completedLessons: [0, 1, 2], isCompleted: true } } }) }
   });
   const r = await get(app, '/api/cursos/progreso');
-  assert.deepEqual(r.body.cursos.c1, { sesionesVistas: [0, 1], quizzesAprobados: [], completado: false, certificadoFolio: null });
+  assert.deepEqual(r.body.cursos.c1, { sesionesVistas: [0, 1], quizzesAprobados: [], completado: false, certificadoFolio: null, completadoEn: null });
   assert.deepEqual(claves(db, 'certificados/'), []);
   const fin = await progreso(app, 'c1', 2);
   assert.equal(fin.body.completado, true);
@@ -482,7 +482,7 @@ test('legado: el avance ya guardado por el servidor no se pierde al importar', a
     }
   });
   const r = await get(app, '/api/cursos/progreso');
-  assert.deepEqual(r.body.cursos.c1, { sesionesVistas: [0, 1, 2], quizzesAprobados: [], completado: true, certificadoFolio: 'ZOO-2026-SERVID01' });
+  assert.deepEqual(r.body.cursos.c1, { sesionesVistas: [0, 1, 2], quizzesAprobados: [], completado: true, certificadoFolio: 'ZOO-2026-SERVID01', completadoEn: null });
 });
 
 // ── GET /api/certificados/:folio (pública) ──
@@ -664,4 +664,52 @@ test('admin: 400 con uid o curso inválidos y 404 si el miembro o el curso no ex
   assert.equal((await peticion({ uid: 'beto', cursoId: '../x' })).status, 400);
   assert.equal((await peticion({ uid: 'fantasma', cursoId: 'c1' })).status, 404);
   assert.equal((await peticion({ uid: 'beto', cursoId: 'noexiste' })).status, 404);
+});
+
+// ── Ajustes de contrato: completadoEn, preguntas inválidas y CORS sin credenciales ──
+
+test('GET progreso: completadoEn es la fecha de término (o de emisión del certificado) y null si no está completo', async () => {
+  const { app } = servidor({ seed: {
+    'miembros/ana/progresoCursos/c1': {
+      cursoId: 'c1', uid: 'ana', sesionesVistas: [0, 1, 2], quizzesAprobados: [], completado: true,
+      certificadoFolio: 'ZOO-2026-AAAAAAA1', completadoEn: ts(Date.parse('2026-06-01T12:00:00Z'))
+    },
+    'miembros/ana/progresoCursos/c2': { cursoId: 'c2', uid: 'ana', sesionesVistas: [0, 1], quizzesAprobados: [], completado: true, certificadoFolio: 'ZOO-2026-BBBBBBB2' },
+    'miembros/ana/progresoCursos/c3': { cursoId: 'c3', uid: 'ana', sesionesVistas: [0], quizzesAprobados: [0], completado: false },
+    'certificados/ZOO-2026-BBBBBBB2': { folio: 'ZOO-2026-BBBBBBB2', memberUid: 'ana', courseId: 'c2', issuedAt: '2026-07-02T08:30:00.000Z' }
+  } });
+  const r = await get(app, '/api/cursos/progreso');
+  assert.equal(r.body.cursos.c1.completadoEn, '2026-06-01T12:00:00.000Z');
+  assert.equal(r.body.cursos.c2.completadoEn, '2026-07-02T08:30:00.000Z');
+  assert.equal(r.body.cursos.c3.completadoEn, null);
+});
+
+test('quiz: las preguntas incompletas se saltan igual que en el sitio y el detalle trae una fila por pregunta válida', async () => {
+  const { app } = servidor({ seed: {
+    'cursos/cinv': {
+      title: 'Con preguntas rotas', area: 'General',
+      lecciones: [leccion(51, { preguntas: [
+        { pregunta: '', tipo: 'vof', correcta: 0 },
+        { pregunta: 'Primera válida', tipo: 'vof', correcta: 1 },
+        { pregunta: 'Sin opciones suficientes', tipo: 'multiple', opciones: ['única'], correcta: 0 },
+        { pregunta: 'Correcta fuera de rango', tipo: 'multiple', opciones: ['A', 'B'], correcta: 5 },
+        { pregunta: 'Segunda válida', tipo: 'multiple', opciones: ['A', 'B', 'C'], correcta: 2 }
+      ] }), leccion(52)]
+    }
+  } });
+  const mal = await post(app, '/api/cursos/cinv/quiz', { sessionIndex: 0, respuestas: [1, 2, 0, 0, 0] });
+  assert.equal(mal.status, 400, 'cinco respuestas no coinciden con las 2 preguntas válidas');
+  const ok = await post(app, '/api/cursos/cinv/quiz', { sessionIndex: 0, respuestas: [1, 2] });
+  assert.equal(ok.status, 200);
+  assert.deepEqual(ok.body, { aprobado: true, correctas: 2, total: 2, detalle: [{ correcta: 1, acertada: true }, { correcta: 2, acertada: true }] });
+  assert.equal((await progreso(app, 'cinv', 0)).status, 200);
+});
+
+test('verificación pública: CORS abierto sin credenciales y sin cabecera Authorization', async () => {
+  const { app, folio } = await emitirUno();
+  const r = await request(app).get(`/api/certificados/${folio}`).set('Origin', 'https://www.zoorigen.com');
+  assert.equal(r.status, 200);
+  assert.equal(r.headers['access-control-allow-origin'], '*');
+  assert.equal(r.headers['access-control-allow-credentials'], undefined);
+  assert.equal(r.request.header.Authorization, undefined);
 });

@@ -214,6 +214,25 @@ function montarRutasCertificados(app, deps) {
       db.collection('miembros').doc(uid).collection('progresoCursos').get(),
       db.collection('miembros').doc(uid).get()
     ]);
+    // completadoEn: cuándo terminó el curso (la del progreso o, si no la trae, la emisión de su certificado)
+    const fechas = new Map();
+    const sinFecha = [];
+    for (const doc of snap.docs) {
+      const datos = doc.data() || {};
+      const p = cert.normalizarProgreso(datos);
+      if (!p.completado) continue;
+      const iso = cert.fechaIso(datos.completadoEn);
+      if (iso) fechas.set(doc.id, iso);
+      else if (p.certificadoFolio && /^[A-Za-z0-9_-]{1,64}$/.test(p.certificadoFolio)) sinFecha.push({ id: doc.id, folio: p.certificadoFolio });
+    }
+    if (sinFecha.length) {
+      const certs = await Promise.all(sinFecha.map(x => colCertificados().doc(x.folio).get()));
+      certs.forEach((c, i) => {
+        const d = c.exists ? (c.data() || {}) : null;
+        const iso = d ? cert.fechaIso(d.emitido || d.issuedAt) : '';
+        if (iso) fechas.set(sinFecha[i].id, iso);
+      });
+    }
     const cursos = {};
     for (const doc of snap.docs) {
       const p = cert.normalizarProgreso(doc.data());
@@ -221,7 +240,8 @@ function montarRutasCertificados(app, deps) {
         sesionesVistas: p.sesionesVistas,
         quizzesAprobados: p.quizzesAprobados,
         completado: p.completado,
-        certificadoFolio: p.certificadoFolio
+        certificadoFolio: p.certificadoFolio,
+        completadoEn: p.completado ? (fechas.get(doc.id) || null) : null
       };
     }
     const miembro = miembroSnap.exists ? (miembroSnap.data() || {}) : {};

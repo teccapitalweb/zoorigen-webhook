@@ -41,7 +41,7 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `POST /api/registro/ejemplares`, `PATCH/DELETE /api/registro/ejemplares/:id` | Alta o nacimiento de un ejemplar, corregirlo, borrarlo (con sus eventos) | Token de Firebase + membresía |
 | `POST /api/registro/ejemplares/:id/eventos`, `DELETE /api/registro/eventos/:id` | Baja, muerte, traslado o nota; deshacer un evento | Token de Firebase + membresía |
 | `GET /api/registro/informe?anio=AAAA` | Informe anual: existencias al 1 de enero, altas, nacimientos, bajas, muertes, traslados y existencias al 31 de diciembre, por especie y total | Token de Firebase + membresía |
-| `GET /api/cursos/progreso` | Avance de la persona en todos sus cursos (`sesionesVistas`, `quizzesAprobados`, `completado`, `certificadoFolio`); importa una sola vez el progreso viejo | Token de Firebase |
+| `GET /api/cursos/progreso` | Avance de la persona en todos sus cursos (`sesionesVistas`, `quizzesAprobados`, `completado`, `certificadoFolio`, `completadoEn`); importa una sola vez el progreso viejo | Token de Firebase |
 | `POST /api/cursos/:cursoId/progreso` | Marca una clase como vista (`{ sessionIndex }`); al completar el curso emite el certificado firmado, el aviso, el correo con PDF y el XP | Token de Firebase + membresía (o clase gratis / prueba) |
 | `POST /api/cursos/:cursoId/quiz` | Califica las preguntas de una clase (`{ sessionIndex, respuestas }`); es de práctica | Token de Firebase + membresía (o clase gratis / prueba) |
 | `GET /api/certificados/:folio` | Verificación PÚBLICA de un certificado (30 consultas cada 10 minutos por IP) | — |
@@ -419,6 +419,8 @@ y errores `{ error }` en español. La verificación pública admite peticiones d
 | `certificados/{folio}` | Certificado firmado (ver abajo) |
 | `miembros/{uid}.progresoLegadoImportado` | `true` cuando ya se importó el progreso viejo (una sola vez) |
 
+El nombre del certificado lo decide el servidor: `miembros/{uid}.nombreCertificado`, si no `name`/`nombre`, si no el nombre de la sesión o el correo.
+
 Un certificado (`ZOO-<AÑO UTC>-<8 hex de sha256(uid|cursoId)>`, determinista: no se duplica) guarda: `folio, uid, nombre, cursoId,
 curso, area, horas, sesiones, instructor, emitido (ISO), year, verificado: true, origen, firmaBackend, createdAt` **y** los nombres que ya
 usan el sitio y los logros: `memberUid, courseId, courseTitle, courseArea, courseDuration, memberName, memberEmail, issuedAt, totalClases`.
@@ -431,7 +433,8 @@ el navegador no se muestra en la verificación pública.
 
 ### Rutas
 
-- `GET /api/cursos/progreso` → `{ cursos: { [cursoId]: { sesionesVistas, quizzesAprobados, completado, certificadoFolio } }, legadoImportado }`.
+- `GET /api/cursos/progreso` → `{ cursos: { [cursoId]: { sesionesVistas, quizzesAprobados, completado, certificadoFolio, completadoEn } }, legadoImportado }`.
+  `completadoEn` es la fecha ISO de término del curso (la del progreso o, si no la trae, la de emisión de su certificado) y `null` si no está completo.
 - `POST /api/cursos/:cursoId/progreso` con `{ sessionIndex }` → `{ ok, sesionesVistas, completado, certificado: null | { folio, nombre, curso, area, horas, sesiones, instructor, emitido }, bono? }`.
   - 404 si el curso o la clase no existen; 403 si no es administrador, no tiene plan vigente y la clase no es gratis ni de su prueba gratuita
     (las mismas reglas de `/api/bunny/embed-token`).
@@ -446,7 +449,8 @@ el navegador no se muestra en la verificación pública.
   - **Sin `CERTIFICATE_SIGNING_KEY`** el servidor arranca igual y guarda las clases normales, pero la clase que completaría el curso
     responde `503 { error: 'Los certificados aún no están configurados' }` **sin guardarse**, así no se pierde nada y se reintenta después.
 - `POST /api/cursos/:cursoId/quiz` con `{ sessionIndex, respuestas:[int] }` → `{ aprobado, correctas, total, detalle:[{ correcta, acertada }] }`.
-  Las preguntas viven en `lecciones[i].preguntas` (`vof` o `multiple`, con `correcta`). Es de **práctica**: equivocarse muestra la
+  Las preguntas viven en `lecciones[i].preguntas` (`vof` o `multiple`, con `correcta`). Las respuestas van en el orden de las preguntas
+  **válidas** (las incompletas se saltan igual que en el sitio) y `detalle` trae una fila por cada pregunta válida. Es de **práctica**: equivocarse muestra la
   correcta pero no frena; basta con haberlo contestado (queda en `quizzesAprobados`) para poder completar la clase.
 - `GET /api/certificados/:folio` (pública): folio `^ZOO-[0-9]{4}-[A-Z0-9]{5,16}$` en mayúsculas (acepta el formato viejo `ZOO-2026-12345`)
   → `{ valido: true, certificado: { folio, nombre, curso, area, horas, sesiones, instructor, emitido } }`. 400 folio inválido, 404 si no existe
