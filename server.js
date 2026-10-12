@@ -15,6 +15,7 @@ const { montarRutasClub } = require('./services/rutas-club');
 const { montarRutasNoticias } = require('./services/rutas-noticias');
 const { iniciarProgramador } = require('./services/tarea-diaria');
 const { montarRutasMateriales } = require('./services/rutas-materiales');
+const { montarRutasRegistro } = require('./services/rutas-registro');
 const { montarRutasAuth } = require('./services/rutas-auth');
 const libros = require('./services/libros');
 const materiales = require('./services/materiales');
@@ -919,6 +920,9 @@ const club = montarRutasClub(app, {
 
 // ── Libros de lectura y materiales PDF que se abren con membresía y retos (services/rutas-materiales.js) ──
 montarRutasMateriales(app, { db, autenticarFirebase, autenticarAdmin, errorHttp, club, catalogoLibros, catalogoMateriales });
+// ── Libro de registro de ejemplares: inventario, bitácora e informe anual de UMA/PIMVS (services/rutas-registro.js) ──
+// Datos por persona en registrosUma/{uid}/... (solo del servidor); solo con membresía vigente o administrador.
+montarRutasRegistro(app, { db, autenticarFirebase, errorHttp, club });
 montarRutasAuth(app, { auth, autenticarFirebase, errorHttp, panelUrl: process.env.PANEL_URL || 'https://www.zoorigen.com' });
 
 // ── Noticias del sector, datos curiosos y avisos (services/rutas-noticias.js) ──

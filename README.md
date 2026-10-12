@@ -37,6 +37,10 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `GET /api/materiales` | Catálogo de PDF con su estado (`desbloqueado`, `faltan`, `soloMiembros`) | Token de Firebase (sin membresía: se listan cerrados) |
 | `GET /api/materiales/:id/archivo` | El PDF (`application/pdf`, `inline`, `private, no-store`); 403 igual que los libros | Token de Firebase + membresía (+ retos si el material lo pide) |
 | `GET /api/admin/libros`, `GET /api/admin/materiales` | Qué se cargó del disco y qué se descartó (con el motivo), solo lectura | Token de Firebase + administrador |
+| `GET /api/registro` | Libro de registro de ejemplares: ejemplares (con estado), eventos, resumen por especie y límites | Token de Firebase + membresía |
+| `POST /api/registro/ejemplares`, `PATCH/DELETE /api/registro/ejemplares/:id` | Alta o nacimiento de un ejemplar, corregirlo, borrarlo (con sus eventos) | Token de Firebase + membresía |
+| `POST /api/registro/ejemplares/:id/eventos`, `DELETE /api/registro/eventos/:id` | Baja, muerte, traslado o nota; deshacer un evento | Token de Firebase + membresía |
+| `GET /api/registro/informe?anio=AAAA` | Informe anual: existencias al 1 de enero, altas, nacimientos, bajas, muertes, traslados y existencias al 31 de diciembre, por especie y total | Token de Firebase + membresía |
 | `GET /cron/noticias?key=CRON_KEY` | Corre la tarea diaria a mano (también cabecera `x-cron-key`) | `CRON_KEY` |
 | `GET /` | Health check | — |
 
@@ -369,6 +373,32 @@ no existe → 404.
 
 Límites por persona: 60 solicitudes por minuto en las lecturas y 20 por minuto en la descarga de PDF (429 «Demasiadas solicitudes»).
 `LIBROS_DIR` y `MATERIALES_DIR` (opcionales) cambian las carpetas; se usan en las pruebas, en producción no hacen falta.
+
+## Libro de registro de ejemplares (UMA / PIMVS)
+
+Herramienta para miembros: cada persona lleva SU inventario de ejemplares y una bitácora de eventos; de ahí salen el
+inventario actual y el borrador del informe anual. **No decide nada legal**: solo ordena lo que la persona escribe y no
+guarda plazos ni valores de ninguna norma (los recordatorios los pone el sitio). Reglas puras en `services/registro-ejemplares.js`,
+rutas en `services/rutas-registro.js`.
+
+- **Colecciones (solo las escribe el servidor; reglas de Firestore sin cambios):** `registrosUma/{uid}/ejemplares/{id}` y
+  `registrosUma/{uid}/eventos/{id}`. Cada documento lleva el `uid` del token; el uid jamás se toma del cuerpo ni de la URL.
+- **Ejemplar:** `{ uid, nombreComun*, nombreCientifico, nombre, marca, sexo: macho|hembra|indeterminado, origen*, tipoIngreso*: alta|nacimiento, fechaIngreso*, notas, creado, actualizado }`
+  (`*` obligatorios). Un ingreso o nacimiento SIEMPRE crea un ejemplar nuevo con su origen y su fecha.
+- **Evento:** `{ uid, ejemplarId, tipo: baja|muerte|traslado|nota, fecha, causa, destino, notas, creado }`. La baja pide `causa`, el
+  traslado `destino`, la nota `notas`. Un ejemplar solo puede tener UNA salida (baja, muerte o traslado): el id de esa salida es
+  `sal_<ejemplarId>` y se guarda en una transacción, así dos solicitudes a la vez guardan una sola (409 `ya-tiene-salida`).
+  Para corregir un error se borra el evento (`DELETE /api/registro/eventos/:id`).
+- **Estado:** no se guarda; se calcula con los eventos (`activo`, `baja`, `muerte` o `traslado`) y la fecha de salida.
+- **Fechas:** `AAAA-MM-DD` reales, desde 1900, no futuras (con la fecha de México) y un evento no puede ser anterior al ingreso.
+- **Texto:** máximo 300 caracteres (notas 1000); sin caracteres de control; se guarda tal cual, quien lo muestre debe escaparlo.
+- **Límites por persona:** 500 ejemplares y 5000 eventos (409 `limite-ejemplares` / `limite-eventos`); 30 lecturas y 40
+  escrituras por minuto (429). Todas las respuestas llevan `Cache-Control: private, no-store`.
+- **Informe:** por año calendario; `existenciasInicio` = ingresó antes del 1 de enero y no había salido; `existenciasFin` = ingresó
+  hasta el 31 de diciembre y no había salido. Siempre cuadra: inicio + altas + nacimientos - bajas - muertes - traslados = fin.
+  Si el año está en curso (`enCurso: true`), las existencias «al 31 de diciembre» son las de la fecha de hoy (`corte`).
+  `movimientos` trae el detalle del año (ingresos y salidas) para el control de movimientos de inventario.
+- Pruebas: `test/registro-ejemplares.test.js` (reglas) y `test/registro-api.test.js` (rutas).
 
 ## Variables de entorno (Railway)
 
