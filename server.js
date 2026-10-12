@@ -15,6 +15,7 @@ const { montarRutasClub } = require('./services/rutas-club');
 const { montarRutasNoticias } = require('./services/rutas-noticias');
 const { iniciarProgramador } = require('./services/tarea-diaria');
 const { montarRutasMateriales } = require('./services/rutas-materiales');
+const { montarRutasAuth } = require('./services/rutas-auth');
 const libros = require('./services/libros');
 const materiales = require('./services/materiales');
 
@@ -357,6 +358,8 @@ app.post('/create-checkout-session', express.json(), async (req, res) => {
       mode: 'subscription',
       customer_email: email,
       line_items: [{ price: priceId, quantity: 1 }],
+      // Muestra «Agregar código» en el formulario de pago (los códigos se crean en el panel de Stripe).
+      allow_promotion_codes: true,
       // Desactiva Stripe Link (pago directo con tarjeta, sin verificación por teléfono)
       wallet_options: { link: { display: 'never' } },
       metadata: {
@@ -916,6 +919,7 @@ const club = montarRutasClub(app, {
 
 // ── Libros de lectura y materiales PDF que se abren con membresía y retos (services/rutas-materiales.js) ──
 montarRutasMateriales(app, { db, autenticarFirebase, autenticarAdmin, errorHttp, club, catalogoLibros, catalogoMateriales });
+montarRutasAuth(app, { auth, autenticarFirebase, errorHttp, panelUrl: process.env.PANEL_URL || 'https://www.zoorigen.com' });
 
 // ── Noticias del sector, datos curiosos y avisos (services/rutas-noticias.js) ──
 // CRON_KEY abre GET /cron/noticias (sin ella esa ruta responde 401). La tarea diaria corre en este mismo proceso.
