@@ -18,6 +18,7 @@ const { montarRutasMateriales } = require('./services/rutas-materiales');
 const { montarRutasRegistro } = require('./services/rutas-registro');
 const { montarRutasAuth } = require('./services/rutas-auth');
 const { montarRutasCertificados } = require('./services/rutas-certificados');
+const { montarRutasPublico } = require('./services/rutas-publico');
 const libros = require('./services/libros');
 const materiales = require('./services/materiales');
 
@@ -942,6 +943,13 @@ app.certificados = montarRutasCertificados(app, {
   reglasPruebaParaVideo, videoEsGratis, obtenerIndiceVideos, errorHttp, club,
   firmaClave: CERTIFICATE_SIGNING_KEY, corteLegado: LEGACY_PROGRESS_IMPORT_BEFORE, limiteAnteriores: CERTIFICADOS_ANTERIORES_HASTA,
   panelUrl: process.env.PANEL_URL || 'https://www.zoorigen.com'
+});
+
+// ── Catálogo público, encuesta de la portada y preguntas sin respuesta del chatbot (services/rutas-publico.js) ──
+// GET /api/cursos/demo (sin videos ni preguntas), POST /api/encuesta y POST /api/chatbot/sin-respuesta son públicas con
+// límite por IP; encuestasProspectos y chatbotSinRespuesta las escribe solo este servidor y las lee solo el administrador.
+app.publico = montarRutasPublico(app, {
+  db, admin, autenticarAdmin, errorHttp, esVideoGratisFijo: id => BUNNY_FREE_VIDEO_IDS.has(id)
 });
 
 // ── Noticias del sector, datos curiosos y avisos (services/rutas-noticias.js) ──

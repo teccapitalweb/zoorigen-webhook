@@ -47,6 +47,11 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `GET /api/certificados/:folio` | Verificación PÚBLICA de un certificado, firmado o anterior aceptable (`anterior: true`); 30 consultas cada 10 minutos por IP | — |
 | `POST /api/admin/certificados` | El administrador emite (o recupera) un certificado (`{ uid, cursoId, nombre?, horas?, sesiones? }`) | Token de Firebase + administrador |
 | `GET /api/admin/certificados/pendientes` | Certificados sin firma válida con su diagnóstico y un resumen de conteos (solo lectura) | Token de Firebase + administrador |
+| `GET /api/cursos/demo` | Catálogo PÚBLICO de cursos para la portada (`{ cursos:[{ id, titulo, area, descripcion, clases, proximamente, elegiblePrueba }] }`); nunca videos, urls ni preguntas; `Cache-Control: public, max-age=300` | — |
+| `POST /api/encuesta` | Guarda la copia parcial o completa de la encuesta de la portada (`{ sessionId, respuestas, completada, contacto? }`); 20 envíos cada 10 minutos por IP | — |
+| `POST /api/chatbot/sin-respuesta` | Registra una pregunta que la guía no supo contestar (`{ texto, tipo: 'animal'\|'otro' }`), ya sin correos, teléfonos ni URLs; 30 envíos cada 10 minutos por IP | — |
+| `GET /api/admin/encuesta?limite=1000` | Respuestas de la encuesta, más recientes primero (máx. 2000) | Token de Firebase + administrador |
+| `GET /api/admin/chatbot/sin-respuesta?limite=200` | Preguntas sin respuesta de la guía, ordenadas por `veces` (máx. 1000) | Token de Firebase + administrador |
 | `GET /cron/noticias?key=CRON_KEY` | Corre la tarea diaria a mano (también cabecera `x-cron-key`) | `CRON_KEY` |
 | `GET /` | Health check | — |
 
@@ -548,6 +553,44 @@ Nunca lo corras sin haber revisado el reporte. Las reglas de Firestore **no** se
 el navegador escriba `certificados`, un miembro podría alterar los campos no firmados (nombre, curso) de su propio certificado anterior
 antes de que se firme; conviene publicar las reglas que niegan esa escritura cuando el sitio nuevo ya esté en línea y entonces definir
 `CERTIFICADOS_ANTERIORES_HASTA`.
+
+## Catálogo público, encuesta de la portada y guía (chatbot)
+
+Código en `services/encuesta.js` (reglas puras, con pruebas en `test/encuesta.test.js`) y `services/rutas-publico.js` (las rutas,
+con pruebas en `test/publico-api.test.js`). Son las únicas rutas que **no piden sesión** y escriben datos, por eso validan con lista
+blanca, limitan por IP y no guardan la IP de nadie (solo se usa en memoria para contar). Todas las respuestas llevan
+`Cache-Control: no-store`, salvo el catálogo.
+
+- **`GET /api/cursos/demo`**: lee `cursos` UNA vez cada 5 minutos (compartido por todas las visitas; si Firestore falla sirve lo último
+  que tenía, o 503 si nunca cargó). Cada curso trae solo `id, titulo (title), area, descripcion (description), clases` (número de
+  lecciones; en cursos viejos `totalClases` o 1 si solo tiene `driveId`), `proximamente` y `elegiblePrueba` (misma regla de
+  `/api/prueba-gratuita`: el sitio ya sabe qué cursos puede ofrecer como prueba). No se muestran los cursos sin título, sin clases
+  (salvo `proximamente: true`) ni los marcados `oculto`, `archivado`, `borrador`, `visible: false`, `publicado: false`, `activo: false`
+  o con `estado` oculto/borrador/archivado/inactivo/retirado. Hoy el panel no crea esos campos: todos los cursos de la biblioteca
+  se publican. Orden: como la biblioteca (los de siempre, el más nuevo primero; luego los de `ordenVip`). Límite: 300 por IP cada 10 min.
+- **`POST /api/encuesta`**: `respuestas` solo admite las claves `meta, p1, origen, grupo, p2, p2b, tamano, experiencia, urgencia, freno`
+  con texto de 1 a 80 caracteres; `completada` es booleano; `sessionId` de 1 a 100 caracteres. `contacto` es opcional:
+  `{ numero (de 8 a 15 dígitos; se aceptan +, espacios, guiones y paréntesis y se guardan solo dígitos), avisoAceptado: true,
+  avisoVersion (≤ 40) }`; sin aviso aceptado es 400. Sin respuestas ni contacto responde `{ ok: true }` y no guarda nada. Acepta
+  `application/json` y `text/plain` (para `sendBeacon` al cerrar la página); cuerpo máximo 8 KB. Varias copias por `sessionId`
+  son normales (parcial y completa): el panel las junta. Límite: 20 por IP cada 10 min, y un tope global de 600 cada 10 min.
+- **`POST /api/chatbot/sin-respuesta`**: el texto se limpia (sin correos, @usuarios, URLs ni teléfonos de 7 o más dígitos, aunque
+  vengan con espacios o guiones), se recorta a 120 y, si queda con menos de 3 caracteres, se ignora (responde `ok`). Se agrupa en
+  `chatbotSinRespuesta/{clave}` dentro de una transacción. Límite: 30 por IP cada 10 min, y un tope global de 1200 cada 10 min.
+- **Rutas de administrador**: mismo chequeo de siempre (`admins/{uid}` o `miembros/{uid}.role === 'admin'`; 401 sin sesión, 403 si no es
+  administrador) y 30 solicitudes por minuto.
+
+Detrás de Railway la IP sale de `X-Forwarded-For` (igual que la verificación de certificados). Los topes globales evitan que alguien
+llene Firestore cambiando esa cabecera.
+
+| Colección | Qué guarda |
+|---|---|
+| `encuestasProspectos/{id aleatorio}` | `sessionId, respuestas{...}, completada, creado (hora del servidor)` y, solo si la persona dejó su WhatsApp, `contacto` (solo dígitos), `avisoAceptado: true, avisoVersion` |
+| `chatbotSinRespuesta/{clave}` | `ejemplo` (primer texto limpio), `tipo` ('animal'/'otro'), `veces`, `primeraVez`, `ultimaVez`. La `clave` es el texto en minúsculas, sin acentos ni signos y con espacios simples (máx. 80; si es más largo se corta y lleva un hash corto) |
+
+**Reglas de Firestore (se publican aparte; este servidor no las cambia):** las dos colecciones son solo del servidor. Cuando se
+publiquen las reglas del sitio (`FIRESTORE-REGLAS-v6.txt`) deben decir, para `encuestasProspectos/{id}` y `chatbotSinRespuesta/{id}`:
+`allow read: if isAdmin(); allow write: if false;` (el Admin SDK ignora las reglas, así que el servidor sigue escribiendo).
 
 ## Variables de entorno (Railway)
 
