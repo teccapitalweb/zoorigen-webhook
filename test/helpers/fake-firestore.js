@@ -97,6 +97,8 @@ class FakeQuery {
     return new FakeQuery(this.collection, this.filters, this.max, [...this.orden, [field, direccion]]);
   }
   limit(max) { return new FakeQuery(this.collection, this.filters, max, this.orden); }
+  // select() sin campos (solo ids) o con ellos: en la fake devuelve los documentos completos
+  select() { return new FakeQuery(this.collection, this.filters, this.max, this.orden); }
   _coincide(d, [field, operator, expected]) {
     const actual = valorDe(d, field);
     if (operator === '==') return comparable(actual) === comparable(expected);

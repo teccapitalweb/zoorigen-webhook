@@ -32,7 +32,7 @@ function suscripcion({ id, uid, precio = PRICE_MENSUAL, status = 'active', termi
  *  - usuariosAuth: { uid: { emailVerified, creationTime } } lo que responden auth.getUser / auth.getUsers
  *    (el objeto se devuelve y se puede cambiar durante la prueba, p. ej. para "confirmar el correo")
  *  - suscripciones: lista de objetos creados con suscripcion()
- *  - env: variables de entorno extra (p. ej. BUNNY_TOKEN_AUTH_KEY)
+ *  - env: variables de entorno extra (p. ej. BUNNY_TOKEN_AUTH_KEY, CERTIFICATE_SIGNING_KEY)
  */
 function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {}, usuariosAuth = {} } = {}) {
   const guardado = {};
@@ -44,6 +44,10 @@ function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {}, 
   };
   // Una BUNNY_API_KEY real del equipo no debe filtrarse a las pruebas; se restaura al terminar.
   guardado.BUNNY_API_KEY = process.env.BUNNY_API_KEY; delete process.env.BUNNY_API_KEY;
+  // Lo mismo con las llaves de certificados y de correo (cada prueba pone las suyas en `env`).
+  for (const k of ['CERTIFICATE_SIGNING_KEY', 'LEGACY_PROGRESS_IMPORT_BEFORE', 'RESEND_API_KEY', 'MAIL_FROM', 'PANEL_URL']) {
+    guardado[k] = process.env[k]; delete process.env[k];
+  }
   for (const [k, v] of Object.entries(entorno)) { if (!(k in guardado)) guardado[k] = process.env[k]; process.env[k] = v; }
   // Evita que variables reales del equipo contaminen las pruebas.
   for (const k of ['STRIPE_PRICE_MENSUAL', 'STRIPE_PRICE_ANUAL', 'FIREBASE_SERVICE_ACCOUNT', 'BUNNY_STREAM_LIBRARY_ID']) {
