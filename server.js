@@ -17,6 +17,7 @@ const { iniciarProgramador } = require('./services/tarea-diaria');
 const { montarRutasMateriales } = require('./services/rutas-materiales');
 const { montarRutasRegistro } = require('./services/rutas-registro');
 const { montarRutasAuth } = require('./services/rutas-auth');
+const { montarRutasCertificados } = require('./services/rutas-certificados');
 const libros = require('./services/libros');
 const materiales = require('./services/materiales');
 
@@ -29,6 +30,11 @@ const STRIPE_PRICES = Object.freeze({
   mensual: String(process.env.STRIPE_PRICE_MENSUAL || 'price_1TRcJnA7If2CqXs9dMBGRmDF').trim(),
   anual: String(process.env.STRIPE_PRICE_ANUAL || 'price_1TRcJlA7If2CqXs97WQNmKFq').trim(),
 });
+// Llave con la que el servidor firma (HMAC) y verifica los certificados. Debe ser larga, al azar y ESTABLE: si cambia,
+// los certificados ya emitidos dejan de validar. Si falta, el servidor arranca igual pero no emite ni verifica certificados.
+const CERTIFICATE_SIGNING_KEY = (process.env.CERTIFICATE_SIGNING_KEY || '').trim().replace(/^["']|["']$/g, '');
+// Fecha ISO: las cuentas de Firebase Auth creadas ANTES de ella importan una sola vez su progreso viejo (miembros.courseProgress).
+const LEGACY_PROGRESS_IMPORT_BEFORE = (process.env.LEGACY_PROGRESS_IMPORT_BEFORE || '').trim().replace(/^["']|["']$/g, '');
 const BUNNY_STREAM_LIBRARY_ID = String(process.env.BUNNY_STREAM_LIBRARY_ID || '731751').trim();
 const BUNNY_TOKEN_AUTH_KEY = (process.env.BUNNY_TOKEN_AUTH_KEY || '').trim().replace(/^["']|["']$/g, '');
 // Clave de GESTIÓN de Bunny Stream (solo lectura del catálogo). Es distinta de BUNNY_TOKEN_AUTH_KEY,
@@ -924,6 +930,15 @@ montarRutasMateriales(app, { db, autenticarFirebase, autenticarAdmin, errorHttp,
 // Datos por persona en registrosUma/{uid}/... (solo del servidor); solo con membresía vigente o administrador.
 montarRutasRegistro(app, { db, autenticarFirebase, errorHttp, club });
 montarRutasAuth(app, { auth, autenticarFirebase, errorHttp, panelUrl: process.env.PANEL_URL || 'https://www.zoorigen.com' });
+// ── Progreso de cursos, quizzes y certificados firmados por el servidor (services/rutas-certificados.js) ──
+// El avance (miembros/{uid}/progresoCursos/{cursoId}) y certificados/{folio} los escribe solo este servidor.
+// Sin CERTIFICATE_SIGNING_KEY arranca igual: el progreso funciona y los certificados responden 503.
+app.certificados = montarRutasCertificados(app, {
+  db, admin, auth, autenticarFirebase, autenticarAdmin, esAdminPorDocumentos, tienePlanVigente,
+  reglasPruebaParaVideo, videoEsGratis, obtenerIndiceVideos, errorHttp, club,
+  firmaClave: CERTIFICATE_SIGNING_KEY, corteLegado: LEGACY_PROGRESS_IMPORT_BEFORE,
+  panelUrl: process.env.PANEL_URL || 'https://www.zoorigen.com'
+});
 
 // ── Noticias del sector, datos curiosos y avisos (services/rutas-noticias.js) ──
 // CRON_KEY abre GET /cron/noticias (sin ella esa ruta responde 401). La tarea diaria corre en este mismo proceso.
@@ -938,6 +953,9 @@ if (require.main === module) {
     console.log(`🚀 Webhook Stripe corriendo en puerto ${PORT}`);
     console.log(`🐰 Bunny Stream: ${BUNNY_VIDEO_IDS.size} videos permitidos · biblioteca ${BUNNY_STREAM_LIBRARY_ID}`);
     console.log(`🎁 Vista gratuita: ${BUNNY_FREE_VIDEO_IDS.size} clase`);
+    console.log(CERTIFICATE_SIGNING_KEY
+      ? 'Certificados: firma configurada'
+      : 'Certificados: falta CERTIFICATE_SIGNING_KEY (el progreso funciona, pero no se emiten ni verifican certificados)');
     // Tarea diaria (noticias y dato curioso). Se apaga con NOTICIAS_TAREA=off; las pruebas importan `app` y nunca llegan aquí.
     const tarea = iniciarProgramador(db);
     console.log(tarea.activo ? '📰 Tarea diaria de noticias: activa (13:00 UTC y al arrancar)' : '📰 Tarea diaria de noticias: apagada');

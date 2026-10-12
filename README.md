@@ -41,6 +41,11 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `POST /api/registro/ejemplares`, `PATCH/DELETE /api/registro/ejemplares/:id` | Alta o nacimiento de un ejemplar, corregirlo, borrarlo (con sus eventos) | Token de Firebase + membresía |
 | `POST /api/registro/ejemplares/:id/eventos`, `DELETE /api/registro/eventos/:id` | Baja, muerte, traslado o nota; deshacer un evento | Token de Firebase + membresía |
 | `GET /api/registro/informe?anio=AAAA` | Informe anual: existencias al 1 de enero, altas, nacimientos, bajas, muertes, traslados y existencias al 31 de diciembre, por especie y total | Token de Firebase + membresía |
+| `GET /api/cursos/progreso` | Avance de la persona en todos sus cursos (`sesionesVistas`, `quizzesAprobados`, `completado`, `certificadoFolio`); importa una sola vez el progreso viejo | Token de Firebase |
+| `POST /api/cursos/:cursoId/progreso` | Marca una clase como vista (`{ sessionIndex }`); al completar el curso emite el certificado firmado, el aviso, el correo con PDF y el XP | Token de Firebase + membresía (o clase gratis / prueba) |
+| `POST /api/cursos/:cursoId/quiz` | Califica las preguntas de una clase (`{ sessionIndex, respuestas }`); es de práctica | Token de Firebase + membresía (o clase gratis / prueba) |
+| `GET /api/certificados/:folio` | Verificación PÚBLICA de un certificado (30 consultas cada 10 minutos por IP) | — |
+| `POST /api/admin/certificados` | El administrador emite (o recupera) un certificado (`{ uid, cursoId, nombre?, horas?, sesiones? }`) | Token de Firebase + administrador |
 | `GET /cron/noticias?key=CRON_KEY` | Corre la tarea diaria a mano (también cabecera `x-cron-key`) | `CRON_KEY` |
 | `GET /` | Health check | — |
 
@@ -271,8 +276,7 @@ Límites: nombre 2-80, profesión 80, sector 60, ciudad 80, bio 400, correo 120,
 
 * **Retos**: el servidor no ve las respuestas, solo el puntaje que informa el navegador; alguien que arme las peticiones a mano puede declarar 100 %. Por eso hay techos duros (práctica 600, camino solo hasta `totales`, una vez por reto por día) y las insignias piden días distintos.
   Solo con retos se llega a unos 1,630 XP como máximo (Técnico).
-* **Cursos** (l4-l8, l23-l26 y el XP por curso terminado): dependen de `certificados` que escribe el navegador (reglas: lo puede crear cualquier miembro vigente). Cada certificado solo cuenta si su curso existe en `cursos`, un curso cuenta una vez y las áreas salen de `cursos`, no del certificado.
-  Es menos confiable que retos o referidos; el daño máximo es adelantar un curso del calendario dentro de una membresía pagada.
+* **Cursos** (l4-l8, l23-l26 y el XP por curso terminado): salen de `certificados` (por `memberUid`, `courseId` e `issuedAt`). Los certificados nuevos los escribe y firma el servidor (clases en orden, con acceso a cada video y su quiz contestado), así que son tan confiables como los retos. Los certificados viejos, escritos por el navegador, siguen contando igual que antes hasta que las reglas de Firestore dejen de permitir que el navegador escriba `certificados`. Cada certificado solo cuenta si su curso existe en `cursos`, un curso cuenta una vez y las áreas salen de `cursos`, no del certificado.
 * **Foro**: discusiones, me gusta recibidos (sin los propios) y respuestas recibidas (`repliesCount`, con tope de 50 por discusión). No se cuentan las respuestas ESCRITAS por la persona: requeriría un índice de grupo de colecciones que no existe.
 * **Constancia**: días en que la persona abrió logros o retos; lo registra el servidor.
 
@@ -327,7 +331,7 @@ real se reemplaza el archivo (sin `prueba`) y se siembra solo.
 Son idempotentes (id fijo; si existe no se sobrescribe) y nunca rompen la respuesta si fallan. Para no avisar dos veces lo mismo, `premiosUsuario/{uid}` guarda
 `logrosAvisados` y `cursosAvisados`; una cuenta que ya tenía XP calculado antes de esta función toma lo que ya tiene como punto de partida **sin avisar**
 (para no llenarle la campana de cosas viejas). Los administradores y quien no tiene membresía no reciben avisos de insignias.
-Los certificados los emite el navegador (no el servidor), por eso el aviso `cert_<folio>` no existe aquí.
+Los certificados los emite el servidor al completar el curso (ver «Certificados y progreso de cursos»): el aviso `cert_<folio>` (tipo `certificado`, enlace `certificados`, título «¡Certificado listo!») se crea una sola vez, al emitirse.
 
 ## Libros y materiales que se desbloquean con retos
 
@@ -400,6 +404,93 @@ rutas en `services/rutas-registro.js`.
   `movimientos` trae el detalle del año (ingresos y salidas) para el control de movimientos de inventario.
 - Pruebas: `test/registro-ejemplares.test.js` (reglas) y `test/registro-api.test.js` (rutas).
 
+## Certificados y progreso de cursos
+
+Todo el código está en `services/certificados.js` (reglas puras, con pruebas), `services/rutas-certificados.js` (las rutas),
+`services/certificado-pdf.js` (el PDF) y `scripts/auditar-certificados.js`. Funciona igual que en Alintec: el avance y los
+certificados son **del servidor**; el navegador solo pregunta y avisa qué clase terminó. Respuestas con `Cache-Control: no-store`
+y errores `{ error }` en español. La verificación pública admite peticiones desde cualquier origen (CORS abierto, como el resto).
+
+### Colecciones (las escribe solo este servidor)
+
+| Colección | Contenido |
+|---|---|
+| `miembros/{uid}/progresoCursos/{cursoId}` | `cursoId, uid, sesionesVistas:[int], quizzesAprobados:[int], completado, certificadoFolio, completadoEn, origenLegado?` |
+| `certificados/{folio}` | Certificado firmado (ver abajo) |
+| `miembros/{uid}.progresoLegadoImportado` | `true` cuando ya se importó el progreso viejo (una sola vez) |
+
+Un certificado (`ZOO-<AÑO UTC>-<8 hex de sha256(uid|cursoId)>`, determinista: no se duplica) guarda: `folio, uid, nombre, cursoId,
+curso, area, horas, sesiones, instructor, emitido (ISO), year, verificado: true, origen, firmaBackend, createdAt` **y** los nombres que ya
+usan el sitio y los logros: `memberUid, courseId, courseTitle, courseArea, courseDuration, memberName, memberEmail, issuedAt, totalClases`.
+`origen` es `backend` (al completar el curso), `admin` (con `validadoBackend: true`, `emitidoPor: 'admin'`) o `legacy-validado`
+(los viejos que aprobó la auditoría, con `validadoBackend: true`).
+
+**Firma**: HMAC-SHA256 con `CERTIFICATE_SIGNING_KEY` sobre `folio\nuid\ncursoId\nemitido\nyear` (comparada con `timingSafeEqual`).
+Un certificado vale solo si está `verificado`, la firma es correcta y el origen es conocido; por eso un documento escrito o alterado desde
+el navegador no se muestra en la verificación pública.
+
+### Rutas
+
+- `GET /api/cursos/progreso` → `{ cursos: { [cursoId]: { sesionesVistas, quizzesAprobados, completado, certificadoFolio } }, legadoImportado }`.
+- `POST /api/cursos/:cursoId/progreso` con `{ sessionIndex }` → `{ ok, sesionesVistas, completado, certificado: null | { folio, nombre, curso, area, horas, sesiones, instructor, emitido }, bono? }`.
+  - 404 si el curso o la clase no existen; 403 si no es administrador, no tiene plan vigente y la clase no es gratis ni de su prueba gratuita
+    (las mismas reglas de `/api/bunny/embed-token`).
+  - 409 `Aprueba el quiz de esta clase antes de completarla` (la clase tiene `preguntas` y no se han contestado) y 409
+    `Completa primero la clase anterior` (orden secuencial). Repetir una clase ya vista no cambia nada.
+  - Al ver la última clase, dentro de la misma transacción, se crea UNA sola vez `certificados/{folio}`. Repetir la última clase (o dos
+    solicitudes a la vez) devuelve el mismo certificado sin duplicarlo ni reenviar el correo. Si la persona ya tenía un certificado válido
+    de ese curso (por ejemplo, emitido por el administrador), se reutiliza.
+  - Solo al emitirse por primera vez: aviso en la campana, correo con el PDF adjunto (en segundo plano; un error solo se registra) y el XP
+    del curso, calculado con la misma lógica de logros de siempre (`bono: { xp, ordinal }`; no se informa a administradores ni a quien no
+    tiene plan).
+  - **Sin `CERTIFICATE_SIGNING_KEY`** el servidor arranca igual y guarda las clases normales, pero la clase que completaría el curso
+    responde `503 { error: 'Los certificados aún no están configurados' }` **sin guardarse**, así no se pierde nada y se reintenta después.
+- `POST /api/cursos/:cursoId/quiz` con `{ sessionIndex, respuestas:[int] }` → `{ aprobado, correctas, total, detalle:[{ correcta, acertada }] }`.
+  Las preguntas viven en `lecciones[i].preguntas` (`vof` o `multiple`, con `correcta`). Es de **práctica**: equivocarse muestra la
+  correcta pero no frena; basta con haberlo contestado (queda en `quizzesAprobados`) para poder completar la clase.
+- `GET /api/certificados/:folio` (pública): folio `^ZOO-[0-9]{4}-[A-Z0-9]{5,16}$` en mayúsculas (acepta el formato viejo `ZOO-2026-12345`)
+  → `{ valido: true, certificado: { folio, nombre, curso, area, horas, sesiones, instructor, emitido } }`. 400 folio inválido, 404 si no existe
+  o no está firmado, 429 pasadas 30 consultas en 10 minutos por IP. Sin `CERTIFICATE_SIGNING_KEY` responde 503 (no se puede verificar).
+- `POST /api/admin/certificados` (solo administradores) con `{ uid, cursoId, nombre?, horas?, sesiones? }` → `{ ok, certificado }`. Busca
+  primero un certificado válido del mismo uid y curso (en cualquier año) antes de emitir otro.
+
+### Importación única del progreso viejo
+
+Antes el navegador guardaba el avance en `miembros/{uid}.courseProgress` (`{ [cursoId]: { completedLessons, isCompleted, certificateFolio?,
+completedAt? } }`). Sin importarlo, el orden secuencial dejaría a esas cuentas sin poder avanzar. `GET /api/cursos/progreso` lo hace solo,
+**una vez por cuenta** (marca `progresoLegadoImportado`), si y solo si:
+
+- existe `LEGACY_PROGRESS_IMPORT_BEFORE` (fecha ISO) y la cuenta de Firebase Auth se creó **antes** de esa fecha;
+- el miembro tiene `courseProgress` y no se había importado;
+- solo se importan clases que existen en el curso; **nunca** se emite un certificado: si el curso estaba completo y existe un certificado
+  de esa persona y curso (`memberUid`/`courseId` o `uid`/`cursoId`), queda completado con ese folio; si estaba completo sin certificado,
+  se deja la última clase pendiente para que el flujo normal emita el certificado firmado. El campo viejo no se borra.
+
+### PDF y correo
+
+`services/certificado-pdf.js` genera el certificado en A4 horizontal (pdfkit + qrcode) con la identidad de Zoorigen (verde `#1F5F3A` y
+dorado `#E8A317`, mismos textos y estructura que `pages/ver-certificado.html`); el QR lleva a
+`https://www.zoorigen.com/pages/verificar.html?folio=<folio>`. El logo está en `assets/cert/logo.png` (si faltara, el encabezado
+sale en texto). El correo (`enviarCorreoCertificado` en `services/correo.js`, por Resend) lleva la felicitación, el curso, el folio, el
+botón a `/pages/club-certificados.html`, el enlace de verificación y el PDF adjunto; sin `RESEND_API_KEY` o `MAIL_FROM` no se envía nada.
+
+### Certificados viejos (escritos por el navegador)
+
+Los que ya existen no tienen firma, así que la verificación pública los rechaza hasta que se regularicen. `npm run audit:certificates`
+(requiere `FIREBASE_SERVICE_ACCOUNT` y `CERTIFICATE_SIGNING_KEY`):
+
+1. **Sin argumentos es solo lectura (dry-run)**: lista cada certificado con su estado (`ya-valido`, `revisar-manualmente` o `rechazar`) y
+   sus problemas (`miembro-no-encontrado`, `curso-no-encontrado`, `folio-inconsistente`, `duplicado-uid-curso`,
+   `campos-obligatorios-incompletos`...). No imprime nombres ni correos.
+2. Revisa el reporte y arma un archivo JSON con los folios que apruebes (por ejemplo `["ZOO-2026-12345"]`).
+3. `npm run audit:certificates -- --apply --allowlist=folios.json` firma **solo** esos folios (y solo si pasaron la revisión): rellena
+   `uid, cursoId, nombre, curso, area, sesiones, emitido, year` a partir de `memberUid, courseId, memberName, courseTitle, courseArea,
+   totalClases, issuedAt`, marca `origen: 'legacy-validado'`, `validadoBackend: true`, `verificado: true` y no borra ningún campo viejo.
+
+Nunca lo corras sin haber revisado el reporte. Las reglas de Firestore **no** se tocan desde este servidor: mientras sigan permitiendo que
+el navegador escriba `certificados`, un miembro podría alterar los campos no firmados (nombre, curso) de su propio certificado; conviene
+publicar las reglas que niegan esa escritura cuando el sitio nuevo ya esté en línea.
+
 ## Variables de entorno (Railway)
 
 `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FIREBASE_SERVICE_ACCOUNT` (JSON completo),
@@ -416,6 +507,14 @@ Correo de verificación de cuenta (opcional):
 - `MAIL_FROM`: remitente ya verificado en Resend, por ejemplo `Zoorigen <no-reply@zoorigen.com>`.
 - `PANEL_URL` (opcional): dirección base del sitio para armar el enlace del correo; por defecto `https://www.zoorigen.com`.
 - Sin `RESEND_API_KEY` o `MAIL_FROM` el servidor arranca igual: el envío responde 503 y el sitio usa el correo estándar de Firebase como respaldo.
+
+Certificados y progreso de cursos:
+- `CERTIFICATE_SIGNING_KEY`: secreto largo y al azar con el que el servidor firma y verifica los certificados. Debe ser **estable**: si
+  cambia, los certificados ya emitidos dejan de validar. Nunca sale en respuestas ni en registros y solo la configura la persona dueña del
+  proyecto, directamente en Railway. Si falta, el servidor arranca igual pero no emite ni verifica certificados (503).
+- `LEGACY_PROGRESS_IMPORT_BEFORE` (opcional): fecha ISO (por ejemplo `2026-11-01T00:00:00Z`). Las cuentas creadas antes importan una sola vez
+  su progreso viejo. Sin ella no se importa nada.
+- Reutiliza `RESEND_API_KEY`, `MAIL_FROM` y `PANEL_URL` (arriba) para el correo con el PDF del certificado.
 
 ### `BUNNY_API_KEY` (clave de gestión de Bunny)
 
@@ -439,5 +538,6 @@ credenciales ni tocan datos reales.
 ## Utilidades de mantenimiento (requieren credenciales)
 
 - `npm run audit:memberships`: auditoría de solo lectura de Firestore contra Stripe.
+- `npm run audit:certificates`: auditoría de certificados sin firma (dry-run); con `--apply --allowlist=folios.json` firma solo los aprobados (ver «Certificados y progreso de cursos»).
 - `npm run normalize:membership-dates`: pasa `planVence` de texto a Timestamp (agrega `--apply` para escribir).
 - `npm run sync:memberships -- --subscription=sub_...`: repara suscripciones puntuales (agrega `--apply` para escribir).
