@@ -468,7 +468,8 @@ el navegador no se muestra en la verificación pública.
 - `GET /api/admin/certificados/pendientes` (solo administradores, solo lectura) → `{ modoTransicion, limiteAnteriores, truncado, resumen:
   { total, firmados, aceptables, noAceptables, porRazon }, certificados: [{ folio, aceptable, razones, uid, cursoId, nombre, curso, emitido }] }`.
   Lista los certificados sin firma válida con el mismo criterio que usa el servidor: `razones` vacío = aceptable; si no, por qué no
-  (`curso-no-encontrado`, `miembro-no-encontrado`, `folio-inconsistente`, `duplicado-uid-curso`, `firma-alterada`, `posterior-al-limite`...).
+  (`curso-no-encontrado`, `miembro-no-encontrado`, `folio-inconsistente`, `firma-alterada`, `posterior-al-limite`...). Un duplicado (mismo uid y curso, otro folio) es aceptable y
+  solo lleva la nota informativa `notas: ['duplicado-de:<folio>']` (`resumen.duplicados` los cuenta).
   Máximo 5000 certificados (`truncado: true` si hay más). 503 sin `CERTIFICATE_SIGNING_KEY`.
 
 ### Importación única del progreso viejo
@@ -504,7 +505,9 @@ acción manual** para que sigan funcionando: el servidor acepta como *anterior* 
   (`issuedAt` o `emitido`; no futura), y los nombres viejos y nuevos, si vienen los dos, coinciden;
 - el curso existe en `cursos` y el miembro existe en `miembros` (o en `usuarios`, el legado);
 - su fecha de emisión es anterior o igual a `CERTIFICADOS_ANTERIORES_HASTA`, si está definida (sin ella no hay límite: *modo transición*);
-- no es un duplicado: de una misma persona y curso se conserva el firmado o, si no, el más antiguo.
+- los duplicados (misma persona y curso, otro folio) NO se rechazan: casi siempre son legítimos y pueden estar impresos. Solo se elige un
+  canónico para el progreso (el que ya guarda el progreso, si no el firmado y, si no, el más antiguo); los demás se reportan como aceptables
+  con la nota `duplicado-de:<folio>`.
 
 Qué pasa con un anterior aceptable:
 
@@ -512,7 +515,8 @@ Qué pasa con un anterior aceptable:
 2. **Se firma solo cuando su titular abre el sitio**: `GET /api/cursos/progreso` lo normaliza y firma EN SU LUGAR (mismo folio, mismo documento):
    agrega `uid, cursoId, nombre, curso, area, horas, sesiones, instructor, emitido, year, verificado: true, origen: 'legacy-validado',
    validadoBackend: true, migradoAutomaticamente: true, validadoEn, firmaBackend` y no borra ni cambia ningún campo viejo. Es idempotente y,
-   sin `CERTIFICATE_SIGNING_KEY`, no firma (pero tampoco falla).
+   sin `CERTIFICATE_SIGNING_KEY`, no firma (pero tampoco falla). También firma los duplicados aceptables de esa persona, para que todos
+   queden verificados; el canónico del progreso no cambia.
 3. **El curso aparece completado** con su folio y su fecha de emisión, aunque no se haya importado el progreso viejo.
 4. **Completar el curso no crea otro folio**: reutiliza el existente (ver `POST /api/cursos/:cursoId/progreso`).
 
@@ -532,8 +536,9 @@ aceptación. `npm run audit:certificates` (requiere `FIREBASE_SERVICE_ACCOUNT` y
 `CERTIFICADOS_ANTERIORES_HASTA` si la defines en tu terminal):
 
 1. **Sin argumentos es solo lectura (dry-run)**: lista cada certificado con su estado (`ya-valido`, `revisar-manualmente` o `rechazar`) y
-   sus problemas (`miembro-no-encontrado`, `curso-no-encontrado`, `folio-inconsistente`, `duplicado-uid-curso`, `firma-alterada`,
-   `posterior-al-limite`, `campos-obligatorios-incompletos`...). No imprime nombres ni correos.
+   sus problemas (`miembro-no-encontrado`, `curso-no-encontrado`, `folio-inconsistente`, `firma-alterada`,
+   `posterior-al-limite`, `campos-obligatorios-incompletos`...); los duplicados salen como aceptables con `notas: ["duplicado-de:<folio>"]`.
+   No imprime nombres ni correos.
 2. Revisa el reporte y arma un archivo JSON con los folios que apruebes (por ejemplo `["ZOO-2026-12345"]`).
 3. `npm run audit:certificates -- --apply --allowlist=folios.json` firma **solo** esos folios (y solo si pasaron la revisión): rellena
    `uid, cursoId, nombre, curso, area, sesiones, emitido, year` a partir de `memberUid, courseId, memberName, courseTitle, courseArea,

@@ -150,13 +150,51 @@ test('anterior: sigue el límite de 30 consultas cada 10 minutos por IP', async 
   assert.equal((await consulta()).status, 429);
 });
 
-test('anterior: dos certificados de la misma persona y curso, solo el más antiguo se acepta (el otro 404)', async () => {
-  const { app } = servidor({ seed: {
+test('anterior: dos certificados de la misma persona y curso se verifican los dos (duplicado legítimo, sin consultas extra)', async () => {
+  const { app, db } = servidor({ seed: {
     'certificados/ZOO-2026-10001': delNavegador({ folio: 'ZOO-2026-10001', issuedAt: '2026-02-01T00:00:00.000Z' }),
     'certificados/ZOO-2026-10002': delNavegador({ folio: 'ZOO-2026-10002', issuedAt: '2026-03-01T00:00:00.000Z' })
   } });
-  assert.equal((await request(app).get('/api/certificados/ZOO-2026-10001')).status, 200);
-  assert.equal((await request(app).get('/api/certificados/ZOO-2026-10002')).status, 404);
+  const antes = foto(db);
+  for (const folio of ['ZOO-2026-10001', 'ZOO-2026-10002']) {
+    const r = await request(app).get('/api/certificados/' + folio);
+    assert.equal(r.status, 200, folio);
+    assert.equal(r.body.anterior, true);
+    assert.equal(r.body.certificado.folio, folio);
+  }
+  assert.equal(foto(db), antes);
+  // sin consultas por titular: solo lecturas de documento (certificado, curso, miembro)
+  const consultas = [];
+  const original = db.collection.bind(db);
+  db.collection = nombre => {
+    const c = original(nombre);
+    const where = c.where.bind(c);
+    c.where = (...a) => { consultas.push(nombre); return where(...a); };
+    return c;
+  };
+  try { assert.equal((await request(app).get('/api/certificados/ZOO-2026-10002')).status, 200); } finally { db.collection = original; }
+  assert.deepEqual(consultas, []);
+});
+
+test('duplicados: GET progreso firma también los duplicados aceptables y el canónico del progreso no cambia', async () => {
+  const { app, db } = servidor({ seed: {
+    'certificados/ZOO-2026-10001': delNavegador({ folio: 'ZOO-2026-10001', issuedAt: '2026-02-01T00:00:00.000Z' }),
+    'certificados/ZOO-2026-10002': delNavegador({ folio: 'ZOO-2026-10002', issuedAt: '2026-03-01T00:00:00.000Z' })
+  } });
+  const r = await get(app, '/api/cursos/progreso');
+  assert.equal(r.body.cursos.c1.certificadoFolio, 'ZOO-2026-10001', 'el más antiguo es el canónico');
+  for (const folio of ['ZOO-2026-10001', 'ZOO-2026-10002']) {
+    assert.equal(cert.certificadoValido(db.value('certificados/' + folio), LLAVE), true, folio);
+  }
+  assert.equal(db.value('miembros/ana/progresoCursos/c1').certificadoFolio, 'ZOO-2026-10001');
+  // ahora los dos están firmados y el canónico sigue siendo el guardado
+  const otra = await get(app, '/api/cursos/progreso');
+  assert.equal(otra.body.cursos.c1.certificadoFolio, 'ZOO-2026-10001');
+  // completar un curso con duplicados reutiliza el canónico y no bloquea
+  const fin = await progreso(app, 'c1', 2);
+  assert.equal(fin.status, 200);
+  assert.equal(fin.body.certificado.folio, 'ZOO-2026-10001');
+  assert.equal(claves(db, 'certificados/').length, 2);
 });
 
 // ── Firma automática en GET /api/cursos/progreso ──
@@ -446,10 +484,11 @@ test('pendientes: lista los certificados sin firma con su diagnóstico y un resu
   assert.equal(r.body.truncado, false);
   assert.deepEqual(
     { total: r.body.resumen.total, firmados: r.body.resumen.firmados, aceptables: r.body.resumen.aceptables, noAceptables: r.body.resumen.noAceptables },
-    { total: 7, firmados: 1, aceptables: 2, noAceptables: 4 }
+    { total: 7, firmados: 1, aceptables: 3, noAceptables: 3 }
   );
+  assert.equal(r.body.resumen.duplicados, 1);
   assert.deepEqual(r.body.resumen.porRazon, {
-    'curso-no-encontrado': 1, 'miembro-no-encontrado': 1, 'folio-inconsistente': 1, 'duplicado-uid-curso': 1
+    'curso-no-encontrado': 1, 'miembro-no-encontrado': 1, 'folio-inconsistente': 1
   });
   const por = Object.fromEntries(r.body.certificados.map(c => [c.folio, c]));
   assert.equal(por[firmado.folio], undefined, 'los firmados no se listan como pendientes');
@@ -459,8 +498,10 @@ test('pendientes: lista los certificados sin firma con su diagnóstico y un resu
   assert.deepEqual(por['ZOO-2026-40002'].razones, ['miembro-no-encontrado']);
   assert.ok(por['ZOO-2026-40003'].razones.includes('folio-inconsistente'));
   assert.equal(por['ZOO-2026-40004'].aceptable, true);
-  assert.deepEqual(por['ZOO-2026-40005'].razones, ['duplicado-uid-curso']);
-  assert.equal(por['ZOO-2026-40005'].aceptable, false);
+  assert.deepEqual(por['ZOO-2026-40005'].razones, []);
+  assert.equal(por['ZOO-2026-40005'].aceptable, true, 'un duplicado es aceptable');
+  assert.deepEqual(por['ZOO-2026-40005'].notas, ['duplicado-de:ZOO-2026-40004']);
+  assert.deepEqual(por['ZOO-2026-40004'].notas, []);
   assert.doesNotMatch(JSON.stringify(r.body), /ana@example|firmaBackend|memberEmail/);
 });
 

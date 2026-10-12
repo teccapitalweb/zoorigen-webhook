@@ -88,7 +88,7 @@ async function main(argv = process.argv) {
       }
     }
     // El reporte no incluye nombres: el folio basta para abrir el documento y revisarlo
-    reporte.push({ folio: fila.folio, accion, razones: fila.razones, uid: fila.uid, cursoId: fila.cursoId });
+    reporte.push({ folio: fila.folio, accion, razones: fila.razones, notas: fila.notas, uid: fila.uid, cursoId: fila.cursoId });
   }
 
   const resumen = reporte.reduce((acc, f) => { acc[f.accion] = (acc[f.accion] || 0) + 1; return acc; }, {});

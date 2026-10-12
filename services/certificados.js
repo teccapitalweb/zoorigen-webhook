@@ -513,8 +513,9 @@ function certificadoAnteriorAceptable(doc, opciones = {}) {
 //   docs: [{ id, data }] · contexto: { llave, cursoExiste, miembroExiste, ahora, limite }
 // Una fila por documento: { id, folio, uid, cursoId, estado, razones, campos, emitido, data }
 //   estado: 'firmado' (firma válida) | 'aceptable' (anterior que el servidor firmará) | 'no-aceptable'
-// Duplicados: una persona y un curso con más de un certificado vigente conservan uno (el firmado o, si no, el más
-// antiguo); los demás anteriores quedan 'no-aceptable' con la razón 'duplicado-uid-curso'.
+// Duplicados (misma persona y curso, folio distinto): casi siempre son legítimos y pueden estar impresos, así que
+// NO se rechazan. La regla solo elige el canónico (el firmado o, si no, el aceptable más antiguo, ver compararVigentes);
+// los demás aceptables siguen 'aceptable' y llevan la nota informativa 'duplicado-de:<folio>' en `notas`.
 function evaluarCertificados(docs, contexto = {}) {
   const ctx = esObjeto(contexto) ? contexto : {};
   const filas = (Array.isArray(docs) ? docs : []).map(({ id, data }) => {
@@ -526,12 +527,12 @@ function evaluarCertificados(docs, contexto = {}) {
       emitido: fechaIso(d.emitido || d.issuedAt), data: d
     };
     if (String(d.folio || '') === folioId && certificadoValido(d, ctx.llave)) {
-      return { ...base, estado: 'firmado', razones: [], campos: null };
+      return { ...base, estado: 'firmado', razones: [], notas: [], campos: null };
     }
     const r = certificadoAnteriorAceptable(d, {
       id: folioId, cursoExiste: ctx.cursoExiste, miembroExiste: ctx.miembroExiste, ahora: ctx.ahora, limite: ctx.limite
     });
-    return { ...base, estado: r.aceptable ? 'aceptable' : 'no-aceptable', razones: r.razones, campos: r.campos };
+    return { ...base, estado: r.aceptable ? 'aceptable' : 'no-aceptable', razones: r.razones, notas: [], campos: r.campos };
   });
 
   const grupos = new Map();
@@ -545,11 +546,7 @@ function evaluarCertificados(docs, contexto = {}) {
     if (grupo.length < 2) continue;
     grupo.sort(compararVigentes);
     for (const sobrante of grupo.slice(1)) {
-      if (sobrante.estado === 'aceptable') {
-        sobrante.estado = 'no-aceptable';
-        sobrante.razones = [...sobrante.razones, 'duplicado-uid-curso'];
-        sobrante.campos = null;
-      }
+      if (sobrante.estado === 'aceptable') sobrante.notas = [`duplicado-de:${grupo[0].id}`];
     }
   }
   return filas;
@@ -588,12 +585,7 @@ function planearProgresoDesdeCertificados({ uid, vigentes, progresos, cursos }) 
   }
   const salida = [];
   for (const [cursoId, lista] of porCurso) {
-    lista.sort((a, b) => {
-      const fa = a.emitido || '9999';
-      const fb = b.emitido || '9999';
-      if (fa !== fb) return fa < fb ? -1 : 1;
-      return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0);
-    });
+    lista.sort(compararVigentes); // canónico: el que ya guarda el progreso, si no el firmado y, si no, el más antiguo
     const crudo = progresos instanceof Map && esObjeto(progresos.get(cursoId)) ? progresos.get(cursoId) : null;
     const p = normalizarProgreso(crudo);
     const elegido = lista.find(v => v.id === p.certificadoFolio) || lista[0];
@@ -646,6 +638,7 @@ function auditarCertificados({ certificados, cursosIds, miembrosIds, llave, ahor
     accion: f.estado === 'firmado' ? 'ya-valido' : (f.estado === 'aceptable' ? 'revisar-manualmente' : 'rechazar'),
     aceptable: f.estado === 'aceptable',
     razones: f.razones,
+    notas: f.notas,
     uid: f.uid,
     cursoId: f.cursoId,
     nombre: String(f.data.nombre || f.data.memberName || ''),

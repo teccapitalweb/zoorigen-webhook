@@ -403,15 +403,18 @@ test('auditarCertificados: válido, revisable, huérfano, duplicado y folio inco
   assert.deepEqual(por['ZOO-2026-11111'].razones, []);
   assert.deepEqual(por['ZOO-2026-22222'].razones, ['miembro-no-encontrado']);
   assert.deepEqual(por['ZOO-2026-33333'].razones, ['curso-no-encontrado']);
-  assert.deepEqual(por['ZOO-2026-44444'].razones, ['duplicado-uid-curso']);
+  assert.deepEqual(por['ZOO-2026-44444'].razones, [], 'un duplicado no es una razón de rechazo');
+  assert.deepEqual(por['ZOO-2026-44444'].notas, [`duplicado-de:${firmado.folio}`]);
   assert.ok(por['ZOO-2026-55555'].razones.includes('folio-inconsistente'));
   assert.ok(por['ZOO-2026-66666'].razones.includes('campos-obligatorios-incompletos'));
-  for (const folio of ['ZOO-2026-22222', 'ZOO-2026-33333', 'ZOO-2026-44444', 'ZOO-2026-55555', 'ZOO-2026-66666']) {
+  assert.equal(por['ZOO-2026-44444'].accion, 'revisar-manualmente');
+  assert.equal(por['ZOO-2026-44444'].aceptable, true);
+  for (const folio of ['ZOO-2026-22222', 'ZOO-2026-33333', 'ZOO-2026-55555', 'ZOO-2026-66666']) {
     assert.equal(por[folio].accion, 'rechazar', folio);
   }
 });
 
-test('auditarCertificados: dos viejos de la misma persona y curso, solo el más antiguo es revisable', () => {
+test('auditarCertificados: dos viejos de la misma persona y curso son revisables; el más reciente lleva la nota duplicado-de', () => {
   const filas = c.auditarCertificados({
     llave: LLAVE, cursosIds: new Set(['c1']), miembrosIds: new Set(['beto']),
     certificados: [
@@ -419,9 +422,12 @@ test('auditarCertificados: dos viejos de la misma persona y curso, solo el más 
       { id: 'ZOO-2026-AAAAA', data: viejo({ folio: 'ZOO-2026-AAAAA', memberUid: 'beto', issuedAt: '2026-04-01T00:00:00.000Z' }) }
     ]
   });
-  const por = Object.fromEntries(filas.map(f => [f.folio, f.accion]));
-  assert.equal(por['ZOO-2026-AAAAA'], 'revisar-manualmente');
-  assert.equal(por['ZOO-2026-BBBBB'], 'rechazar');
+  const por = Object.fromEntries(filas.map(f => [f.folio, f]));
+  assert.equal(por['ZOO-2026-AAAAA'].accion, 'revisar-manualmente');
+  assert.deepEqual(por['ZOO-2026-AAAAA'].notas, []);
+  assert.equal(por['ZOO-2026-BBBBB'].accion, 'revisar-manualmente');
+  assert.deepEqual(por['ZOO-2026-BBBBB'].razones, []);
+  assert.deepEqual(por['ZOO-2026-BBBBB'].notas, ['duplicado-de:ZOO-2026-AAAAA']);
 });
 
 // ── Certificados anteriores: aceptación sin acción manual ──
@@ -506,7 +512,7 @@ test('limiteEnMs: sin valor no hay límite, una fecha válida es el corte y una 
   assert.equal(Number.isNaN(c.limiteEnMs('mañana')), true);
 });
 
-test('evaluarCertificados: firmado, aceptable y duplicado (el firmado o el más antiguo se conserva)', () => {
+test('evaluarCertificados: firmado, aceptable y duplicado (el firmado o el más antiguo es el canónico; nada se rechaza por duplicado)', () => {
   const firmado = emitir({ cursoId: 'c1' });
   const filas = c.evaluarCertificados([
     { id: firmado.folio, data: firmado },
@@ -517,10 +523,13 @@ test('evaluarCertificados: firmado, aceptable y duplicado (el firmado o el más 
   ], { llave: LLAVE, cursoExiste: true, miembroExiste: true, ahora: AHORA });
   const por = Object.fromEntries(filas.map(f => [f.id, f]));
   assert.equal(por[firmado.folio].estado, 'firmado');
-  assert.equal(por['ZOO-2026-48213'].estado, 'no-aceptable');
-  assert.deepEqual(por['ZOO-2026-48213'].razones, ['duplicado-uid-curso']);
-  assert.equal(por['ZOO-2026-50002'].estado, 'aceptable', 'el más antiguo');
-  assert.equal(por['ZOO-2026-50001'].estado, 'no-aceptable');
+  assert.equal(por['ZOO-2026-48213'].estado, 'aceptable', 'un duplicado sigue siendo aceptable');
+  assert.deepEqual(por['ZOO-2026-48213'].razones, []);
+  assert.deepEqual(por['ZOO-2026-48213'].notas, [`duplicado-de:${firmado.folio}`]);
+  assert.equal(por['ZOO-2026-50002'].estado, 'aceptable', 'el más antiguo es el canónico');
+  assert.deepEqual(por['ZOO-2026-50002'].notas, []);
+  assert.equal(por['ZOO-2026-50001'].estado, 'aceptable');
+  assert.deepEqual(por['ZOO-2026-50001'].notas, ['duplicado-de:ZOO-2026-50002']);
   assert.equal(por['ZOO-2026-50003'].estado, 'no-aceptable', 'un inválido más antiguo no impide aceptar al bueno');
   assert.deepEqual(por['ZOO-2026-50003'].razones, ['campos-obligatorios-incompletos']);
 });

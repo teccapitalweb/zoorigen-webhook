@@ -248,8 +248,9 @@ function montarRutasCertificados(app, deps) {
   }
 
   // Con los certificados vigentes de la persona (firmados o anteriores aceptables):
-  //  1) firma en su lugar los anteriores (solo con CERTIFICATE_SIGNING_KEY);
-  //  2) devuelve, por curso, la vista de progreso completada (y la guarda de forma idempotente).
+  //  1) firma en su lugar los anteriores aceptables, también los duplicados (solo con CERTIFICATE_SIGNING_KEY);
+  //  2) devuelve, por curso, la vista de progreso completada con UN certificado canónico (el que ya guarda el progreso,
+  //     si no el firmado y, si no, el más antiguo) y la guarda de forma idempotente.
   // Todo el paso está protegido: nunca lanza ni rompe la respuesta del progreso (solo registra una advertencia).
   async function sincronizarCertificadosAnteriores(uid, { miembroExiste, progresos }) {
     const vistas = new Map();
@@ -484,7 +485,12 @@ function montarRutasCertificados(app, deps) {
         cursoExiste: id => id === cursoId,
         miembroExiste: id => id === uid && Boolean(acceso.miembro || acceso.usuario)
       }).filter(f => f.uid === uid && f.cursoId === cursoId);
-      const elegir = estado => filas.filter(f => f.estado === estado).sort(cert.compararVigentes)[0] || null;
+      // Canónico: el que ya guarda el progreso (si sigue vigente), si no el firmado y, si no, el aceptable más antiguo.
+      // Los demás duplicados aceptables no bloquean nada.
+      const vigentes = filas.filter(f => f.estado !== 'no-aceptable').sort(cert.compararVigentes);
+      const guardado = vigentes.find(f => f.id === previo.certificadoFolio) || null;
+      const canonico = guardado || vigentes[0] || null;
+      const elegir = estado => (canonico && canonico.estado === estado ? canonico : null);
 
       let existente = null;
       const firmado = elegir('firmado');
@@ -533,8 +539,8 @@ function montarRutasCertificados(app, deps) {
   // GET /api/certificados/:folio — verificación PÚBLICA (sin sesión)
   // ════════════════════════════════════════════════════════════
   // Datos públicos de un certificado anterior aceptable, o null. Solo lecturas (el firmado lo hace el titular al
-  // abrir el sitio). Mismo criterio que el resto: forma del documento, curso y miembro existentes, límite de fecha
-  // y que no sea un duplicado de otro certificado vigente de la misma persona y curso.
+  // abrir el sitio). Mismo criterio que el resto: forma del documento, curso y miembro existentes y límite de fecha.
+  // Un duplicado (mismo uid y curso, otro folio) NO se rechaza: casi siempre es legítimo y puede estar impreso.
   async function verificarAnterior(folio, datos) {
     const sinExistencias = cert.certificadoAnteriorAceptable(datos, {
       id: folio, cursoExiste: true, miembroExiste: true, ahora: new Date(), limite: limiteAnteriores
@@ -548,20 +554,7 @@ function montarRutasCertificados(app, deps) {
     if (!cursoSnap.exists) return null;
     if (!miembroSnap.exists && !(await db.collection('usuarios').doc(uid).get()).exists) return null;
 
-    const [porUid, porMiembro] = await Promise.all([
-      colCertificados().where('uid', '==', uid).limit(MAX_CERTIFICADOS_POR_CONSULTA).get(),
-      colCertificados().where('memberUid', '==', uid).limit(MAX_CERTIFICADOS_POR_CONSULTA).get()
-    ]);
-    const docs = new Map([[folio, { id: folio, data: datos }]]);
-    for (const d of [...porUid.docs, ...porMiembro.docs]) if (!docs.has(d.id)) docs.set(d.id, { id: d.id, data: d.data() || {} });
-    const filas = cert.evaluarCertificados([...docs.values()], {
-      llave: firmaClave, ahora: new Date(), limite: limiteAnteriores,
-      cursoExiste: id => id === cursoId,
-      miembroExiste: id => id === uid
-    });
-    const fila = filas.find(f => f.id === folio);
-    if (!fila || fila.estado !== 'aceptable') return null;
-    return cert.certificadoPublico(fila.campos);
+    return cert.certificadoPublico(sinExistencias.campos);
   }
 
   app.get('/api/certificados/:folio', async (req, res) => {
@@ -676,14 +669,15 @@ function montarRutasCertificados(app, deps) {
         miembrosIds: new Set([...miembros.docs, ...usuarios.docs].map(d => d.id)),
         llave: firmaClave, ahora: new Date(), limite: limiteAnteriores
       });
-      const resumen = { total: filas.length, firmados: 0, aceptables: 0, noAceptables: 0, porRazon: {} };
+      const resumen = { total: filas.length, firmados: 0, aceptables: 0, noAceptables: 0, duplicados: 0, porRazon: {} };
       const pendientes = [];
       for (const f of filas) {
         if (f.accion === 'ya-valido') { resumen.firmados += 1; continue; }
         if (f.aceptable) resumen.aceptables += 1; else resumen.noAceptables += 1;
         for (const razon of f.razones) resumen.porRazon[razon] = (resumen.porRazon[razon] || 0) + 1;
+        if (f.notas.length) resumen.duplicados += 1;
         pendientes.push({
-          folio: f.folio, aceptable: f.aceptable, razones: f.razones, uid: f.uid, cursoId: f.cursoId,
+          folio: f.folio, aceptable: f.aceptable, razones: f.razones, notas: f.notas, uid: f.uid, cursoId: f.cursoId,
           nombre: f.nombre, curso: f.curso, emitido: f.emitido || null
         });
       }
