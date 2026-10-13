@@ -400,6 +400,16 @@ Respuestas: `GET /api/materiales` → `{ ok, membresia, superados, materiales:[{
 (sin nombre de archivo ni ruta). Bloqueado → 403 `{ error, codigo: 'membresia-requerida' | 'retos-insuficientes', requiere, superados, faltan }`;
 no existe → 404.
 
+**Vista previa para quien no es miembro:** `GET /api/libros` y `GET /api/materiales` responden **200** a cualquier persona con
+sesión (también sin membresía o con la membresía vencida) con el catálogo COMPLETO y solo sus metadatos (título, subtítulo,
+autor, categoría, tipo, área, descripción, resumen, color, ícono, cantidad de páginas, `requiereRetos`), todos con
+`desbloqueado: false` y `soloMiembros: true`, para que el sitio pueda mostrar portadas y tarjetas y la persona explore. Ese
+listado **jamás** lleva el contenido: ni `paginas` (en un libro no existe; en un material `paginas` es solo la cantidad),
+ni `fuentes`, ni `revision`, ni `ruta` / `archivo` / `driveId` / tamaño. El contenido sigue protegido: `GET /api/libros/:id` y
+`GET /api/materiales/:id/archivo` dan 403 `membresia-requerida` a quien no es miembro, sin una sola página ni byte de PDF.
+Las portadas son archivos del sitio (`assets/img/materiales/<id>`), no salen del servidor. Pruebas:
+`test/vista-previa-catalogo.test.js`.
+
 Límites por persona: 60 solicitudes por minuto en las lecturas y 20 por minuto en la descarga de PDF (429 «Demasiadas solicitudes»).
 `LIBROS_DIR` y `MATERIALES_DIR` (opcionales) cambian las carpetas; se usan en las pruebas, en producción no hacen falta.
 

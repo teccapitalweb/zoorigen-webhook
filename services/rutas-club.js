@@ -837,7 +837,7 @@ function montarRutasClub(app, deps) {
   // ════════════════════════════════════════════════════════════
   const parametroTexto = v => (typeof v === 'string' ? v.trim().slice(0, 80) : '');
 
-  // GET /api/directorio?sector=&q= — con membresía: hasta 300 tarjetas reales; sin ella, 3 ejemplos ficticios
+  // GET /api/directorio?sector=&q= — con membresía: hasta 300 tarjetas reales; sin ella, 6 ejemplos ficticios
   app.get('/api/directorio', async (req, res) => {
     res.set('Cache-Control', 'no-store');
     try {

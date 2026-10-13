@@ -79,12 +79,16 @@ test('filtros: por sector exacto y por texto sin importar mayúsculas ni acentos
   assert.deepEqual(ids({ q: '   ' }), ['a', 'b']);
 });
 
-test('los 3 ejemplos de la vista previa son ficticios y no traen datos de contacto', () => {
-  assert.equal(D.EJEMPLOS.length, 3);
+test('los 6 ejemplos de la vista previa son ficticios, sin contacto y con sectores de la lista del sitio', () => {
+  const SECTORES_DEL_SITIO = ['Veterinaria', 'Biología', 'Conservación', 'Zoológicos/UMA', 'Investigación', 'Educación', 'Consultoría', 'Otro'];
+  assert.equal(D.EJEMPLOS.length, 6);
+  assert.equal(new Set(D.EJEMPLOS.map(e => e.uid)).size, 6, 'identificadores distintos');
   for (const e of D.EJEMPLOS) {
     assert.match(e.uid, /^ejemplo-\d$/);
     assert.match(e.profesion, /ejemplo/i);
     assert.deepEqual(e.contacto, {});
+    assert.ok(SECTORES_DEL_SITIO.includes(e.sector), 'sector fuera de la lista del sitio: ' + e.sector);
+    assert.ok(e.nombre && e.ciudad && e.bio);
   }
 });
 
@@ -118,14 +122,14 @@ test('directorio: GET exige sesión (401), no se guarda en caché y POST/DELETE 
   assert.equal(ok.headers['cache-control'], 'no-store');
 });
 
-test('directorio SIN membresía: solo 3 ejemplos ficticios (nunca tarjetas reales ni su contacto)', async () => {
+test('directorio SIN membresía: solo 6 ejemplos ficticios (nunca tarjetas reales ni su contacto)', async () => {
   const seed = baseSeed({ 'directorio/beto': tarjeta('beto'), 'directorio/sinplan': tarjeta('sinplan') });
   const { app } = cargarServidor({ tokens, seed });
   for (const t of ['token-sinplan', 'token-vencida']) {
     const res = await ver(app, t, '?q=beto&sector=Conservaci%C3%B3n');
     assert.equal(res.status, 200);
     assert.equal(res.body.membresia, false);
-    assert.equal(res.body.tarjetas.length, 3);
+    assert.equal(res.body.tarjetas.length, 6);
     assert.ok(res.body.tarjetas.every(x => x.uid.startsWith('ejemplo-') && Object.keys(x.contacto).length === 0));
     assert.equal(res.body.mia, null);
     assert.ok(!JSON.stringify(res.body).includes('example.com'));

@@ -101,14 +101,22 @@ function validarTarjeta(cuerpo) {
   };
 }
 
-// Vista previa para quien no tiene membresía: tres tarjetas ficticias, sin datos de contacto reales.
+// Vista previa para quien no tiene membresía: seis tarjetas ficticias, sin datos de contacto reales.
+// Los sectores son los de la lista del sitio (SECTORES de assets/js/club-directorio.js); el sitio trae las mismas
+// tarjetas por su cuenta, así que si cambias estas, cambia también EJEMPLOS allí.
 const EJEMPLOS = Object.freeze([
   { uid: 'ejemplo-1', nombre: 'Mariana Ejemplo', profesion: 'Bióloga de campo (tarjeta de ejemplo)', sector: 'Conservación', ciudad: 'Ciudad de México',
     bio: 'Tarjeta ficticia para que veas cómo se ve el directorio. Con tu membresía ves los perfiles reales de la comunidad.', contacto: {}, actualizado: null },
-  { uid: 'ejemplo-2', nombre: 'Ricardo Muestra', profesion: 'Médico veterinario de fauna silvestre (tarjeta de ejemplo)', sector: 'Medicina veterinaria', ciudad: 'Guadalajara',
+  { uid: 'ejemplo-2', nombre: 'Ricardo Muestra', profesion: 'Médico veterinario de fauna silvestre (tarjeta de ejemplo)', sector: 'Veterinaria', ciudad: 'Guadalajara',
     bio: 'Tarjeta ficticia. Aquí aparecería la presentación de una persona de la comunidad.', contacto: {}, actualizado: null },
-  { uid: 'ejemplo-3', nombre: 'Valeria Demo', profesion: 'Educadora ambiental (tarjeta de ejemplo)', sector: 'Educación ambiental', ciudad: 'Mérida',
-    bio: 'Tarjeta ficticia. Con la membresía puedes crear la tuya y conocer a otras personas del sector.', contacto: {}, actualizado: null }
+  { uid: 'ejemplo-3', nombre: 'Valeria Demo', profesion: 'Educadora ambiental (tarjeta de ejemplo)', sector: 'Educación', ciudad: 'Mérida',
+    bio: 'Tarjeta ficticia. Con la membresía puedes crear la tuya y conocer a otras personas del sector.', contacto: {}, actualizado: null },
+  { uid: 'ejemplo-4', nombre: 'Camila Modelo', profesion: 'Responsable de una UMA (tarjeta de ejemplo)', sector: 'Zoológicos/UMA', ciudad: 'Xalapa',
+    bio: 'Tarjeta ficticia. Así se vería la presentación de alguien que trabaja en una UMA o en un zoológico.', contacto: {}, actualizado: null },
+  { uid: 'ejemplo-5', nombre: 'Andrés Prueba', profesion: 'Investigador en ecología de fauna (tarjeta de ejemplo)', sector: 'Investigación', ciudad: 'Morelia',
+    bio: 'Tarjeta ficticia. Aquí una persona de la comunidad contaría en qué línea de investigación trabaja.', contacto: {}, actualizado: null },
+  { uid: 'ejemplo-6', nombre: 'Lucía Muestra', profesion: 'Zoóloga (tarjeta de ejemplo)', sector: 'Biología', ciudad: 'Monterrey',
+    bio: 'Tarjeta ficticia. Con tu membresía buscas por sector o por ciudad y contactas a quien quieras.', contacto: {}, actualizado: null }
 ]);
 
 // Sin tildes y en minúsculas, para buscar sin importar acentos ni mayúsculas
