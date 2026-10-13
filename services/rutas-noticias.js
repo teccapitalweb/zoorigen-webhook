@@ -109,7 +109,7 @@ function montarRutasNoticias(app, deps) {
   app.post('/api/admin/noticias/sync', administrador('No se pudo sincronizar las noticias', 'admin-sync', async (req, res) => {
     const r = await noticias.syncNoticias(db);
     const aviso = await avisarNoticiasNuevas(db, r);
-    return res.json({ ok: true, guardadas: r.guardadas, omitidas: r.omitidas, fuentes: r.fuentes, eliminadas: r.eliminadas, avisoCreado: Boolean(aviso && aviso.creado) });
+    return res.json({ ok: true, guardadas: r.guardadas, omitidas: r.omitidas, fuentes: r.fuentes, eliminadas: r.eliminadas, imagenes: r.imagenes, avisoCreado: Boolean(aviso && aviso.creado) });
   }, { mapa: limites.sync, maximo: SYNC_POR_MINUTO }));
 
   app.post('/api/admin/noticias/:id/eliminar', administrador('No se pudo eliminar la noticia', 'admin-noticias', async (req, res) => {

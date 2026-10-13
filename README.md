@@ -312,6 +312,25 @@ repartidas entre categorías**. Solo se guarda titular + extracto corto + enlace
 artículo. El id es un hash del enlace (sin parámetros de seguimiento), así que no se duplica. Las `auto` de más de 21 días se borran (lotes de 400);
 las `admin` nunca. Si existe `NEWSDATA_API_KEY` también se consulta NewsData.io (`language=es`).
 
+#### Imagen de la nota (enriquecimiento)
+La imagen se toma del feed (`media:content`, `media:thumbnail`, `enclosure`, primera `<img>`) o de NewsData (`image_url`). Cuando el feed **no** la
+trae, `services/noticias-imagen.js` descarga la página de la nota (`link`) y toma, en este orden, `og:image`, `og:image:secure_url`, `twitter:image` o
+`<link rel="image_src">`. Se guarda en `imagen` (https, ≤400 caracteres); si la página tampoco tiene, queda `''` y el sitio muestra su foto de respaldo.
+- **Cuándo**: solo durante la sincronización (tarea diaria, `GET /cron/noticias` y el botón "Buscar noticias ahora"), nunca en la petición de una persona.
+  Se busca para las notas nuevas sin imagen y, de paso, para hasta 8 notas `auto` anteriores que quedaron sin imagen (dos intentos como máximo por nota,
+  anotados en `imagenIntentos`). Si ya hay imagen no se vuelve a pedir nada.
+- **Seguridad (SSRF)**: solo https y puerto 443, sin usuario/contraseña; el nombre se resuelve por DNS y se rechaza si cualquier dirección es privada, de
+  bucle local, link-local, de metadatos (169.254.169.254), CGNAT, multicast o reservada (IPv4 e IPv6, incluidas `::ffff:` y NAT64); la conexión real se hace a la
+  dirección ya validada (sin DNS rebinding); máximo 2 redirecciones y cada una pasa por las mismas reglas (no se sigue a `http`).
+- **Límites**: 4 s en total por página, 400 KB leídos como máximo, solo `text/html` o `application/xhtml+xml`, 3 páginas a la vez,
+  `User-Agent: Mozilla/5.0 (compatible; ZoorigenNoticias/1.0; +https://www.zoorigen.com)`.
+- **Descartes**: `favicon`, `sprite`, `logo`, `icon`, `avatar`, `placeholder`, `default` en la ruta, `.svg`/`.ico`, medidas de menos de 200 px en el nombre
+  (`-150x150`) o en `?w=`/`?h=`, y direcciones de más de 400 caracteres. Pasa al siguiente candidato.
+- **Pruebas sin red**: `fetchPagina` y `resolver` se inyectan (`test/noticias-imagen.test.js`). Si el llamador pasa su propio `fetch` para los feeds sin
+  `fetchPagina`, o el `fetch` global fue reemplazado, no se busca nada o se usa ese reemplazo: ninguna prueba sale a internet. `buscarImagenes: false`
+  en las opciones o `NOTICIAS_IMAGENES=off` en el entorno apagan la búsqueda. La respuesta de `POST /api/admin/noticias/sync` incluye
+  `imagenes: { buscadas, encontradas, rellenadas }`.
+
 ### Tarea diaria (dentro del propio proceso, sin dependencias)
 13:00 UTC (7:00 a.m. de Ciudad de México) y a los 20 s de arrancar (solo si la última sincronización tiene más de 6 horas, para que un reinicio no
 traiga noticias de más): **1)** `syncNoticias` y, si guardó alguna, aviso global `noticias_<fecha>` "📰 Nuevas noticias del sector" (uno por día);
@@ -602,6 +621,7 @@ Noticias y avisos:
 - `CRON_KEY`: llave para `GET /cron/noticias` (úsala larga y al azar). Sin ella esa ruta responde 401 a todos; el resto del servidor no la necesita.
 - `NEWSDATA_API_KEY` (opcional): activa NewsData.io como fuente extra. Nunca sale en respuestas ni en registros.
 - `NOTICIAS_TAREA=off` (opcional): apaga la tarea diaria dentro del proceso.
+- `NOTICIAS_IMAGENES=off` (opcional): no busca la imagen en la página de cada nota (solo usa la que traiga el feed).
 
 Correo de verificación de cuenta (opcional):
 - `RESEND_API_KEY`: llave de Resend (resend.com). Con ella el servidor envía el correo de verificación con la plantilla de Zoorigen (ruta `POST /api/auth/send-verification`). Nunca sale en respuestas ni en registros. Solo la configura la persona dueña del proyecto, directamente en Railway.

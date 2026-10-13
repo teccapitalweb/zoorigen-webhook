@@ -6,12 +6,29 @@
 //                       guarda hasta 4 nuevas por corrida y borra las de más de 21 días.
 //   · origen 'admin' -> las publica el equipo desde el panel; nunca caducan ni las borra la limpieza.
 // Solo se guarda titular + extracto corto (≤280, sin HTML) + enlace a la nota original + la imagen que
-// entregue la propia fuente (solo https). Jamás el artículo completo.
+// entregue la propia fuente (solo https) o, si el feed no trae, la og:image de la página de la nota
+// (services/noticias-imagen.js, solo durante la sincronización). Jamás el artículo completo.
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { limpiarTexto, texto, recortar, urlHttps, aIso } = require('./texto');
+const imagenes = require('./noticias-imagen');
+
+// La búsqueda de imagen en la página de la nota solo sale a internet con el transporte real. Si alguien reemplazó el fetch global
+// (pruebas) se respeta el reemplazo, y si el llamador pasó su propio fetch para los feeds no se busca nada salvo que también pase
+// `fetchPagina`: así ninguna prueba toca la red por accidente.
+const FETCH_NATIVO = globalThis.fetch;
+const INTENTOS_IMAGEN = 2;
+const RELLENO_POR_CORRIDA = 8;
+
+function transporteImagenes(opciones) {
+  if (opciones.buscarImagenes === false || (process.env.NOTICIAS_IMAGENES || '').toLowerCase() === 'off') return null;
+  if (typeof opciones.fetchPagina === 'function') return { fetch: opciones.fetchPagina, resolver: opciones.resolver || imagenes.resolverSimulado };
+  if (opciones.fetch) return null;
+  if (globalThis.fetch !== FETCH_NATIVO) return { fetch: globalThis.fetch, resolver: opciones.resolver || imagenes.resolverSimulado };
+  return { fetch: imagenes.transporteFijado, resolver: opciones.resolver || imagenes.resolverDns };
+}
 
 const RUTA_FUENTES = process.env.NOTICIAS_FUENTES_RUTA || path.join(__dirname, '..', 'data', 'noticias-fuentes.json');
 
@@ -379,6 +396,27 @@ async function limpiarAntiguas(db, { ahora = new Date(), dias = DIAS_RETENCION }
   return borradas;
 }
 
+// Notas automáticas recientes que no tienen imagen y a las que aún les quedan intentos: se busca la de su página.
+// Como máximo `RELLENO_POR_CORRIDA` por corrida, para no alargar la sincronización. Devuelve cuántas quedaron con imagen.
+async function rellenarImagenes(db, opcionesImagen, { maximo = RELLENO_POR_CORRIDA, excluir = new Set() } = {}) {
+  const snap = await db.collection('noticiasSector').orderBy('creadoEn', 'desc').limit(60).get();
+  const pendientes = snap.docs
+    .filter(d => {
+      const x = d.data() || {};
+      return !excluir.has(d.id) && x.origen === 'auto' && !urlHttps(String(x.imagen || ''), 400) && urlHttps(String(x.link || ''), 500) && (Number(x.imagenIntentos) || 0) < INTENTOS_IMAGEN;
+    })
+    .slice(0, maximo);
+  if (!pendientes.length) return 0;
+  const notas = pendientes.map(d => ({ ref: d.ref, link: String((d.data() || {}).link), intentos: Number((d.data() || {}).imagenIntentos) || 0, imagen: '' }));
+  await imagenes.completarImagenes(notas, opcionesImagen);
+  let rellenadas = 0;
+  for (const n of notas) {
+    await n.ref.set(n.imagen ? { imagen: n.imagen } : { imagenIntentos: n.intentos + 1 }, { merge: true });
+    if (n.imagen) rellenadas++;
+  }
+  return rellenadas;
+}
+
 async function sincronizar(db, opciones) {
   const {
     ahora = new Date(), tope = TOPE_NUEVAS, maxDias = DIAS_RETENCION, timeoutMs = TIMEOUT_FEED_MS, limpiar = true
@@ -450,16 +488,47 @@ async function sincronizar(db, opciones) {
     docs.forEach((d, i) => { if (d.exists) existentes.add(candidatas[i].id); });
   }
   const elegidas = elegirNuevas(porCategoria, existentes, Math.max(0, tope), ahora);
+
+  // Las que el feed no trajo con imagen: se busca la de su propia página (og:image). Solo durante la sincronización.
+  const transporte = transporteImagenes(opciones);
+  const opcionesImagen = transporte ? { ...transporte, timeoutMs: opciones.timeoutPaginaMs || imagenes.TIMEOUT_PAGINA_MS } : null;
+  const resumenImagenes = { buscadas: 0, encontradas: 0, rellenadas: 0 };
+  const buscadas = new Set(opcionesImagen ? elegidas.filter(n => !n.imagen && n.link).map(n => n.id) : []);
+  if (opcionesImagen && buscadas.size) {
+    try {
+      const r = await imagenes.completarImagenes(elegidas, opcionesImagen);
+      resumenImagenes.buscadas = r.buscadas;
+      resumenImagenes.encontradas = r.encontradas;
+    } catch (error) {
+      console.error('[Noticias] No se pudo buscar las imágenes de las notas:', error && error.message);
+    }
+  }
+
   const nuevas = [];
   for (const [i, n] of elegidas.entries()) {
     const cat = CATEGORIAS[n.categoria];
-    await db.collection('noticiasSector').doc(n.id).set({
+    const doc = {
       id: n.id, titulo: n.titulo, extracto: n.extracto, link: n.link, fuente: n.fuente, imagen: n.imagen,
       categoria: n.categoria, categoriaNombre: cat.nombre, color: cat.color, fecha: n.fecha, origen: 'auto', idioma: 'es',
       // un milisegundo de diferencia por noticia para que el orden de la lista sea estable
       creadoEn: new Date(ahora.getTime() + i)
-    });
+    };
+    if (buscadas.has(n.id) && !n.imagen) doc.imagenIntentos = 1;
+    await db.collection('noticiasSector').doc(n.id).set(doc);
     nuevas.push({ id: n.id, titulo: n.titulo, categoria: n.categoria });
+  }
+
+  // Las notas guardadas antes de esta función (o cuyo intento falló) reciben su imagen en la siguiente corrida
+  if (opcionesImagen) {
+    try {
+      resumenImagenes.rellenadas = await rellenarImagenes(db, opcionesImagen, { excluir: new Set(nuevas.map(n => n.id)) });
+    } catch (error) {
+      console.error('[Noticias] No se pudo completar las imágenes de notas anteriores:', error && error.message);
+    }
+  }
+
+  if (resumenImagenes.buscadas || resumenImagenes.rellenadas) {
+    console.log(`[Noticias] Imágenes de la página de la nota: buscadas ${resumenImagenes.buscadas}, encontradas ${resumenImagenes.encontradas}, rellenadas en notas anteriores ${resumenImagenes.rellenadas}`);
   }
 
   let eliminadas = 0;
@@ -473,7 +542,7 @@ async function sincronizar(db, opciones) {
   } catch (error) {
     console.error('[Noticias] No se pudo guardar la fecha de la sincronización:', error && error.message);
   }
-  return { guardadas: nuevas.length, omitidas: Math.max(0, leidos - nuevas.length), fuentes, eliminadas, nuevas };
+  return { guardadas: nuevas.length, omitidas: Math.max(0, leidos - nuevas.length), fuentes, eliminadas, nuevas, imagenes: resumenImagenes };
 }
 
 // Sincroniza ahora. Si ya hay una en curso, devuelve esa misma (no se encimen la tarea diaria y el botón del panel).
@@ -585,6 +654,6 @@ async function eliminarNoticia(db, id) {
 module.exports = {
   CATEGORIAS, ORDEN_CATEGORIAS, PLANTILLAS, TOPE_NUEVAS, DIAS_RETENCION, MAX_EXTRACTO, RUTA_FUENTES,
   leerFuentes, decodificarEntidades, limpiarCampo, extractoDe, parsearFeed, esRelevante, esEspanol, clasificar,
-  normalizarLink, idDeLink, descargar, elegirNuevas, limpiarAntiguas, syncNoticias,
+  normalizarLink, idDeLink, descargar, elegirNuevas, limpiarAntiguas, rellenarImagenes, syncNoticias,
   vistaNoticia, listarNoticias, listarNoticiasAdmin, validarNoticiaAdmin, publicarNoticiaAdmin, eliminarNoticia
 };
