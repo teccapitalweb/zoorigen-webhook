@@ -8,7 +8,10 @@
 // ESCAPARLOS al dibujarlos (el sitio lo hace). Así un nombre como "D'Angelo & Hijos" se ve bien y no depende
 // de que nadie recuerde "no volver a escapar". Los enlaces y el correo se validan con una forma estricta.
 
-const LIMITES = Object.freeze({ nombre: 80, profesion: 80, sector: 60, ciudad: 80, bio: 400, email: 120, url: 200 });
+const LIMITES = Object.freeze({ nombre: 80, profesion: 80, institucion: 80, sector: 60, ciudad: 80, bio: 400, estado: 20, cedula: 20, email: 120, url: 200 });
+
+// Estado profesional opcional (igual que en Alintec Food): lo que la persona quiere que sepan de su disponibilidad.
+const ESTADOS = Object.freeze({ proyectos: 'Disponible para proyectos', empleo: 'Busco empleo' });
 const MAX_TARJETAS = 300;
 
 function escaparHtml(valor) {
@@ -59,10 +62,22 @@ function validarTarjeta(cuerpo) {
   if (nombre.error) return nombre;
   if (nombre.valor.length < 2) return { error: 'El nombre es obligatorio (de 2 a 80 caracteres)' };
   const campos = {};
-  for (const [campo, etiqueta, opciones] of [['profesion', 'La profesión', {}], ['sector', 'El sector', {}], ['ciudad', 'La ciudad', {}], ['bio', 'La descripción', { saltos: true }]]) {
+  for (const [campo, etiqueta, opciones] of [
+    ['profesion', 'La profesión', {}], ['institucion', 'La institución', {}], ['sector', 'El sector', {}], ['ciudad', 'La ciudad', {}],
+    ['bio', 'La descripción', { saltos: true }], ['estado', 'El estado profesional', {}], ['cedula', 'La cédula profesional', {}]
+  ]) {
     const r = textoOpcional(cuerpo[campo], LIMITES[campo], etiqueta, opciones);
     if (r.error) return r;
     campos[campo] = r.valor;
+  }
+  if (campos.estado && !Object.prototype.hasOwnProperty.call(ESTADOS, campos.estado)) return { error: 'El estado profesional no es válido' };
+  if (campos.cedula && !/^[A-Za-z0-9-]{4,20}$/.test(campos.cedula)) return { error: 'La cédula profesional no es válida (de 4 a 20 letras o números)' };
+  // Banderas: solo verdadero o falso. Sin "publicado" la tarjeta queda PRIVADA (solo la ve su dueña o dueño).
+  const banderas = {};
+  for (const [campo, etiqueta] of [['cedulaVisible', 'Mostrar la cédula'], ['publicado', 'Publicar la tarjeta']]) {
+    const v = cuerpo[campo];
+    if (v !== undefined && v !== null && typeof v !== 'boolean') return { error: `${etiqueta} no es válido` };
+    banderas[campo] = v === true;
   }
 
   const crudo = cuerpo.contacto;
@@ -95,8 +110,9 @@ function validarTarjeta(cuerpo) {
 
   return {
     tarjeta: {
-      nombre: nombre.valor, profesion: campos.profesion, sector: campos.sector,
-      ciudad: campos.ciudad, bio: campos.bio, contacto
+      nombre: nombre.valor, profesion: campos.profesion, institucion: campos.institucion, sector: campos.sector,
+      ciudad: campos.ciudad, bio: campos.bio, estado: campos.estado, cedula: campos.cedula,
+      cedulaVisible: banderas.cedulaVisible, publicado: banderas.publicado, contacto
     }
   };
 }
@@ -105,17 +121,17 @@ function validarTarjeta(cuerpo) {
 // Los sectores son los de la lista del sitio (SECTORES de assets/js/club-directorio.js); el sitio trae las mismas
 // tarjetas por su cuenta, así que si cambias estas, cambia también EJEMPLOS allí.
 const EJEMPLOS = Object.freeze([
-  { uid: 'ejemplo-1', nombre: 'Mariana Ejemplo', profesion: 'Bióloga de campo (tarjeta de ejemplo)', sector: 'Conservación', ciudad: 'Ciudad de México',
+  { uid: 'ejemplo-1', nombre: 'Mariana Ejemplo', profesion: 'Bióloga de campo (tarjeta de ejemplo)', institucion: 'Instituto de ejemplo', sector: 'Conservación', ciudad: 'Ciudad de México',
     bio: 'Tarjeta ficticia para que veas cómo se ve el directorio. Con tu membresía ves los perfiles reales de la comunidad.', contacto: {}, actualizado: null },
-  { uid: 'ejemplo-2', nombre: 'Ricardo Muestra', profesion: 'Médico veterinario de fauna silvestre (tarjeta de ejemplo)', sector: 'Veterinaria', ciudad: 'Guadalajara',
+  { uid: 'ejemplo-2', nombre: 'Ricardo Muestra', profesion: 'Médico veterinario de fauna silvestre (tarjeta de ejemplo)', institucion: 'Clínica veterinaria de ejemplo', sector: 'Veterinaria', ciudad: 'Guadalajara',
     bio: 'Tarjeta ficticia. Aquí aparecería la presentación de una persona de la comunidad.', contacto: {}, actualizado: null },
-  { uid: 'ejemplo-3', nombre: 'Valeria Demo', profesion: 'Educadora ambiental (tarjeta de ejemplo)', sector: 'Educación', ciudad: 'Mérida',
+  { uid: 'ejemplo-3', nombre: 'Valeria Demo', profesion: 'Educadora ambiental (tarjeta de ejemplo)', institucion: 'Centro de educación ambiental de ejemplo', sector: 'Educación', ciudad: 'Mérida',
     bio: 'Tarjeta ficticia. Con la membresía puedes crear la tuya y conocer a otras personas del sector.', contacto: {}, actualizado: null },
-  { uid: 'ejemplo-4', nombre: 'Camila Modelo', profesion: 'Responsable de una UMA (tarjeta de ejemplo)', sector: 'Zoológicos/UMA', ciudad: 'Xalapa',
+  { uid: 'ejemplo-4', nombre: 'Camila Modelo', profesion: 'Responsable de una UMA (tarjeta de ejemplo)', institucion: 'UMA de ejemplo', sector: 'Zoológicos/UMA', ciudad: 'Xalapa',
     bio: 'Tarjeta ficticia. Así se vería la presentación de alguien que trabaja en una UMA o en un zoológico.', contacto: {}, actualizado: null },
-  { uid: 'ejemplo-5', nombre: 'Andrés Prueba', profesion: 'Investigador en ecología de fauna (tarjeta de ejemplo)', sector: 'Investigación', ciudad: 'Morelia',
+  { uid: 'ejemplo-5', nombre: 'Andrés Prueba', profesion: 'Investigador en ecología de fauna (tarjeta de ejemplo)', institucion: 'Universidad de ejemplo', sector: 'Investigación', ciudad: 'Morelia',
     bio: 'Tarjeta ficticia. Aquí una persona de la comunidad contaría en qué línea de investigación trabaja.', contacto: {}, actualizado: null },
-  { uid: 'ejemplo-6', nombre: 'Lucía Muestra', profesion: 'Zoóloga (tarjeta de ejemplo)', sector: 'Biología', ciudad: 'Monterrey',
+  { uid: 'ejemplo-6', nombre: 'Lucía Muestra', profesion: 'Zoóloga (tarjeta de ejemplo)', institucion: 'Museo de historia natural de ejemplo', sector: 'Biología', ciudad: 'Monterrey',
     bio: 'Tarjeta ficticia. Con tu membresía buscas por sector o por ciudad y contactas a quien quieras.', contacto: {}, actualizado: null }
 ]);
 
@@ -129,19 +145,28 @@ function filtrar(tarjetas, { sector = '', q = '' } = {}) {
   return tarjetas.filter(t => {
     if (sec && plano(t.sector) !== sec) return false;
     if (!texto) return true;
-    return [t.nombre, t.profesion, t.sector, t.ciudad, t.bio].some(v => plano(v).includes(texto));
+    return [t.nombre, t.profesion, t.institucion, t.sector, t.ciudad, t.bio].some(v => plano(v).includes(texto));
   });
 }
 
-// Documento guardado -> lo que ve el sitio
-function tarjetaPublica(uid, doc) {
+// Documento guardado -> lo que ve el sitio.
+//  · esMia: quien mira es su dueña o dueño (ve su cédula aunque no la muestre al público)
+//  · verificado: la membresía de su dueña o dueño está vigente (lo calcula el servidor, nunca viene del navegador)
+function tarjetaPublica(uid, doc, { esMia = false, verificado = false } = {}) {
   const d = doc && typeof doc === 'object' ? doc : {};
   const fecha = d.actualizado && typeof d.actualizado.toDate === 'function' ? d.actualizado.toDate().toISOString() : null;
   const c = d.contacto && typeof d.contacto === 'object' ? d.contacto : {};
   const contacto = {};
   for (const k of ['whatsapp', 'email', 'linkedin', 'web', 'instagram']) if (typeof c[k] === 'string' && c[k]) contacto[k] = c[k];
   const t = (k) => (typeof d[k] === 'string' ? d[k] : '');
-  return { uid, nombre: t('nombre'), profesion: t('profesion'), sector: t('sector'), ciudad: t('ciudad'), bio: t('bio'), contacto, actualizado: fecha };
+  const cedulaVisible = d.cedulaVisible === true;
+  return {
+    uid, nombre: t('nombre'), profesion: t('profesion'), institucion: t('institucion'), sector: t('sector'), ciudad: t('ciudad'), bio: t('bio'),
+    estado: Object.prototype.hasOwnProperty.call(ESTADOS, d.estado) ? d.estado : '',
+    cedula: cedulaVisible || esMia ? t('cedula') : '', cedulaVisible,
+    publicado: d.publicado === true, verificado: verificado === true,
+    contacto, actualizado: fecha
+  };
 }
 
-module.exports = { LIMITES, MAX_TARJETAS, EJEMPLOS, escaparHtml, validarTarjeta, filtrar, tarjetaPublica, normalizarUrl };
+module.exports = { LIMITES, ESTADOS, MAX_TARJETAS, EJEMPLOS, escaparHtml, validarTarjeta, filtrar, tarjetaPublica, normalizarUrl };

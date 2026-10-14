@@ -22,14 +22,17 @@ test('tarjeta válida: se limpian espacios y caracteres invisibles, se guarda el
   });
   assert.equal(r.error, undefined);
   assert.deepEqual(r.tarjeta, {
-    nombre: 'Ana <b>Pérez</b>', profesion: 'Bióloga', sector: 'Conservación', ciudad: 'Mérida, Yuc.', bio: 'Línea 1\n\nLínea 2 fin',
+    nombre: 'Ana <b>Pérez</b>', profesion: 'Bióloga', institucion: '', sector: 'Conservación', ciudad: 'Mérida, Yuc.', bio: 'Línea 1\n\nLínea 2 fin',
+    estado: '', cedula: '', cedulaVisible: false, publicado: false,
     contacto: { whatsapp: '525512345678', email: 'ana@example.com', linkedin: 'https://www.linkedin.com/in/ana', web: 'https://zoorigen.com/club?x=1', instagram: 'ana_p' }
   });
 });
 
 test('tarjeta: solo el nombre es obligatorio y todo lo demás puede ir vacío', () => {
   const r = D.validarTarjeta({ nombre: 'Ana' });
-  assert.deepEqual(r.tarjeta, { nombre: 'Ana', profesion: '', sector: '', ciudad: '', bio: '', contacto: {} });
+  assert.deepEqual(r.tarjeta, {
+    nombre: 'Ana', profesion: '', institucion: '', sector: '', ciudad: '', bio: '', estado: '', cedula: '', cedulaVisible: false, publicado: false, contacto: {}
+  });
   assert.deepEqual(D.validarTarjeta({ nombre: 'Ana', contacto: { web: '', email: '   ', whatsapp: null } }).tarjeta.contacto, {});
 });
 
@@ -46,7 +49,10 @@ test('tarjeta: rechaza tipos raros, textos largos y datos de contacto mal formad
     { ...ok, contacto: { web: 'https://a.com/"onmouseover=alert(1)' } }, { ...ok, contacto: { web: 'https://a.com/<script>' } }, { ...ok, contacto: { web: 'https://user:pass@a.com' } },
     { ...ok, contacto: { web: 'localhost' } }, { ...ok, contacto: { web: 'https://a.com/' + largo(250) } }, { ...ok, contacto: { web: { u: 1 } } },
     { ...ok, contacto: { linkedin: 'https://evil.com/linkedin.com' } }, { ...ok, contacto: { linkedin: 'https://notlinkedin.com/in/x' } },
-    { ...ok, contacto: { instagram: 'con espacios' } }, { ...ok, contacto: { instagram: '<x>' } }, { ...ok, contacto: { instagram: largo(31) } }
+    { ...ok, contacto: { instagram: 'con espacios' } }, { ...ok, contacto: { instagram: '<x>' } }, { ...ok, contacto: { instagram: largo(31) } },
+    { ...ok, institucion: largo(81) }, { ...ok, institucion: 7 }, { ...ok, estado: 'cualquiera' }, { ...ok, estado: 3 },
+    { ...ok, cedula: 'ab' }, { ...ok, cedula: '12 34' }, { ...ok, cedula: largo(21) }, { ...ok, cedula: '<x>1234' },
+    { ...ok, publicado: 'si' }, { ...ok, publicado: 1 }, { ...ok, cedulaVisible: 'true' }, { ...ok, cedulaVisible: {} }
   ];
   for (const m of malos) {
     const r = D.validarTarjeta(m);
@@ -56,7 +62,9 @@ test('tarjeta: rechaza tipos raros, textos largos y datos de contacto mal formad
 
 test('tarjeta: los campos extra que mande el navegador se ignoran', () => {
   const r = D.validarTarjeta({ nombre: 'Ana', uid: 'otro', role: 'admin', planActivo: true, verificado: true, contacto: { whatsapp: '5512345678', secreto: 'x' }, __proto__: { admin: true } });
-  assert.deepEqual(Object.keys(r.tarjeta).sort(), ['bio', 'ciudad', 'contacto', 'nombre', 'profesion', 'sector']);
+  assert.deepEqual(Object.keys(r.tarjeta).sort(),
+    ['bio', 'cedula', 'cedulaVisible', 'ciudad', 'contacto', 'estado', 'institucion', 'nombre', 'profesion', 'publicado', 'sector']);
+  assert.equal(r.tarjeta.publicado, false, 'un campo "verificado" o "role" del navegador no cambia nada; sin "publicado" queda privada');
   assert.deepEqual(r.tarjeta.contacto, { whatsapp: '5512345678' });
 });
 
@@ -108,7 +116,7 @@ const guardar = (app, cuerpo, t = 'token-ana') => request(app).post('/api/direct
 const borrar = (app, t = 'token-ana') => request(app).delete('/api/directorio').set(auth(t));
 const tarjeta = (uid, extra = {}, minutos = 0) => ({
   uid, nombre: `Persona ${uid}`, profesion: 'Bióloga', sector: 'Conservación', ciudad: 'Mérida', bio: 'Hola',
-  contacto: { email: `${uid}@example.com`, whatsapp: '5512345678' }, actualizado: ts(Date.now() - minutos * 60000), ...extra
+  contacto: { email: `${uid}@example.com`, whatsapp: '5512345678' }, publicado: true, actualizado: ts(Date.now() - minutos * 60000), ...extra
 });
 
 test('directorio: GET exige sesión (401), no se guarda en caché y POST/DELETE también piden sesión', async () => {
@@ -143,7 +151,8 @@ test('directorio con membresía: tarjetas reales con su forma del contrato, la m
   const res = await ver(app);
   assert.equal(res.body.membresia, true);
   assert.deepEqual(res.body.tarjetas.map(t => t.uid), ['beto', 'ana']);
-  assert.deepEqual(Object.keys(res.body.tarjetas[0]).sort(), ['actualizado', 'bio', 'ciudad', 'contacto', 'nombre', 'profesion', 'sector', 'uid']);
+  assert.deepEqual(Object.keys(res.body.tarjetas[0]).sort(),
+    ['actualizado', 'bio', 'cedula', 'cedulaVisible', 'ciudad', 'contacto', 'estado', 'institucion', 'nombre', 'profesion', 'publicado', 'sector', 'uid', 'verificado']);
   assert.ok(!Number.isNaN(Date.parse(res.body.tarjetas[0].actualizado)));
   assert.equal(res.body.mia.uid, 'ana');
   assert.deepEqual(res.body.mia.contacto, { email: 'ana@example.com', whatsapp: '5512345678' });
@@ -223,7 +232,8 @@ test('POST: siempre es la tarjeta de quien llama; un uid, rol o campo extra del 
   const res = await guardar(app, { nombre: 'Ana', uid: 'beto', role: 'admin', planActivo: true, verificado: true, contacto: { whatsapp: '5512345678', otro: 'x' } });
   assert.equal(res.status, 200);
   assert.deepEqual(db.value('directorio/beto'), antesBeto, 'la tarjeta ajena no se toca');
-  assert.deepEqual(Object.keys(db.value('directorio/ana')).sort(), ['actualizado', 'bio', 'ciudad', 'contacto', 'nombre', 'profesion', 'sector', 'uid']);
+  assert.deepEqual(Object.keys(db.value('directorio/ana')).sort(),
+    ['actualizado', 'bio', 'cedula', 'cedulaVisible', 'ciudad', 'contacto', 'estado', 'institucion', 'nombre', 'profesion', 'publicado', 'sector', 'uid']);
   assert.deepEqual(db.value('directorio/ana').contacto, { whatsapp: '5512345678' });
 });
 
@@ -265,4 +275,68 @@ test('tener tarjeta en el directorio da el logro "Tarjeta de presentación" (+60
   const despues = (await request(app).get('/api/premios').set(auth('token-ana'))).body;
   assert.ok(despues.logros.find(l => l.id === 'l3').ganado);
   assert.equal(despues.xp.total - antes.xp.total, 60);
+});
+
+// ── Privada hasta publicar, sello verificado, cédula opcional (igual que el Directorio de Alintec Food) ──
+test('una tarjeta es PRIVADA hasta que su dueña la publica: otras personas no la ven, ella sí en "mia"', async () => {
+  const seed = baseSeed({
+    'directorio/beto': tarjeta('beto', { publicado: false }),
+    'directorio/vencida': tarjeta('vencida', { publicado: undefined }),   // tarjeta antigua sin la bandera: privada
+    'directorio/admin': tarjeta('admin')
+  });
+  const { app } = cargarServidor({ tokens, seed });
+  const deAna = await ver(app);
+  assert.deepEqual(deAna.body.tarjetas.map(t => t.uid), ['admin'], 'solo las publicadas');
+  assert.ok(!JSON.stringify(deAna.body).includes('beto@example.com'), 'el contacto de una tarjeta privada no sale');
+  assert.equal(deAna.body.mia, null);
+  const deBeto = await ver(app, 'token-beto');
+  assert.equal(deBeto.body.mia.uid, 'beto');
+  assert.equal(deBeto.body.mia.publicado, false);
+  assert.ok(!deBeto.body.tarjetas.some(t => t.uid === 'beto'), 'tampoco aparece en la lista, ni para ella misma');
+});
+
+test('publicar y dejar de publicar: POST con publicado true la muestra y con false la vuelve privada', async () => {
+  const { app } = cargarServidor({ tokens, seed: baseSeed() });
+  const nuevo = await guardar(app, { nombre: 'Ana Pérez', profesion: 'Bióloga', sector: 'Conservación', ciudad: 'Mérida' });
+  assert.equal(nuevo.body.tarjeta.publicado, false, 'sin pedirlo no se publica');
+  assert.deepEqual((await ver(app, 'token-beto')).body.tarjetas.map(t => t.uid), []);
+  const publicada = await guardar(app, { nombre: 'Ana Pérez', profesion: 'Bióloga', sector: 'Conservación', ciudad: 'Mérida', publicado: true });
+  assert.equal(publicada.body.tarjeta.publicado, true);
+  assert.deepEqual((await ver(app, 'token-beto')).body.tarjetas.map(t => t.uid), ['ana']);
+  await guardar(app, { nombre: 'Ana Pérez', publicado: false });
+  assert.deepEqual((await ver(app, 'token-beto')).body.tarjetas.map(t => t.uid), []);
+});
+
+test('GET: el sello "verificado" lo calcula el servidor según la membresía vigente de cada tarjeta', async () => {
+  const seed = baseSeed({ 'directorio/beto': tarjeta('beto'), 'directorio/vencida': tarjeta('vencida'), 'directorio/sinplan': tarjeta('sinplan') });
+  const { app } = cargarServidor({ tokens, seed });
+  const res = await ver(app);
+  const sello = Object.fromEntries(res.body.tarjetas.map(t => [t.uid, t.verificado]));
+  assert.deepEqual(sello, { beto: true, vencida: false, sinplan: false });
+  // Un navegador no puede ponerse el sello: la bandera "verificado" que mande se ignora
+  const g = await guardar(app, { nombre: 'Ana Pérez', publicado: true, verificado: true }, 'token-sinplan');
+  assert.equal(g.status, 403);
+});
+
+test('cédula: solo se muestra a otras personas si su dueña eligió mostrarla; ella siempre ve la suya', async () => {
+  const { app } = cargarServidor({ tokens, seed: baseSeed() });
+  await guardar(app, { nombre: 'Ana', cedula: '12345678', cedulaVisible: false, publicado: true });
+  await guardar(app, { nombre: 'Beto', cedula: 'AB-9876', cedulaVisible: true, publicado: true }, 'token-beto');
+  const vistaAna = await ver(app, 'token-ana');
+  assert.equal(vistaAna.body.mia.cedula, '12345678');
+  assert.equal(vistaAna.body.mia.cedulaVisible, false);
+  assert.equal(vistaAna.body.tarjetas.find(t => t.uid === 'beto').cedula, 'AB-9876');
+  const vistaBeto = await ver(app, 'token-beto');
+  assert.equal(vistaBeto.body.tarjetas.find(t => t.uid === 'ana').cedula, '', 'la cédula oculta no sale del servidor');
+  assert.ok(!JSON.stringify(vistaBeto.body.tarjetas.find(t => t.uid === 'ana')).includes('12345678'));
+});
+
+test('estado profesional: solo los dos valores acordados; se guarda y se devuelve', async () => {
+  const { app, db } = cargarServidor({ tokens, seed: baseSeed() });
+  assert.deepEqual(D.ESTADOS, { proyectos: 'Disponible para proyectos', empleo: 'Busco empleo' });
+  const r = await guardar(app, { nombre: 'Ana', estado: 'empleo', institucion: 'UMA El Pedregal', publicado: true });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.tarjeta.estado, 'empleo');
+  assert.equal(db.value('directorio/ana').institucion, 'UMA El Pedregal');
+  assert.equal((await guardar(app, { nombre: 'Ana', estado: 'jubilado' })).status, 400);
 });

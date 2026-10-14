@@ -837,6 +837,23 @@ function montarRutasClub(app, deps) {
   // ════════════════════════════════════════════════════════════
   const parametroTexto = v => (typeof v === 'string' ? v.trim().slice(0, 80) : '');
 
+  // ¿Quiénes de estos uid tienen membresía vigente ahora? (mismas reglas de siempre: leerContexto).
+  // Se recuerda un minuto por persona para no leer 3 documentos por tarjeta en cada visita.
+  const VIGENCIA_SELLO_MS = 60 * 1000;
+  const cacheSello = new Map();
+  async function membresiasVigentes(uids, ahora = Date.now()) {
+    const vigentes = new Set();
+    await Promise.all([...new Set(uids)].map(async uid => {
+      const previo = cacheSello.get(uid);
+      let ok;
+      if (previo && ahora - previo.t < VIGENCIA_SELLO_MS) ok = previo.ok;
+      else { ok = (await leerContexto(uid)).membresia === true; cacheSello.set(uid, { t: ahora, ok }); }
+      if (ok) vigentes.add(uid);
+    }));
+    if (cacheSello.size > 2000) cacheSello.clear();
+    return vigentes;
+  }
+
   // GET /api/directorio?sector=&q= — con membresía: hasta 300 tarjetas reales; sin ella, 6 ejemplos ficticios
   app.get('/api/directorio', async (req, res) => {
     res.set('Cache-Control', 'no-store');
@@ -848,12 +865,23 @@ function montarRutasClub(app, deps) {
       if (!ctx.membresia) {
         return res.json({ ok: true, membresia: false, tarjetas: directorio.EJEMPLOS.map(t => ({ ...t, contacto: {} })), mia: null });
       }
-      const snap = await db.collection('directorio').orderBy('actualizado', 'desc').limit(1000).get();
-      const todas = snap.docs.map(d => directorio.tarjetaPublica(d.id, d.data()));
-      const filtradas = directorio.filtrar(todas, { sector: parametroTexto(req.query.sector), q: parametroTexto(req.query.q) });
+      // Una tarjeta es PRIVADA hasta que su dueña o dueño la publica: las demás personas solo ven las que
+      // tienen publicado === true. La propia siempre se devuelve en "mia" (publicada o no).
+      const [snap, miDoc] = await Promise.all([
+        db.collection('directorio').orderBy('actualizado', 'desc').limit(1000).get(),
+        db.collection('directorio').doc(decoded.uid).get()
+      ]);
+      const publicadas = snap.docs.filter(d => d.data() && d.data().publicado === true);
+      const filtradas = directorio.filtrar(
+        publicadas.map(d => directorio.tarjetaPublica(d.id, d.data(), { esMia: d.id === decoded.uid })),
+        { sector: parametroTexto(req.query.sector), q: parametroTexto(req.query.q) }
+      ).slice(0, directorio.MAX_TARJETAS);
+      // Sello "verificado": membresía vigente de cada dueña o dueño, calculada aquí (nunca viene del navegador)
+      const vigentes = await membresiasVigentes([...filtradas.map(t => t.uid), decoded.uid]);
+      const conSello = t => ({ ...t, verificado: vigentes.has(t.uid) });
       return res.json({
-        ok: true, membresia: true, tarjetas: filtradas.slice(0, directorio.MAX_TARJETAS),
-        mia: todas.find(t => t.uid === decoded.uid) || null
+        ok: true, membresia: true, tarjetas: filtradas.map(conSello),
+        mia: miDoc.exists ? conSello(directorio.tarjetaPublica(decoded.uid, miDoc.data(), { esMia: true })) : null
       });
     } catch (error) {
       return responderError(res, error, 'No se pudo cargar el directorio', 'directorio');
@@ -874,7 +902,7 @@ function montarRutasClub(app, deps) {
       const ref = db.collection('directorio').doc(decoded.uid);
       // set completo: la tarjeta guardada es exactamente la validada (nada extra que haya mandado el navegador)
       await ref.set({ uid: decoded.uid, ...r.tarjeta, actualizado: FieldValue.serverTimestamp() });
-      return res.json({ ok: true, tarjeta: directorio.tarjetaPublica(decoded.uid, (await ref.get()).data()) });
+      return res.json({ ok: true, tarjeta: directorio.tarjetaPublica(decoded.uid, (await ref.get()).data(), { esMia: true, verificado: true }) });
     } catch (error) {
       return responderError(res, error, 'No se pudo guardar tu tarjeta', 'directorio');
     }
