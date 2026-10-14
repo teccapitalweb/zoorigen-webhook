@@ -168,6 +168,53 @@ function nombreParaCertificado({ miembro, usuario, token } = {}) {
   return 'Miembro VIP';
 }
 
+// ── Nombre que lleva el certificado ─────────────────────────────
+// Se confirma UNA vez por cuenta, al emitirse su primer certificado. Reglas iguales a las del sitio
+// (assets/js/club-nombre-cert.js y club-onboarding.js): nombre y al menos un apellido, solo letras, 3 a 38 caracteres.
+const NOMBRE_CERT_MIN = 3;
+const NOMBRE_CERT_MAX = 38;
+const PARTICULAS_NOMBRE = Object.freeze(['de', 'del', 'la', 'las', 'los', 'y', 'e', 'van', 'von', 'da', 'di', 'le', 'du', 'dos', 'das']);
+
+function soloLetras(t) { return String(t).replace(/[^\p{L}]/gu, ''); }
+
+// Todo en minúsculas o todo en MAYÚSCULAS queda con mayúscula inicial en cada palabra (las partículas, en minúscula).
+function capitalizarNombre(t) {
+  const v = String(t || '').replace(/\s+/g, ' ').trim();
+  if (!v || (v !== v.toLowerCase() && v !== v.toUpperCase())) return v;
+  return v.toLocaleLowerCase('es-MX').split(' ').map((palabra, i) => {
+    if (i > 0 && PARTICULAS_NOMBRE.includes(palabra)) return palabra;
+    return palabra.replace(/(^|[-'’.])(\p{L})/gu, (m, pre, l) => pre + l.toLocaleUpperCase('es-MX'));
+  }).join(' ');
+}
+
+// -> { ok, valor, error }. "valor" es el nombre ya limpio y con mayúsculas acomodadas.
+function validarNombreCertificado(entrada) {
+  const v = String(entrada == null ? '' : entrada).normalize('NFC').replace(/\s+/g, ' ').trim();
+  const no = error => ({ ok: false, valor: v, error });
+  if (v.length < NOMBRE_CERT_MIN) return no('Escribe tu nombre y al menos un apellido.');
+  if (v.length > NOMBRE_CERT_MAX) return no('Usa máximo ' + NOMBRE_CERT_MAX + ' caracteres. Con nombre y uno o dos apellidos basta.');
+  if (!/^[\p{L}\p{M}][\p{L}\p{M}'’.\- ]*$/u.test(v)) return no('Usa solo letras, sin números ni símbolos.');
+  const partes = v.split(' ');
+  const apellidos = partes.slice(1).filter(p => !PARTICULAS_NOMBRE.includes(p.toLowerCase()) && soloLetras(p).length >= 2);
+  if (soloLetras(partes[0]).length < 2 || !apellidos.length) return no('Escribe tu nombre y al menos un apellido.');
+  return { ok: true, valor: capitalizarNombre(v), error: '' };
+}
+
+// Decide si hay que preguntar el nombre. docs: [{ id, data }] con TODOS los certificados de la persona (uid y memberUid).
+// Se pregunta solo si: la cuenta aún no confirmó su nombre, no tiene certificados anteriores a este sistema (los que
+// escribía el navegador o que ya se validaron: esos no se tocan) y tiene certificados nuevos sin confirmar.
+// Los emitidos por el administrador no cuentan ni se modifican.
+// -> { preguntar, folios } (folios: los certificados nuevos sin confirmar, que se corrigen juntos)
+function nombrePorConfirmar(docs, miembro, llave) {
+  const m = miembro && typeof miembro === 'object' ? miembro : {};
+  const lista = (Array.isArray(docs) ? docs : []).map(d => ({ id: String(d.id), data: d.data || {} }));
+  const nuevos = lista.filter(d => d.data.origen === 'backend' && certificadoValido(d.data, llave));
+  const ajenos = lista.filter(d => d.data.origen !== 'admin' && !nuevos.includes(d));
+  const pendientes = nuevos.filter(d => d.data.nombreConfirmado !== true).map(d => d.id).sort();
+  const confirmado = Boolean(m.nombreCertificadoConfirmadoEn);
+  return { preguntar: !confirmado && ajenos.length === 0 && pendientes.length > 0, folios: confirmado || ajenos.length ? [] : pendientes };
+}
+
 function correoDeMiembro({ miembro, usuario, token } = {}) {
   for (const c of [miembro && miembro.email, usuario && usuario.email, token && token.email]) {
     if (typeof c === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.trim())) return c.trim().toLowerCase().slice(0, 254);
@@ -653,6 +700,7 @@ module.exports = {
   datosFirma, firmar, firmaValida, certificadoValido, certificadoPublico,
   leccionesDe, leccionDe, tituloDeCurso, areaDeCurso, instructorDeCurso, duracionDeCurso, horasDeTexto, horasDeCurso,
   nombreParaCertificado, correoDeMiembro,
+  NOMBRE_CERT_MIN, NOMBRE_CERT_MAX, validarNombreCertificado, nombrePorConfirmar,
   construirCertificado, certificadoValidoDeCurso,
   preguntasDeLeccion, calificarQuiz,
   normalizarProgreso, evaluarAvance, todasVistas,

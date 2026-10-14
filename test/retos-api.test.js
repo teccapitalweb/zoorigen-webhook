@@ -38,7 +38,8 @@ test('GET /api/retos sin membresía: vista previa sin escribir nada', async () =
   assert.equal(res.status, 200);
   assert.deepEqual(res.body, {
     ok: true, membresia: false, nivel: { id: 1, nombre: 'Aprendiz', xp: 0, desde: 0, hasta: 500, faltan: 500 }, xp: 0, superados: 0,
-    porReto: {}, camino: { quiz: 0, detective: 0, orden: 0 }, retosHoy: [], totales: { quiz: 22, detective: 13, orden: 18 }
+    porReto: {}, camino: { quiz: 0, detective: 0, orden: 0 }, caminoHechos: { quiz: [], detective: [], orden: [] },
+    retosHoy: [], totales: { quiz: 22, detective: 13, orden: 18 }
   });
   assert.equal(db.value('actividadUsuario/sinplan'), undefined);
   assert.equal(db.value('retosUsuario/sinplan'), undefined);
@@ -204,14 +205,14 @@ test('camino: 401 sin sesión; 403 sin membresía; 400 con datos inválidos', as
   assert.equal(sin.status, 403);
   assert.equal(sin.body.codigo, 'membresia-requerida');
   assert.equal((await camino(app, ok, 'token-vencida')).status, 403);
-  for (const malo of [{ modo: 'historia' }, { modo: 'flashcards' }, { modo: 'otro' }, { indice: -1 }, { indice: 201 }, { indice: '0' }, { indice: 1.2 },
+  for (const malo of [{ modo: 'historia' }, { modo: 'flashcards' }, { modo: 'otro' }, { indice: -1 }, { indice: 22 }, { indice: 201 }, { indice: '0' }, { indice: 1.2 },
     { puntaje: 6 }, { puntaje: -1 }, { puntaje: '4' }, { total: 0 }, { total: 31 }]) {
     assert.equal((await camino(app, { ...ok, ...malo })).status, 400, JSON.stringify(malo));
   }
   assert.equal((await camino(app, {})).status, 400);
 });
 
-test('camino: avanza solo en orden (200 con aceptado) y devuelve el camino actualizado', async () => {
+test('camino: avanza (200 con aceptado) y devuelve el camino y los retos superados', async () => {
   const { app, db } = cargarServidor({ tokens, seed: baseSeed() });
   const r1 = await camino(app, { modo: 'quiz', indice: 0, puntaje: 4, total: 5 });
   assert.equal(r1.status, 200);
@@ -220,6 +221,7 @@ test('camino: avanza solo en orden (200 con aceptado) y devuelve el camino actua
   assert.equal(r1.body.aprobado, true);
   assert.equal(r1.body.xpGanado, 6);
   assert.deepEqual(r1.body.camino, { quiz: 1, detective: 0, orden: 0 });
+  assert.deepEqual(r1.body.caminoHechos, { quiz: [0], detective: [], orden: [] });
   assert.deepEqual(r1.body.insigniasNuevas, [{ id: 'r1', nombre: 'Primer reto' }]);
   assert.ok(Number.isInteger(r1.body.xp) && r1.body.nivel.id === 1);
   const r2 = await camino(app, { modo: 'quiz', indice: 1, puntaje: 5, total: 5 });
@@ -228,23 +230,41 @@ test('camino: avanza solo en orden (200 con aceptado) y devuelve el camino actua
   const r3 = await camino(app, { modo: 'orden', indice: 0, puntaje: 3, total: 4 });
   assert.deepEqual(r3.body.camino, { quiz: 2, detective: 0, orden: 1 });
   assert.deepEqual(db.value('retosUsuario/ana').camino, { quiz: 2, detective: 0, orden: 1 });
+  assert.deepEqual(db.value('retosUsuario/ana').caminoHechos, { quiz: [0, 1], detective: [], orden: [0] });
 });
 
-test('camino: un índice fuera de orden (saltado o repetido) NO se acepta y no suma XP', async () => {
+test('camino: todos los retos están abiertos (cualquier orden); cada uno da XP una sola vez', async () => {
   const { app, db } = cargarServidor({ tokens, seed: baseSeed() });
-  for (const indice of [1, 5, 21, 22, 200]) {
-    const r = await camino(app, { modo: 'quiz', indice, puntaje: 5, total: 5 });
-    assert.equal(r.status, 200);
-    assert.equal(r.body.aceptado, false, `índice ${indice}`);
-    assert.equal(r.body.xpGanado, 0);
-    assert.deepEqual(r.body.camino, { quiz: 0, detective: 0, orden: 0 });
-  }
-  assert.equal(db.value('retosUsuario/ana'), undefined, 'nada se guardó');
-  await camino(app, { modo: 'quiz', indice: 0, puntaje: 5, total: 5 });
-  const repetido = await camino(app, { modo: 'quiz', indice: 0, puntaje: 5, total: 5 });
-  assert.equal(repetido.body.aceptado, false);
-  assert.equal(repetido.body.xpGanado, 0);
-  assert.equal(db.value('retosUsuario/ana').camino.quiz, 1);
+  const salto = await camino(app, { modo: 'quiz', indice: 7, puntaje: 5, total: 5 });
+  assert.equal(salto.status, 200);
+  assert.deepEqual([salto.body.aceptado, salto.body.xpGanado], [true, 10], 'saltarse los anteriores sí vale');
+  assert.deepEqual(salto.body.caminoHechos.quiz, [7]);
+  const ultimo = await camino(app, { modo: 'quiz', indice: 21, puntaje: 4, total: 5 });
+  assert.deepEqual([ultimo.body.aceptado, ultimo.body.xpGanado], [true, 6]);
+  assert.deepEqual(ultimo.body.caminoHechos.quiz, [7, 21]);
+  assert.equal(db.value('retosUsuario/ana').xp, 16);
+  // El mismo reto, otra vez: no se acepta y no suma XP
+  const repetido = await camino(app, { modo: 'quiz', indice: 7, puntaje: 5, total: 5 });
+  assert.equal(repetido.status, 200);
+  assert.deepEqual([repetido.body.aceptado, repetido.body.xpGanado], [false, 0]);
+  assert.deepEqual(repetido.body.caminoHechos.quiz, [7, 21]);
+  assert.equal(db.value('retosUsuario/ana').xp, 16);
+  // Un índice que no existe en el sitio es inválido (400): no se puede inventar XP
+  assert.equal((await camino(app, { modo: 'quiz', indice: 22, puntaje: 5, total: 5 })).status, 400);
+  assert.equal((await camino(app, { modo: 'detective', indice: 13, puntaje: 3, total: 3 })).status, 400);
+  assert.equal((await camino(app, { modo: 'orden', indice: 18, puntaje: 3, total: 3 })).status, 400);
+});
+
+test('camino: una cuenta con solo el contador anterior conserva lo hecho y puede seguir en cualquier orden', async () => {
+  const seed = { ...baseSeed(), 'retosUsuario/ana': { uid: 'ana', xp: 30, xpPractica: 0, superados: 3, camino: { quiz: 3, detective: 0, orden: 0 } } };
+  const { app, db } = cargarServidor({ tokens, seed });
+  const leido = await request(app).get('/api/retos').set(auth('token-ana'));
+  assert.deepEqual(leido.body.caminoHechos, { quiz: [0, 1, 2], detective: [], orden: [] });
+  assert.deepEqual(leido.body.camino, { quiz: 3, detective: 0, orden: 0 });
+  assert.equal((await camino(app, { modo: 'quiz', indice: 1, puntaje: 5, total: 5 })).body.aceptado, false, 'el 1 ya estaba hecho');
+  const r = await camino(app, { modo: 'quiz', indice: 10, puntaje: 5, total: 5 });
+  assert.equal(r.body.aceptado, true);
+  assert.deepEqual(db.value('retosUsuario/ana').caminoHechos.quiz, [0, 1, 2, 10]);
 });
 
 test('camino: reprobar (menos de 60 %) no avanza', async () => {
@@ -253,11 +273,14 @@ test('camino: reprobar (menos de 60 %) no avanza', async () => {
   assert.deepEqual([r.body.aceptado, r.body.aprobado, r.body.xpGanado, r.body.camino.detective], [false, false, 0, 0]);
 });
 
-test('camino: no hay XP después del último reto que existe (quiz 22)', async () => {
+test('camino: con todo el camino hecho, ningún índice da más XP (los 22 del quiz ya están superados)', async () => {
   const seed = { ...baseSeed(), 'retosUsuario/ana': { uid: 'ana', xp: 200, xpPractica: 0, superados: 22, camino: { quiz: 22, detective: 0, orden: 0 } } };
   const { app } = cargarServidor({ tokens, seed });
-  const r = await camino(app, { modo: 'quiz', indice: 22, puntaje: 5, total: 5 });
-  assert.deepEqual([r.body.aceptado, r.body.xpGanado], [false, 0]);
+  for (const indice of [0, 10, 21]) {
+    const r = await camino(app, { modo: 'quiz', indice, puntaje: 5, total: 5 });
+    assert.deepEqual([r.body.aceptado, r.body.xpGanado], [false, 0], 'índice ' + indice);
+  }
+  assert.equal((await camino(app, { modo: 'quiz', indice: 22, puntaje: 5, total: 5 })).status, 400);
 });
 
 test('camino: dos solicitudes simultáneas del mismo índice avanzan una sola vez (transacción)', async () => {
@@ -292,8 +315,9 @@ test('todo el camino perfecto más la práctica al tope suma el máximo de retos
   }
   assert.equal(acumulado, 530);
   assert.equal(db.value('retosUsuario/ana').xp, 530);
-  const extra = await camino(app, { modo: 'quiz', indice: 22, puntaje: 5, total: 5 }); // la solicitud 54
+  const extra = await camino(app, { modo: 'quiz', indice: 0, puntaje: 5, total: 5 }); // la solicitud 54: ya estaba superado
   assert.equal(extra.body.aceptado, false);
+  assert.equal(db.value('retosUsuario/ana').xp, 530);
 });
 
 // ── GET /api/retos/clasificacion ──

@@ -598,3 +598,42 @@ test('auditarCertificados: reutiliza la misma aceptación (límite de fecha y fi
   assert.deepEqual(por['ZOO-2026-60002'].razones, ['firma-alterada']);
   assert.equal(por['ZOO-2026-60002'].accion, 'rechazar');
 });
+
+// ── Nombre que lleva el certificado ──
+test('validarNombreCertificado: nombre y apellido, solo letras, mayúsculas acomodadas, 3 a 38 caracteres', () => {
+  const v = c.validarNombreCertificado;
+  assert.deepEqual(v('  maría de la luz   lópez ruiz '), { ok: true, valor: 'María de la Luz López Ruiz', error: '' });
+  assert.equal(v('LUIS GÓMEZ').valor, 'Luis Gómez');
+  assert.equal(v('Ana María Pérez').valor, 'Ana María Pérez', 'si ya trae mayúsculas y minúsculas mezcladas no se toca');
+  assert.equal(v("O'Brien Smith").ok, true);
+  for (const malo of ['', 'Pe', 'Pedro', 'Ana 3rd', 'a b', 'Ana de', 'Ana <b>', 'x'.repeat(39), null, undefined, 12]) {
+    const r = v(malo);
+    assert.equal(r.ok, false, JSON.stringify(malo));
+    assert.ok(r.error);
+  }
+  assert.equal(v('x'.repeat(10) + ' ' + 'y'.repeat(27)).ok, true, '38 caracteres justos');
+});
+
+test('nombrePorConfirmar: pregunta solo con certificados nuevos sin confirmar y sin certificados anteriores', () => {
+  const LLAVE = 'llave-de-prueba-para-certificados-0123456789';
+  const base = (folio, extra = {}) => {
+    const d = c.construirCertificado({ uid: 'u', cursoId: 'c1', curso: { title: 'Curso' }, nombre: 'Ana Pérez', emitido: new Date('2026-05-01T00:00:00Z'), llave: LLAVE });
+    return { id: folio, data: { ...d, folio, ...extra } };
+  };
+  const nuevo = (folio, extra) => { const x = base(folio, extra); x.data.firmaBackend = c.firmar({ ...x.data, folio }, LLAVE); return x; };
+  const n = (docs, miembro) => c.nombrePorConfirmar(docs, miembro, LLAVE);
+  assert.deepEqual(n([], {}), { preguntar: false, folios: [] });
+  assert.deepEqual(n([nuevo('ZOO-2026-AAAAAAA1')], {}), { preguntar: true, folios: ['ZOO-2026-AAAAAAA1'] });
+  // ya confirmado en la cuenta
+  assert.equal(n([nuevo('ZOO-2026-AAAAAAA1')], { nombreCertificadoConfirmadoEn: new Date() }).preguntar, false);
+  // ya confirmado en el certificado
+  assert.equal(n([nuevo('ZOO-2026-AAAAAAA1', { nombreConfirmado: true })], {}).preguntar, false);
+  // con un certificado anterior (sin firma, escrito por el navegador): no se pregunta
+  const anterior = { id: 'ZOO-2026-48213', data: { folio: 'ZOO-2026-48213', memberUid: 'u', courseId: 'c9', memberName: 'Ana' } };
+  assert.deepEqual(n([nuevo('ZOO-2026-AAAAAAA1'), anterior], {}), { preguntar: false, folios: [] });
+  // el del administrador no bloquea ni entra
+  const admin = { id: 'ZOO-2026-ADMIN001', data: { folio: 'ZOO-2026-ADMIN001', uid: 'u', origen: 'admin', nombre: 'Ana' } };
+  assert.deepEqual(n([nuevo('ZOO-2026-AAAAAAA1'), admin], {}), { preguntar: true, folios: ['ZOO-2026-AAAAAAA1'] });
+  // varios nuevos sin confirmar: se corrigen juntos
+  assert.deepEqual(n([nuevo('ZOO-2026-BBBBBBB2'), nuevo('ZOO-2026-AAAAAAA1')], {}).folios, ['ZOO-2026-AAAAAAA1', 'ZOO-2026-BBBBBBB2']);
+});

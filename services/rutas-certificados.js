@@ -511,7 +511,13 @@ function montarRutasCertificados(app, deps) {
           // Hay un documento de esta persona y curso (o en el folio nuevo) que no es válido ni aceptable
           if (delFolio.exists || filas.length) throw errorHttp(409, 'El folio existente requiere auditoría antes de continuar');
           existente = cert.construirCertificado({ uid, cursoId, curso, nombre, email, emitido: ahora, llave: firmaClave });
-          tx.set(colCertificados().doc(existente.folio), { ...existente, createdAt: Timestamp.fromDate(ahora) });
+          // Si la persona ya confirmó su nombre en su primer certificado, este sale con el nombre de su perfil de ese momento
+          // y queda fijo: cambiar el perfil después no modifica certificados ya emitidos.
+          const fijo = Boolean(acceso.miembro && acceso.miembro.nombreCertificadoConfirmadoEn);
+          tx.set(colCertificados().doc(existente.folio), {
+            ...existente, createdAt: Timestamp.fromDate(ahora),
+            ...(fijo ? { nombreConfirmado: true, nombreConfirmadoEn: FieldValue.serverTimestamp() } : {})
+          });
           nuevo = true;
         }
       }
@@ -525,6 +531,17 @@ function montarRutasCertificados(app, deps) {
     });
 
     const respuesta = { ok: true, sesionesVistas: salida.sesionesVistas, completado: salida.completado, certificado: salida.certificado };
+    if (salida.nuevo && salida.certificado) {
+      // Primer certificado de la cuenta sin nombre confirmado: el sitio pregunta "¿es este el nombre que quieres?" y
+      // responde en POST /api/certificados/nombre. Solo al emitirse (repetir la última clase no lo vuelve a pedir; el
+      // sitio también lo revisa al abrir "Mis certificados"). Nunca bloquea la respuesta si algo falla.
+      try {
+        const plan = await planNombre(uid, acceso.miembro);
+        if (plan.preguntar && plan.folios.includes(salida.certificado.folio)) respuesta.confirmarNombre = true;
+      } catch (error) {
+        console.warn('[Certificados] No se pudo revisar la confirmación del nombre:', error && error.message);
+      }
+    }
     if (salida.nuevo) {
       console.log('[Certificados] Curso completado:', cursoId, '· certificado', salida.certificado.folio, '· nuevo');
       await avisarCertificado(uid, salida.certificado);
@@ -533,6 +550,78 @@ function montarRutasCertificados(app, deps) {
       if (bono) respuesta.bono = bono;
     }
     return res.json(respuesta);
+  }));
+
+  // ════════════════════════════════════════════════════════════
+  // POST /api/certificados/nombre — confirma (o corrige) el nombre del primer certificado, una sola vez
+  // ════════════════════════════════════════════════════════════
+  // Todos los certificados de la persona (uid y memberUid) y la decisión de si hay que preguntar el nombre.
+  async function planNombre(uid, miembro) {
+    const docs = await certificadosDelTitular(uid);
+    return { docs, ...cert.nombrePorConfirmar(docs, miembro, firmaClave) };
+  }
+
+  app.post('/api/certificados/nombre', conSesion('escrituras', 'No se pudo confirmar el nombre del certificado', 'nombre', async (req, res, decoded) => {
+    const uid = decoded.uid;
+    const cuerpo = await cuerpoJson(req, res);
+    if (!firmaClave) throw sinCertificados();
+    const folio = cert.normalizarFolio(cuerpo.folio);
+    if (!folio) throw errorHttp(400, 'Falta el folio del certificado');
+    const nombre = cert.validarNombreCertificado(cuerpo.nombre);
+    if (!nombre.ok) throw errorHttp(400, nombre.error);
+
+    const [miembroSnap, usuarioSnap] = await Promise.all([
+      db.collection('miembros').doc(uid).get(),
+      db.collection('usuarios').doc(uid).get()
+    ]);
+    if (!miembroSnap.exists && !usuarioSnap.exists) throw errorHttp(403, 'Miembro no encontrado');
+    const perfilRef = miembroSnap.exists ? miembroSnap.ref : usuarioSnap.ref;
+    const miembro = miembroSnap.exists ? (miembroSnap.data() || {}) : (usuarioSnap.data() || {});
+
+    const plan = await planNombre(uid, miembro);
+    const propio = plan.docs.find(d => d.id === folio || String(d.data.folio) === folio);
+    if (!propio || !cert.certificadoValido(propio.data, firmaClave)) throw errorHttp(404, 'Certificado no encontrado');
+    if (miembro.nombreCertificadoConfirmadoEn || propio.data.nombreConfirmado === true) {
+      throw errorHttp(409, 'El nombre de tu certificado ya fue confirmado');
+    }
+    if (!plan.preguntar || !plan.folios.includes(propio.id)) {
+      throw errorHttp(409, 'El nombre solo se confirma en tu primer certificado');
+    }
+
+    await db.runTransaction(async tx => {
+      const [perfil, ...certs] = await Promise.all([tx.get(perfilRef), ...plan.folios.map(id => tx.get(colCertificados().doc(id)))]);
+      if (!perfil.exists) throw errorHttp(403, 'Miembro no encontrado');
+      if ((perfil.data() || {}).nombreCertificadoConfirmadoEn) throw errorHttp(409, 'El nombre de tu certificado ya fue confirmado');
+      certs.forEach(snap => {
+        if (!snap.exists) return;
+        const d = snap.data() || {};
+        if (d.nombreConfirmado === true) return;
+        // El nombre NO entra en la firma (folio, uid, curso, fecha y año): corregirlo no invalida el certificado
+        tx.set(snap.ref, { nombre: nombre.valor, memberName: nombre.valor, nombreConfirmado: true, nombreConfirmadoEn: FieldValue.serverTimestamp() }, { merge: true });
+      });
+      // El nombre confirmado pasa también al perfil: los certificados que se emitan después usarán este nombre
+      tx.set(perfilRef, {
+        nombreCertificado: nombre.valor, name: nombre.valor, nombreCompleto: nombre.valor,
+        nombreCertificadoConfirmadoEn: FieldValue.serverTimestamp(), nombreCertificadoFolio: propio.id,
+        nameUpdatedAt: new Date().toISOString()
+      }, { merge: true });
+    });
+    try { await auth.updateUser(uid, { displayName: nombre.valor }); }
+    catch (error) { console.warn('[Certificados] No se pudo actualizar el nombre en la cuenta:', error && error.message); }
+
+    // Si el nombre cambió, el correo que salió al emitirse llevaba el nombre anterior: se manda otro con el PDF ya corregido
+    // (en segundo plano; un fallo del correo nunca afecta la confirmación).
+    const destino = cert.correoDeMiembro({ miembro: miembroSnap.exists ? miembro : null, usuario: usuarioSnap.exists ? usuarioSnap.data() : null, token: decoded });
+    for (const id of plan.folios) {
+      const previo = plan.docs.find(d => d.id === id);
+      if (!previo || previo.data.nombreConfirmado === true) continue;
+      if (String(previo.data.nombre || previo.data.memberName || '') === nombre.valor) continue;
+      correoEnSegundoPlano(destino, cert.certificadoPublico({ ...previo.data, nombre: nombre.valor }));
+    }
+
+    const anterior = String(propio.data.nombre || propio.data.memberName || '');
+    console.log('[Certificados] Nombre confirmado:', uid, '·', propio.id, anterior && anterior !== nombre.valor ? '(corregido)' : '(sin cambios)');
+    return res.json({ ok: true, nombre: nombre.valor, folio: propio.id, corregido: Boolean(anterior) && anterior !== nombre.valor });
   }));
 
   // ════════════════════════════════════════════════════════════

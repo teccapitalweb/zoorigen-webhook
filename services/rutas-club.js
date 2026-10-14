@@ -476,6 +476,7 @@ function montarRutasClub(app, deps) {
   // RETOS
   // ════════════════════════════════════════════════════════════
   const CAMINO_VACIO = Object.freeze({ quiz: 0, detective: 0, orden: 0 });
+  const HECHOS_VACIO = () => ({ quiz: [], detective: [], orden: [] });
 
   function vistaRetos(estado) {
     const hoy = logros.fechaMexico();
@@ -483,6 +484,7 @@ function montarRutasClub(app, deps) {
       superados: estado.superados,
       porReto: retos.resumenPorReto(estado),
       camino: estado.camino,
+      caminoHechos: estado.caminoHechos,
       retosHoy: estado.retosHoy.fecha === hoy ? estado.retosHoy.ids : [],
       totales: retos.TOTALES_CAMINO
     };
@@ -499,7 +501,7 @@ function montarRutasClub(app, deps) {
       if (!ctx.membresia) {
         return res.json({
           ok: true, membresia: false, nivel: NIVEL_VISTA_PREVIA, xp: 0, superados: 0, porReto: {},
-          camino: { ...CAMINO_VACIO }, retosHoy: [], totales: retos.TOTALES_CAMINO
+          camino: { ...CAMINO_VACIO }, caminoHechos: HECHOS_VACIO(), retosHoy: [], totales: retos.TOTALES_CAMINO
         });
       }
       const { ev, estadoRetos } = await calcularResumen(ctx);
@@ -566,7 +568,8 @@ function montarRutasClub(app, deps) {
     }
   });
 
-  // POST /api/retos/camino — el servidor decide qué reto del camino está desbloqueado
+  // POST /api/retos/camino — todos los retos del camino están abiertos para un miembro; el servidor guarda cuáles ya
+  // superó y da XP una sola vez por reto (sin membresía vigente: 403)
   app.post('/api/retos/camino', express.json(), async (req, res) => {
     res.set('Cache-Control', 'no-store');
     try {
@@ -584,7 +587,7 @@ function montarRutasClub(app, deps) {
         const o = retos.aplicarCaminoResultado(antes, datos);
         return { ...o, guardar: o.aceptado };
       });
-      const salida = { ok: true, aceptado: r.aceptado, aprobado: r.aprobado, xpGanado: r.xpGanado, camino: r.estado.camino };
+      const salida = { ok: true, aceptado: r.aceptado, aprobado: r.aprobado, xpGanado: r.xpGanado, camino: r.estado.camino, caminoHechos: r.estado.caminoHechos };
       if (r.aceptado) {
         const { ev } = await calcularResumen(ctx, { estadoRetos: r.estado });
         Object.assign(salida, { xp: ev.xp.total, nivel: ev.nivel, insigniasNuevas: resumenInsignias(retos.insigniasNuevas(r.antes, r.estado)),

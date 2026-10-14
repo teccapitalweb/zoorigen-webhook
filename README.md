@@ -21,7 +21,7 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `POST /api/premios/bienvenida` | +100 XP una sola vez, solo cuentas nuevas (14 días) | Token de Firebase (sin membresía también) |
 | `GET /api/retos` | Progreso de retos, camino y nivel (vista previa sin membresía) | Token de Firebase |
 | `POST /api/retos/resultado` | Resultado de un reto de práctica (`{ retoId, puntaje, total }`) | Token de Firebase + membresía |
-| `POST /api/retos/camino` | Resultado de un reto del camino (`{ modo, indice, puntaje, total }`) | Token de Firebase + membresía |
+| `POST /api/retos/camino` | Resultado de un reto del camino (`{ modo, indice, puntaje, total }`); cualquier reto, en cualquier orden, XP una sola vez por reto | Token de Firebase + membresía |
 | `GET /api/retos/clasificacion` | Top 20 por XP total (solo alias) y mi posición | Token de Firebase + membresía |
 | `POST /api/referidos/registrar` | El invitado se registra con el código (`{ codigo, deviceId, huella }`), idempotente | Token de Firebase |
 | `GET /api/referidos/estado` | Código, enlace, invitados (solo alias), hitos y premios por invitar | Token de Firebase |
@@ -44,6 +44,7 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `GET /api/cursos/progreso` | Avance de la persona en todos sus cursos (`sesionesVistas`, `quizzesAprobados`, `completado`, `certificadoFolio`, `completadoEn`); importa una sola vez el progreso viejo, firma en su lugar los certificados anteriores de la persona y marca completados los cursos que ya tienen certificado | Token de Firebase |
 | `POST /api/cursos/:cursoId/progreso` | Marca una clase como vista (`{ sessionIndex }`); al completar el curso emite el certificado firmado, el aviso, el correo con PDF y el XP | Token de Firebase + membresía (o clase gratis / prueba) |
 | `POST /api/cursos/:cursoId/quiz` | Califica las preguntas de una clase (`{ sessionIndex, respuestas }`); es de práctica | Token de Firebase + membresía (o clase gratis / prueba) |
+| `POST /api/certificados/nombre` | Confirma o corrige UNA vez el nombre del primer certificado (`{ folio, nombre }`); lo deja en el certificado, el perfil y la cuenta | Token de Firebase |
 | `GET /api/certificados/:folio` | Verificación PÚBLICA de un certificado, firmado o anterior aceptable (`anterior: true`); 30 consultas cada 10 minutos por IP | — |
 | `POST /api/admin/certificados` | El administrador emite (o recupera) un certificado (`{ uid, cursoId, nombre?, horas?, sesiones? }`) | Token de Firebase + administrador |
 | `GET /api/admin/certificados/pendientes` | Certificados sin firma válida con su diagnóstico y un resumen de conteos (solo lectura) | Token de Firebase + administrador |
@@ -243,9 +244,9 @@ premio por llamada (el primero ganado sin usar), en una transacción: 400 sin `c
 
 ### Retos
 
-* `GET /api/retos` → `{ ok, membresia, nivel:{id,nombre,xp,desde,hasta,faltan}, xp (número: XP total), superados, porReto:{id:{veces,mejor,total,superados,perfectos,mejorPct}}, camino:{quiz,detective,orden}, retosHoy, totales:{quiz:22,detective:13,orden:18} }`.
+* `GET /api/retos` → `{ ok, membresia, nivel:{id,nombre,xp,desde,hasta,faltan}, xp (número: XP total), superados, porReto:{id:{veces,mejor,total,superados,perfectos,mejorPct}}, camino:{quiz,detective,orden} (cuántos retos lleva superados cada uno), caminoHechos:{quiz:[0,5],detective:[],orden:[]} (cuáles), retosHoy, totales:{quiz:22,detective:13,orden:18} }`.
 * `POST /api/retos/resultado` → `{ ok, aprobado, xpGanado, xp (total), nivel, insigniasNuevas:[{id,nombre}] }`. `retoId` ∈ quiz|detective|orden|flashcards|historia, `total` entero 1-30, `puntaje` entero 0..total.
-* `POST /api/retos/camino` → `{ ok, aceptado, aprobado, xpGanado, camino }` (y `xp`, `nivel`, `insigniasNuevas` si se aceptó). Solo se acepta si `indice === camino[modo]`, existe en el sitio (menor que `totales[modo]`) y se aprueba con 60 %.
+* `POST /api/retos/camino` → `{ ok, aceptado, aprobado, xpGanado, camino, caminoHechos }` (y `xp`, `nivel`, `insigniasNuevas` si se aceptó). Todos los retos del camino están abiertos: se acepta cualquier `indice` menor que `totales[modo]` (si no, 400) que se apruebe con 60 % y que aún no esté en `caminoHechos[modo]`; solo da XP la primera vez. Las cuentas que solo guardaban el contador `camino` conservan su avance como los primeros N retos.
   Si el sitio agrega retos, hay que subir `TOTALES_CAMINO` en `services/retos.js` (y se mueve el XP máximo).
 * `GET /api/retos/clasificacion` → `{ ok, top:[{posicion,nombre,xp,nivel:{id,nombre}}], yo:{posicion,xp}|null }`. Ordena por XP total (guardado en `premiosUsuario.xpTotal` cada vez que la persona abre logros o retos o juega);
   los administradores no se clasifican; mismo XP = misma posición; `nombre` es primer nombre + inicial.
@@ -493,6 +494,13 @@ el navegador no se muestra en la verificación pública.
   Las preguntas viven en `lecciones[i].preguntas` (`vof` o `multiple`, con `correcta`). Las respuestas van en el orden de las preguntas
   **válidas** (las incompletas se saltan igual que en el sitio) y `detalle` trae una fila por cada pregunta válida. Es de **práctica**: equivocarse muestra la
   correcta pero no frena; basta con haberlo contestado (queda en `quizzesAprobados`) para poder completar la clase.
+- `POST /api/certificados/nombre` (con sesión) con `{ folio, nombre }` → `{ ok, nombre, folio, corregido }`. Al emitirse el PRIMER certificado de una cuenta,
+  `POST /api/cursos/:cursoId/progreso` responde `confirmarNombre: true` y el sitio pregunta "¿Este es el nombre que quieres en tu certificado?". El servidor
+  guarda el nombre (3 a 38 caracteres, nombre y al menos un apellido, solo letras) en el certificado (`nombre`, `memberName`, `nombreConfirmado`), en el perfil
+  (`nombreCertificado`, `name`, `nombreCertificadoConfirmadoEn`) y en la cuenta de Firebase. El nombre NO forma parte de la firma, así que el certificado y su
+  verificación pública siguen valiendo. Solo una vez por cuenta (409 después). No se pregunta a quien ya tiene certificados anteriores (escritos por el navegador o
+  validados después) ni se modifican los emitidos por el administrador. Los certificados siguientes salen con el nombre del perfil de ese momento y fijos
+  (`nombreConfirmado: true`). Si el nombre cambió, se manda otro correo con el PDF corregido (el primero salió con el nombre anterior). No se bloquea la emisión mientras no se confirme; si cerró la ventana, "Mis certificados" se lo vuelve a ofrecer.
 - `GET /api/certificados/:folio` (pública): folio `^ZOO-[0-9]{4}-[A-Z0-9]{5,16}$` en mayúsculas (acepta el formato viejo `ZOO-2026-12345`)
   → `{ valido: true, certificado: { folio, nombre, curso, area, horas, sesiones, instructor, emitido } }`; para un certificado anterior
   aceptable la respuesta lleva además `anterior: true` en la raíz (no escribe nada en Firestore). 400 folio inválido, 404 si no existe, no

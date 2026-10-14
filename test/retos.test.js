@@ -1,6 +1,6 @@
 'use strict';
 
-// Reglas puras de los retos: XP, camino secuencial, topes e insignias.
+// Reglas puras de los retos: XP, camino abierto (cualquier orden, XP una vez por reto), topes e insignias.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const R = require('../services/retos');
@@ -123,37 +123,55 @@ test('insignias: r10 y r6 piden 100 y 50 retos superados; las nuevas se detectan
 });
 
 // ── Camino ──
-test('camino: solo se acepta el siguiente reto pendiente y aprobado', () => {
+test('camino: cualquier reto se puede resolver en cualquier orden, aprobado, y da XP una sola vez', () => {
   let e = R.estadoInicial();
-  let r = R.aplicarCaminoResultado(e, { modo: 'quiz', indice: 1, puntaje: 5, total: 5 }, dia(1));
-  assert.equal(r.aceptado, false, 'saltarse el reto 0 no vale');
-  assert.equal(r.xpGanado, 0);
-  assert.equal(r.estado.camino.quiz, 0);
+  let r = R.aplicarCaminoResultado(e, { modo: 'quiz', indice: 5, puntaje: 5, total: 5 }, dia(1));
+  assert.deepEqual([r.aceptado, r.xpGanado], [true, R.XP_CAMINO_PERFECTO], 'saltarse los anteriores sí vale');
+  assert.deepEqual(r.estado.caminoHechos.quiz, [5]);
+  assert.equal(r.estado.camino.quiz, 1, 'camino es la cantidad de retos superados');
   r = R.aplicarCaminoResultado(e, { modo: 'quiz', indice: 0, puntaje: 2, total: 5 }, dia(1));
-  assert.deepEqual([r.aceptado, r.aprobado, r.xpGanado], [false, false, 0], 'reprobado no avanza');
+  assert.deepEqual([r.aceptado, r.aprobado, r.xpGanado], [false, false, 0], 'reprobado no cuenta');
   r = R.aplicarCaminoResultado(e, { modo: 'quiz', indice: 0, puntaje: 3, total: 5 }, dia(1));
   assert.deepEqual([r.aceptado, r.aprobado, r.xpGanado, r.estado.camino.quiz], [true, true, R.XP_CAMINO, 1]);
-  r = R.aplicarCaminoResultado(r.estado, { modo: 'quiz', indice: 0, puntaje: 5, total: 5 }, dia(1));
-  assert.equal(r.aceptado, false, 'repetir el mismo reto no da XP de nuevo');
-  r = R.aplicarCaminoResultado(r.estado, { modo: 'quiz', indice: 1, puntaje: 5, total: 5 }, dia(1));
+  r = R.aplicarCaminoResultado(r.estado, { modo: 'quiz', indice: 0, puntaje: 5, total: 5 }, dia(2));
+  assert.equal(r.aceptado, false, 'repetir el mismo reto no da XP de nuevo, ni otro día');
+  r = R.aplicarCaminoResultado(r.estado, { modo: 'quiz', indice: 7, puntaje: 5, total: 5 }, dia(2));
   assert.deepEqual([r.aceptado, r.xpGanado, r.estado.camino.quiz], [true, R.XP_CAMINO_PERFECTO, 2]);
+  assert.deepEqual(r.estado.caminoHechos.quiz, [0, 7]);
   assert.equal(r.estado.superados, 2);
-  assert.equal(r.estado.camino.orden, 0, 'cada modo avanza por separado');
+  assert.equal(r.estado.camino.orden, 0, 'cada modo lleva su propia lista');
 });
 
-test('camino: no hay XP más allá de los retos que existen en el sitio', () => {
-  const casi = { ...R.estadoInicial(), camino: { quiz: R.TOTALES_CAMINO.quiz, detective: 0, orden: 0 } };
-  const r = R.aplicarCaminoResultado(casi, { modo: 'quiz', indice: R.TOTALES_CAMINO.quiz, puntaje: 5, total: 5 }, dia(1));
-  assert.equal(r.aceptado, false);
-  assert.equal(r.xpGanado, 0);
+test('camino: las cuentas anteriores (solo un contador) conservan su avance como los primeros N retos', () => {
+  const viejo = { xp: 30, superados: 5, camino: { quiz: 3, detective: 0, orden: 2 } };
+  const e = R.normalizarEstado(viejo);
+  assert.deepEqual(e.caminoHechos, { quiz: [0, 1, 2], detective: [], orden: [0, 1] });
+  assert.deepEqual(e.camino, { quiz: 3, detective: 0, orden: 2 });
+  assert.equal(R.aplicarCaminoResultado(viejo, { modo: 'quiz', indice: 1, puntaje: 5, total: 5 }).aceptado, false, 'los ya hechos no se cobran otra vez');
+  const r = R.aplicarCaminoResultado(viejo, { modo: 'quiz', indice: 3, puntaje: 5, total: 5 });
+  assert.equal(r.aceptado, true);
+  assert.deepEqual(r.estado.caminoHechos.quiz, [0, 1, 2, 3]);
+  assert.deepEqual(r.estado.camino, { quiz: 4, detective: 0, orden: 2 });
+});
+
+test('camino: el índice debe existir en el sitio y la lista guardada se limpia', () => {
+  R.CAMINO_MODOS.forEach(m => {
+    assert.equal(R.validarCaminoResultado({ modo: m, indice: 0, puntaje: 1, total: 1 }), null);
+    assert.equal(R.validarCaminoResultado({ modo: m, indice: R.TOTALES_CAMINO[m] - 1, puntaje: 1, total: 1 }), null);
+    assert.equal(R.validarCaminoResultado({ modo: m, indice: R.TOTALES_CAMINO[m], puntaje: 1, total: 1 }), 'Índice no válido');
+  });
+  const sucio = R.normalizarEstado({ camino: { quiz: 9 }, caminoHechos: { quiz: [4, 4, 1, -2, 'x', 2.5, 999], detective: 'no', orden: [] } });
+  assert.deepEqual(sucio.caminoHechos.quiz, [1, 4]);
+  assert.deepEqual(sucio.caminoHechos.detective, []);
+  assert.equal(sucio.camino.quiz, 2, 'el contador siempre sale de la lista de retos superados');
   assert.deepEqual(R.TOTALES_CAMINO, { quiz: 22, detective: 13, orden: 18 });
 });
 
-test('camino: validación de modo, índice (0..200), total y puntaje', () => {
+test('camino: validación de modo, índice, total y puntaje', () => {
   const ok = { modo: 'orden', indice: 0, puntaje: 3, total: 4 };
   assert.equal(R.validarCaminoResultado(ok), null);
-  assert.equal(R.validarCaminoResultado({ ...ok, indice: 200 }), null);
-  for (const malo of [{ modo: 'historia' }, { modo: 'flashcards' }, { modo: 7 }, { indice: -1 }, { indice: 201 }, { indice: '0' }, { indice: 0.5 },
+  assert.equal(R.validarCaminoResultado({ ...ok, indice: 17 }), null);
+  for (const malo of [{ modo: 'historia' }, { modo: 'flashcards' }, { modo: 7 }, { indice: -1 }, { indice: 18 }, { indice: 201 }, { indice: '0' }, { indice: 0.5 },
     { total: 0 }, { total: 31 }, { puntaje: 5 }, { puntaje: -1 }, { puntaje: '3' }]) {
     assert.ok(R.validarCaminoResultado({ ...ok, ...malo }), JSON.stringify(malo));
   }
@@ -167,6 +185,7 @@ test('el estado guardado se limpia: valores raros no rompen ni inflan nada', () 
   assert.equal(e.superados, 0);
   assert.deepEqual(e.dias, ['2026-01-01']);
   assert.deepEqual(e.camino, { quiz: 0, detective: 0, orden: 4 });
+  assert.deepEqual(e.caminoHechos.orden, [0, 1, 2, 3], 'un contador viejo se vuelve lista');
   assert.deepEqual(Object.keys(e.porReto), ['quiz']);
   assert.deepEqual(e.retosHoy.ids, ['quiz']);
   assert.deepEqual(R.normalizarEstado(null), R.estadoInicial());

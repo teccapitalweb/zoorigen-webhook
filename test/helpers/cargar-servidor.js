@@ -63,7 +63,7 @@ function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {}, 
   firestore.Timestamp = FakeTimestamp;
   firestore.FieldPath = { documentId: () => NOMBRE_DOC };
 
-  const registroAuth = { getUser: 0, getUsers: 0, enlaces: [] };
+  const registroAuth = { getUser: 0, getUsers: 0, enlaces: [], actualizaciones: [] };
   const usuarioAuth = uid => {
     const u = usuariosAuth[uid];
     if (!u) return null;
@@ -87,6 +87,7 @@ function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {}, 
         if (!u) throw Object.assign(new Error('There is no user record'), { code: 'auth/user-not-found' });
         return u;
       },
+      updateUser: async (uid, cambios) => { registroAuth.actualizaciones.push({ uid, cambios }); return { uid }; },
       generateEmailVerificationLink: async (email, opciones) => {
         registroAuth.enlaces.push({ email, opciones });
         return 'https://club-zoorigen.firebaseapp.com/__/auth/action?mode=verifyEmail&oobCode=CODIGO-PRUEBA&apiKey=x&lang=es';

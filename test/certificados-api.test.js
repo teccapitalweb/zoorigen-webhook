@@ -719,3 +719,162 @@ test('verificación pública: CORS abierto sin credenciales y sin cabecera Autho
   assert.equal(r.headers['access-control-allow-credentials'], undefined);
   assert.equal(r.request.header.Authorization, undefined);
 });
+
+// ── Nombre del primer certificado (se confirma una sola vez) ──
+
+const FOLIO_LEGADO = 'ZOO-2026-48213';
+const delNavegador = (extra = {}) => ({
+  folio: FOLIO_LEGADO, courseId: 'c3', courseTitle: 'Primeros auxilios', courseArea: 'Veterinaria', courseDuration: '3 horas',
+  memberUid: 'ana', memberName: 'Ana Pérez', memberEmail: 'ana@example.com', issuedAt: '2026-03-04T15:00:00.000Z', totalClases: 2, ...extra
+});
+
+test('nombre: el primer certificado nuevo pide confirmar el nombre; el segundo ya no', async () => {
+  const { app } = servidor();
+  const primero = await completar(app, 'c1', 0, 2);
+  assert.equal(primero.body.confirmarNombre, true);
+  assert.equal(primero.body.certificado.nombre, 'Ana Pérez');
+  // Repetir la última clase no lo vuelve a pedir (el sitio lo revisa en "Mis certificados")
+  const repetida = await progreso(app, 'c1', 2);
+  assert.equal(repetida.body.confirmarNombre, undefined);
+  // Un segundo certificado, con el primero aún sin confirmar, tampoco se lo pide a otra persona que ya confirmó
+  const ok = await post(app, '/api/certificados/nombre', { folio: primero.body.certificado.folio, nombre: 'Ana Pérez' });
+  assert.equal(ok.status, 200);
+  const segundo = await completar(app, 'c2', 0, 1);
+  assert.equal(segundo.body.confirmarNombre, undefined);
+});
+
+test('nombre: confirmar deja el nombre en el certificado, el perfil y la cuenta, sin romper la firma ni la verificación pública', async () => {
+  const { app, db, registroAuth } = servidor();
+  const fin = await completar(app, 'c1', 0, 2);
+  const folio = fin.body.certificado.folio;
+  const firmaAntes = db.value('certificados/' + folio).firmaBackend;
+
+  const r = await post(app, '/api/certificados/nombre', { folio, nombre: '  maría de la luz   lópez ruiz ' });
+  assert.equal(r.status, 200);
+  assert.deepEqual([r.body.ok, r.body.nombre, r.body.folio, r.body.corregido], [true, 'María de la Luz López Ruiz', folio, true]);
+  const doc = db.value('certificados/' + folio);
+  assert.equal(doc.nombre, 'María de la Luz López Ruiz');
+  assert.equal(doc.memberName, 'María de la Luz López Ruiz');
+  assert.equal(doc.nombreConfirmado, true);
+  assert.ok(doc.nombreConfirmadoEn);
+  assert.equal(doc.firmaBackend, firmaAntes, 'la firma no cambia: el nombre no forma parte de lo que se firma');
+  assert.equal(cert.certificadoValido(doc, LLAVE), true);
+  const perfil = db.value('miembros/ana');
+  assert.equal(perfil.nombreCertificado, 'María de la Luz López Ruiz');
+  assert.equal(perfil.name, 'María de la Luz López Ruiz');
+  assert.ok(perfil.nombreCertificadoConfirmadoEn);
+  assert.equal(perfil.nombreCertificadoFolio, folio);
+  assert.deepEqual(registroAuth.actualizaciones, [{ uid: 'ana', cambios: { displayName: 'María de la Luz López Ruiz' } }]);
+
+  const publico = await request(app).get('/api/certificados/' + folio);
+  assert.equal(publico.status, 200);
+  assert.equal(publico.body.valido, true);
+  assert.equal(publico.body.certificado.nombre, 'María de la Luz López Ruiz');
+});
+
+test('nombre: confirmar tal cual (sin cambios) también cierra la pregunta y solo se puede una vez', async () => {
+  const { app, db } = servidor();
+  const folio = (await completar(app, 'c1', 0, 2)).body.certificado.folio;
+  const ok = await post(app, '/api/certificados/nombre', { folio, nombre: 'Ana Pérez' });
+  assert.deepEqual([ok.status, ok.body.corregido], [200, false]);
+  assert.equal(db.value('certificados/' + folio).nombre, 'Ana Pérez');
+  const otra = await post(app, '/api/certificados/nombre', { folio, nombre: 'Otra Persona Distinta' });
+  assert.equal(otra.status, 409);
+  assert.equal(db.value('certificados/' + folio).nombre, 'Ana Pérez', 'ya confirmado: no cambia');
+});
+
+test('nombre: rechaza nombres que no sirven, folios ajenos o inexistentes y la falta de sesión', async () => {
+  const { app, db } = servidor();
+  const folio = (await completar(app, 'c1', 0, 2)).body.certificado.folio;
+  for (const malo of ['', 'Pedro', 'Ana 3rd', 'a b', 'Ana de', 'x'.repeat(70), '<b>Ana</b> Pérez']) {
+    const r = await post(app, '/api/certificados/nombre', { folio, nombre: malo });
+    assert.equal(r.status, 400, JSON.stringify(malo));
+  }
+  assert.equal((await post(app, '/api/certificados/nombre', { nombre: 'Ana Pérez' })).status, 400, 'sin folio');
+  assert.equal((await post(app, '/api/certificados/nombre', { folio: 'ZOO-2026-AAAAAAAA', nombre: 'Ana Pérez' })).status, 404);
+  // El certificado de otra persona no se toca
+  assert.equal((await post(app, '/api/certificados/nombre', { folio, nombre: 'Beto Ruiz' }, 'token-beto')).status, 404);
+  assert.equal((await request(app).post('/api/certificados/nombre').send({ folio, nombre: 'Ana Pérez' })).status, 401);
+  assert.equal(db.value('certificados/' + folio).nombreConfirmado, undefined, 'nada cambió');
+  assert.equal(db.value('miembros/ana').nombreCertificadoConfirmadoEn, undefined);
+});
+
+test('nombre: tras confirmar, los certificados nuevos salen con el nombre del perfil y quedan fijos', async () => {
+  const { app, db } = servidor();
+  const folio1 = (await completar(app, 'c1', 0, 2)).body.certificado.folio;
+  await post(app, '/api/certificados/nombre', { folio: folio1, nombre: 'Ana María Pérez Soto' });
+  const folio2 = (await completar(app, 'c2', 0, 1)).body.certificado.folio;
+  const doc2 = db.value('certificados/' + folio2);
+  assert.equal(doc2.nombre, 'Ana María Pérez Soto');
+  assert.equal(doc2.nombreConfirmado, true, 'sale fijo desde el principio');
+  // Editar el perfil después no cambia certificados ya emitidos
+  db._data.set('miembros/ana', { ...db.value('miembros/ana'), name: 'Ana P.', nombreCertificado: 'Ana P.' });
+  assert.equal(db.value('certificados/' + folio1).nombre, 'Ana María Pérez Soto');
+  assert.equal(db.value('certificados/' + folio2).nombre, 'Ana María Pérez Soto');
+});
+
+test('nombre: quien ya tiene certificados anteriores no es obligado a confirmar ni se le modifican', async () => {
+  const { app, db } = servidor({ seed: { ['certificados/' + FOLIO_LEGADO]: delNavegador() } });
+  const fin = await completar(app, 'c1', 0, 2);
+  assert.equal(fin.body.confirmarNombre, undefined, 'tiene un certificado anterior: no se le pregunta');
+  const antes = JSON.stringify(db.value('certificados/' + FOLIO_LEGADO));
+  // Aunque lo intente a mano, no se le permite cambiarlo (no es "el primer certificado")
+  const r = await post(app, '/api/certificados/nombre', { folio: fin.body.certificado.folio, nombre: 'Ana Pérez Soto' });
+  assert.equal(r.status, 409);
+  const sobreElAnterior = await post(app, '/api/certificados/nombre', { folio: FOLIO_LEGADO, nombre: 'Ana Pérez Soto' });
+  assert.ok([404, 409].includes(sobreElAnterior.status));
+  assert.equal(JSON.stringify(db.value('certificados/' + FOLIO_LEGADO)), antes, 'el certificado anterior queda intacto');
+  assert.equal(db.value('miembros/ana').nombreCertificadoConfirmadoEn, undefined);
+  // Y siguen pudiendo verificarse como antes
+  const publico = await request(app).get('/api/certificados/' + FOLIO_LEGADO);
+  assert.equal(publico.status, 200);
+});
+
+test('nombre: si cerró la ventana y terminó otro curso, se corrigen juntos los certificados nuevos sin confirmar', async () => {
+  const { app, db } = servidor();
+  const folio1 = (await completar(app, 'c1', 0, 2)).body.certificado.folio;
+  const fin2 = await completar(app, 'c2', 0, 1);
+  assert.equal(fin2.body.confirmarNombre, true, 'sigue sin confirmar: se vuelve a preguntar');
+  const r = await post(app, '/api/certificados/nombre', { folio: fin2.body.certificado.folio, nombre: 'Ana María Pérez Soto' });
+  assert.equal(r.status, 200);
+  assert.equal(db.value('certificados/' + folio1).nombre, 'Ana María Pérez Soto');
+  assert.equal(db.value('certificados/' + fin2.body.certificado.folio).nombre, 'Ana María Pérez Soto');
+});
+
+test('nombre: sin la llave de firma responde 503 y la persona sin plan ni cuenta no puede confirmar', async () => {
+  const { app } = servidor({ sinLlave: true });
+  assert.equal((await post(app, '/api/certificados/nombre', { folio: 'ZOO-2026-AAAAAAAA', nombre: 'Ana Pérez' })).status, 503);
+});
+
+test('nombre: los certificados que emite el administrador no se modifican ni bloquean la confirmación', async () => {
+  const { app, db } = servidor();
+  const admin = await post(app, '/api/admin/certificados', { uid: 'ana', cursoId: 'c3', nombre: 'Ana P. de Pérez' }, 'token-admin');
+  assert.equal(admin.status, 200);
+  const folioAdmin = admin.body.certificado.folio;
+  const fin = await completar(app, 'c1', 0, 2);
+  assert.equal(fin.body.confirmarNombre, true);
+  const r = await post(app, '/api/certificados/nombre', { folio: fin.body.certificado.folio, nombre: 'Ana Pérez Soto' });
+  assert.equal(r.status, 200);
+  assert.equal(db.value('certificados/' + folioAdmin).nombre, 'Ana P. de Pérez', 'el del administrador no se toca');
+});
+
+test('nombre: si se corrige, sale otro correo con el PDF ya corregido; si solo se confirma, ninguno más', conResend(async llamadas => {
+  const { app } = servidor();
+  const f1 = (await completar(app, 'c1', 0, 2)).body.certificado.folio;
+  await app.certificados.esperar();
+  assert.equal(llamadas.length, 1, 'el correo del certificado al emitirse');
+  assert.match(JSON.stringify(llamadas[0].cuerpo), /Ana/);
+  const r = await post(app, '/api/certificados/nombre', { folio: f1, nombre: 'Ana María Pérez Soto' });
+  assert.equal(r.status, 200);
+  await app.certificados.esperar();
+  assert.equal(llamadas.length, 2, 'un correo nuevo con el nombre corregido');
+  assert.equal(llamadas[1].cuerpo.to.join ? llamadas[1].cuerpo.to.join(',') : llamadas[1].cuerpo.to, 'ana@example.com');
+  assert.ok((llamadas[1].cuerpo.attachments || []).length === 1, 'con el PDF adjunto');
+  const { app: app2 } = servidor();
+  const g1 = (await completar(app2, 'c1', 0, 2, 'token-beto')).body.certificado.folio;
+  await app2.certificados.esperar();
+  const antes = llamadas.length;
+  await post(app2, '/api/certificados/nombre', { folio: g1, nombre: 'Beto Ruiz' }, 'token-beto');
+  await app2.certificados.esperar();
+  assert.equal(llamadas.length, antes, 'confirmar sin cambios no manda otro correo');
+}));

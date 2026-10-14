@@ -9,8 +9,8 @@
 // Por eso el XP de retos tiene techos duros (TOPE_XP_PRACTICA y los totales del camino) y las
 // insignias piden constancia en días distintos. Ver README.
 
-// Tres tipos de práctica con camino (desbloqueo secuencial), más flashcards —repaso libre, sin
-// XP y sin desbloqueo, por eso no cuenta para "Todoterreno"— y los casos del modo historia.
+// Tres tipos de práctica con camino (todos sus retos abiertos, en cualquier orden), más flashcards —repaso libre,
+// sin XP, por eso no cuenta para "Todoterreno"— y los casos del modo historia.
 const RETOS_BASE = ['quiz', 'detective', 'orden'];
 const RETOS_VALIDOS = [...RETOS_BASE, 'flashcards', 'historia'];
 const RETOS_SIN_XP = ['flashcards'];
@@ -23,9 +23,10 @@ const XP_PERFECTO = 10;       // reto con 100 %
 // techo; pasado el techo se sigue jugando y contando retos superados (insignias), pero ya no suma XP.
 const TOPE_XP_PRACTICA = 600;
 
-// Camino: dentro de quiz/detective/orden los retos se resuelven en un orden fijo y cada uno se
-// desbloquea al superar el anterior. Un reto del camino solo puede superarse una vez en total.
-// TOTALES_CAMINO es la cantidad de retos que existe en el sitio: fuera de ese rango no hay XP.
+// Camino: dentro de quiz/detective/orden la persona elige qué reto resolver y en qué orden (todos están abiertos).
+// El servidor guarda QUÉ índices ya superó (caminoHechos) y solo da XP la primera vez de cada uno: no se puede
+// "granjear" XP repitiendo el mismo reto. Resolver cualquiera exige membresía vigente (lo comprueba la ruta).
+// TOTALES_CAMINO es la cantidad de retos que existe en el sitio: un índice fuera de ese rango no es válido.
 const CAMINO_MODOS = RETOS_BASE;
 const TOTALES_CAMINO = Object.freeze({ quiz: 22, detective: 13, orden: 18 });
 const XP_CAMINO = 6;
@@ -69,7 +70,8 @@ const INSIGNIAS = [
 function estadoInicial() {
   return {
     xp: 0, xpPractica: 0, superados: 0, porReto: {}, dias: [],
-    retosHoy: { fecha: '', ids: [] }, camino: { quiz: 0, detective: 0, orden: 0 }
+    retosHoy: { fecha: '', ids: [] }, camino: { quiz: 0, detective: 0, orden: 0 },
+    caminoHechos: { quiz: [], detective: [], orden: [] }
   };
 }
 
@@ -78,6 +80,21 @@ const entero = v => (Number.isInteger(v) && v >= 0 ? v : 0);
 function normalizarCamino(guardado) {
   const out = {};
   CAMINO_MODOS.forEach(m => { out[m] = guardado && typeof guardado === 'object' ? entero(guardado[m]) : 0; });
+  return out;
+}
+
+// Índices superados de cada modo. Las cuentas anteriores solo guardaban un contador (camino[modo] = N, o sea los N
+// primeros retos), así que sin lista propia se reconstruye como 0..N-1: nadie pierde avance.
+function normalizarCaminoHechos(guardado, camino) {
+  const out = {};
+  CAMINO_MODOS.forEach(m => {
+    const lista = guardado && typeof guardado === 'object' && Array.isArray(guardado[m]) ? guardado[m] : null;
+    if (lista) {
+      out[m] = [...new Set(lista.filter(n => Number.isInteger(n) && n >= 0 && n < TOTALES_CAMINO[m]))].sort((a, b) => a - b);
+    } else {
+      out[m] = Array.from({ length: Math.min(camino[m], TOTALES_CAMINO[m]) }, (_, i) => i);
+    }
+  });
   return out;
 }
 
@@ -101,6 +118,10 @@ function normalizarEstado(guardado) {
   const retosHoy = guardado.retosHoy && typeof guardado.retosHoy === 'object'
     ? { fecha: String(guardado.retosHoy.fecha || ''), ids: Array.isArray(guardado.retosHoy.ids) ? guardado.retosHoy.ids.filter(i => RETOS_VALIDOS.includes(i)) : [] }
     : base.retosHoy;
+  const camino = normalizarCamino(guardado.camino);
+  const caminoHechos = normalizarCaminoHechos(guardado.caminoHechos, camino);
+  // "camino" es siempre la cantidad de retos superados de cada modo (lo que ya leen el sitio, los logros y las pruebas)
+  CAMINO_MODOS.forEach(m => { camino[m] = caminoHechos[m].length; });
   return {
     xp: entero(guardado.xp),
     xpPractica: entero(guardado.xpPractica),
@@ -108,7 +129,8 @@ function normalizarEstado(guardado) {
     porReto: normalizarPorReto(guardado.porReto),
     dias: Array.isArray(guardado.dias) ? guardado.dias.filter(d => typeof d === 'string') : [],
     retosHoy,
-    camino: normalizarCamino(guardado.camino)
+    camino,
+    caminoHechos
   };
 }
 
@@ -126,7 +148,7 @@ function validarResultado({ retoId, puntaje, total }) {
 
 function validarCaminoResultado({ modo, indice, puntaje, total }) {
   if (typeof modo !== 'string' || !CAMINO_MODOS.includes(modo)) return 'Modo no válido';
-  if (!Number.isInteger(indice) || indice < 0 || indice > INDICE_MAXIMO) return 'Índice no válido';
+  if (!Number.isInteger(indice) || indice < 0 || indice > INDICE_MAXIMO || indice >= TOTALES_CAMINO[modo]) return 'Índice no válido';
   if (!Number.isInteger(total) || total < 1 || total > TOTAL_MAXIMO) return 'Total no válido';
   if (!Number.isInteger(puntaje) || puntaje < 0 || puntaje > total) return 'Puntaje no válido';
   return null;
@@ -163,14 +185,14 @@ function aplicarResultado(estadoPrevio, { retoId, puntaje, total }, ahora = new 
   return { estado, xpGanado, aprobado };
 }
 
-// Aplica el resultado de UN reto del camino. Solo se acepta si el índice recibido es exactamente
-// el siguiente pendiente (así el servidor, no el navegador, decide qué reto está desbloqueado),
-// existe en el sitio y se aprueba con 60 % o más. Superarlo avanza el camino y cuenta para las
-// insignias (mismo contador porReto/superados que la práctica).
+// Aplica el resultado de UN reto del camino. Cualquier índice que exista en el sitio se puede resolver, en el orden
+// que la persona elija, pero solo se acepta si se aprueba con 60 % o más y solo da XP la primera vez que se supera:
+// un índice ya superado no se acepta de nuevo. Superarlo también cuenta para las insignias (mismo contador
+// porReto/superados que la práctica).
 function aplicarCaminoResultado(estadoPrevio, { modo, indice, puntaje, total }, ahora = new Date()) {
   const estado = normalizarEstado(estadoPrevio);
   const aprobado = puntaje / total >= MINIMO_APROBAR;
-  if (indice !== estado.camino[modo] || indice >= TOTALES_CAMINO[modo] || !aprobado) {
+  if (estado.caminoHechos[modo].includes(indice) || indice >= TOTALES_CAMINO[modo] || !aprobado) {
     return { estado, xpGanado: 0, aceptado: false, aprobado };
   }
 
@@ -186,7 +208,8 @@ function aplicarCaminoResultado(estadoPrevio, { modo, indice, puntaje, total }, 
   const xpGanado = perfecto ? XP_CAMINO_PERFECTO : XP_CAMINO;
   estado.xp += xpGanado;
   estado.superados += 1;
-  estado.camino[modo] += 1;
+  estado.caminoHechos[modo] = [...estado.caminoHechos[modo], indice].sort((a, b) => a - b);
+  estado.camino[modo] = estado.caminoHechos[modo].length;
   if (!estado.dias.includes(hoy)) estado.dias = [...estado.dias, hoy].slice(-400);
   return { estado, xpGanado, aceptado: true, aprobado };
 }
