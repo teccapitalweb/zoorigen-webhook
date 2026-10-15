@@ -15,8 +15,16 @@ const tokens = {
   'token-correo': { uid: 'correo1', email: CORREO_ADMIN, email_verified: true },
   'token-correo-mayus': { uid: 'correo1', email: CORREO_ADMIN.toUpperCase(), email_verified: true },
   'token-correo-sinverificar': { uid: 'falso1', email: CORREO_ADMIN, email_verified: false },
-  'token-correo-sinflag': { uid: 'falso2', email: CORREO_ADMIN }
+  'token-correo-sinflag': { uid: 'falso2', email: CORREO_ADMIN },
+  // Las dos cuentas del dueño (valor exacto de ADMIN_EMAILS en Railway: ver CORREOS_DUENO)
+  'token-zoo': { uid: 'dueno1', email: 'zooorigen@gmail.com', email_verified: true },
+  'token-tec': { uid: 'dueno2', email: 'teccapitalweb@gmail.com', email_verified: true },
+  'token-tec-mayus': { uid: 'dueno2', email: '  TecCapitalWeb@Gmail.com ', email_verified: true },
+  'token-zoo-sinverificar': { uid: 'dueno3', email: 'zooorigen@gmail.com', email_verified: false },
+  'token-parecido': { uid: 'falso3', email: 'zooorigen@gmail.com.mx', email_verified: true },
+  'token-parecido2': { uid: 'falso4', email: 'zoorigen@gmail.com', email_verified: true }
 };
+const CORREOS_DUENO = 'zooorigen@gmail.com,teccapitalweb@gmail.com';
 
 function montar(seed = {}) {
   return cargarServidor({
@@ -161,3 +169,53 @@ test('las rutas de administración ya existentes (encuesta, noticias, avisos) ac
     assert.equal((await request(app).get(ruta).set(auth('token-miembro'))).status, 403, ruta);
   }
 }));
+
+// ── Valor exacto que se pone en Railway ──
+test('ADMIN_EMAILS = zooorigen@gmail.com,teccapitalweb@gmail.com: las dos cuentas del dueño administran; nadie más ni sin verificar', conAdminEmails(CORREOS_DUENO, async () => {
+  const { app } = montar();
+  for (const t of ['token-zoo', 'token-tec', 'token-tec-mayus']) {
+    const r = await request(app).get('/api/admin/yo').set(auth(t));
+    assert.equal(r.status, 200, t);
+    assert.equal(r.body.via, 'correo');
+  }
+  for (const t of ['token-zoo-sinverificar', 'token-parecido', 'token-parecido2', 'token-miembro']) {
+    assert.equal((await request(app).get('/api/admin/yo').set(auth(t))).status, 403, t);
+  }
+}));
+
+test('ADMIN_EMAILS tolera espacios alrededor de las comas y mayúsculas en la lista', conAdminEmails(' ZooOrigen@Gmail.com , TECCAPITALWEB@gmail.com ', async () => {
+  const { app } = montar();
+  assert.equal((await request(app).get('/api/admin/yo').set(auth('token-zoo'))).status, 200);
+  assert.equal((await request(app).get('/api/admin/yo').set(auth('token-tec'))).status, 200);
+}));
+
+// ── Variante suave: la usa el Club para decidir si va al panel, sin errores 403 en la consola del navegador ──
+test('GET /api/admin/yo?suave=1: administrador 200 con admin true; miembro y sin plan 200 con admin false; sin sesión 401', conAdminEmails(CORREO_ADMIN, async () => {
+  const { app } = montar();
+  const admin = await request(app).get('/api/admin/yo?suave=1').set(auth('token-correo'));
+  assert.equal(admin.status, 200);
+  assert.equal(admin.body.admin, true);
+  assert.equal(admin.headers['cache-control'], 'no-store');
+  for (const t of ['token-miembro', 'token-sinplan', 'token-correo-sinverificar']) {
+    const r = await request(app).get('/api/admin/yo?suave=1').set(auth(t));
+    assert.equal(r.status, 200, t);
+    assert.deepEqual(r.body, { ok: true, admin: false }, t + ': sin datos');
+  }
+  assert.equal((await request(app).get('/api/admin/yo?suave=1')).status, 401);
+  assert.equal((await request(app).get('/api/admin/yo?suave=1').set(auth('token-que-no-existe'))).status, 401);
+  // sin ?suave=1 la ruta sigue siendo estricta
+  assert.equal((await request(app).get('/api/admin/yo').set(auth('token-miembro'))).status, 403);
+}));
+
+test('la variante suave respeta la marca de ADMIN_EMAILS que ya no vale (se retira y responde admin false)', async () => {
+  const { app, db } = montar();
+  process.env.ADMIN_EMAILS = CORREO_ADMIN;
+  try {
+    assert.equal((await request(app).get('/api/admin/yo?suave=1').set(auth('token-correo'))).body.admin, true);
+    process.env.ADMIN_EMAILS = 'otra.persona@example.com';
+    const r = await request(app).get('/api/admin/yo?suave=1').set(auth('token-correo'));
+    assert.equal(r.status, 200);
+    assert.equal(r.body.admin, false);
+    assert.equal(db.value('miembros/correo1').role, 'member');
+  } finally { delete process.env.ADMIN_EMAILS; }
+});

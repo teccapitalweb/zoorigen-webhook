@@ -106,6 +106,31 @@ function montarRutasAdmin(app, deps) {
   // ════════════════════════════════════════════════════════════
   // ¿Soy administrador? Solo responde 200 a administradores; para el resto es 401 / 403 sin datos.
   // ════════════════════════════════════════════════════════════
+  // Variante suave (?suave=1): la usa el Club de miembros para saber, sin ruido de errores 403 en el navegador, si la cuenta
+  // que abrió una página es administradora y debe ir al panel. Misma regla de acceso (autenticarAdmin); la diferencia es que
+  // "no eres administrador" responde 200 { admin: false } en lugar de 403. Sin sesión sigue siendo 401. Nunca devuelve datos.
+  app.get('/api/admin/yo', async (req, res, next) => {
+    if (req.query.suave !== '1') return next();
+    res.set('Cache-Control', 'no-store');
+    const respuesta = {
+      codigo: 200, cuerpo: null,
+      status(c) { this.codigo = c; return this; },
+      json(b) { this.cuerpo = b; return this; }
+    };
+    try {
+      const decoded = await autenticarAdmin(req, respuesta);
+      if (decoded) {
+        limitar(limites.lecturas, decoded.uid, LECTURAS_POR_MINUTO);
+        const via = esAdminPorCorreo(decoded) ? 'correo' : 'documento';
+        return res.json({ ok: true, admin: true, uid: decoded.uid, via, nombre: String(decoded.name || '').slice(0, 120) });
+      }
+      if (respuesta.codigo === 403) return res.json({ ok: true, admin: false });
+      return res.status(respuesta.codigo).json(respuesta.cuerpo || { error: 'No se pudo verificar el acceso de administrador' });
+    } catch (error) {
+      return responderError(res, error, 'No se pudo verificar el acceso de administrador', 'yo-suave');
+    }
+  });
+
   app.get('/api/admin/yo', conAdmin('No se pudo verificar el acceso de administrador', 'yo', async (req, res, decoded) => {
     const via = esAdminPorCorreo(decoded) ? 'correo' : 'documento';
     return res.json({ ok: true, admin: true, uid: decoded.uid, via, nombre: String(decoded.name || '').slice(0, 120) });
