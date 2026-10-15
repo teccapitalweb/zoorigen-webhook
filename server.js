@@ -19,8 +19,13 @@ const { montarRutasRegistro } = require('./services/rutas-registro');
 const { montarRutasAuth } = require('./services/rutas-auth');
 const { montarRutasCertificados } = require('./services/rutas-certificados');
 const { montarRutasPublico } = require('./services/rutas-publico');
+const { montarRutasAdmin } = require('./services/rutas-admin');
+const bitacoraMemoria = require('./services/bitacora-memoria');
 const libros = require('./services/libros');
 const materiales = require('./services/materiales');
+
+// Guarda en memoria los últimos console.error para el panel de administración (Estado del sistema).
+bitacoraMemoria.instalar();
 
 // ── Config ──────────────────────────────────────────────
 const rawKey = (process.env.STRIPE_SECRET_KEY || '').trim().replace(/^["']|["']$/g, '');
@@ -191,6 +196,60 @@ async function sincronizarSubscription(firebaseUID, subscription, options = {}) 
   return { planStatus, planActivo, planVence };
 }
 
+// ── Administradores ──
+// Quién administra se decide SOLO en el servidor, nunca con datos que mande el navegador:
+//   1) ADMIN_EMAILS (variable de entorno, correos separados por comas): la cuenta debe iniciar sesión con ese correo y
+//      el correo debe estar VERIFICADO por Firebase (token.email_verified === true; Google ya viene verificado).
+//   2) Un documento admins/{uid} o miembros/{uid}.role === 'admin' fijado a mano en Firestore (como siempre).
+// Al entrar una cuenta de ADMIN_EMAILS, el servidor marca miembros/{uid}.role = 'admin' y adminOrigen = 'ADMIN_EMAILS'
+// (con el Admin SDK) para que las reglas de Firestore y el club la reconozcan; si el correo sale de la lista, la
+// siguiente petición a la administración le quita esa marca. Una marca puesta a mano (sin adminOrigen) no se toca.
+function correosAdministrador() {
+  return new Set(String(process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
+}
+
+function esAdminPorCorreo(decoded) {
+  if (!decoded || decoded.email_verified !== true || typeof decoded.email !== 'string') return false;
+  return correosAdministrador().has(decoded.email.trim().toLowerCase());
+}
+
+// Regla de administrador (compartida): existe admins/{uid}, miembros/{uid}.role === 'admin' o el token es de ADMIN_EMAILS.
+function esAdminPorDocumentos(adminDoc, miembroDoc, decoded) {
+  return Boolean(adminDoc.exists || miembroDoc.data()?.role === 'admin' || esAdminPorCorreo(decoded));
+}
+
+const SINCRONIZACION_ADMIN_MS = 5 * 60 * 1000;
+const adminsSincronizados = new Map(); // uid -> último momento en que se sincronizó por ADMIN_EMAILS
+
+// Pone (o quita) la marca de administrador en miembros/{uid} según ADMIN_EMAILS. Nunca lanza.
+async function sincronizarAdminPorCorreo(decoded, { forzar = false } = {}) {
+  try {
+    const uid = decoded.uid;
+    const porCorreo = esAdminPorCorreo(decoded);
+    if (!porCorreo && !adminsSincronizados.has(uid) && !forzar) return { admin: false, cambio: false };
+    const ahora = Date.now();
+    if (porCorreo && !forzar && ahora - (adminsSincronizados.get(uid) || 0) < SINCRONIZACION_ADMIN_MS) return { admin: true, cambio: false };
+    const ref = db.collection('miembros').doc(uid);
+    const snap = await ref.get();
+    const m = snap.exists ? (snap.data() || {}) : {};
+    if (porCorreo) {
+      adminsSincronizados.set(uid, ahora);
+      if (!snap.exists || m.role === 'admin') return { admin: true, cambio: false, sincronizado: snap.exists };
+      await ref.set({ role: 'admin', adminOrigen: 'ADMIN_EMAILS' }, { merge: true });
+      return { admin: true, cambio: true, sincronizado: true };
+    }
+    adminsSincronizados.delete(uid);
+    if (snap.exists && m.role === 'admin' && m.adminOrigen === 'ADMIN_EMAILS') {
+      await ref.set({ role: 'member', adminOrigen: typeof admin.firestore.FieldValue.delete === 'function' ? admin.firestore.FieldValue.delete() : null }, { merge: true });
+      return { admin: false, cambio: true };
+    }
+    return { admin: false, cambio: false };
+  } catch (error) {
+    console.error('[Admin] No se pudo sincronizar la marca de administrador:', error.message);
+    return { admin: esAdminPorCorreo(decoded), cambio: false };
+  }
+}
+
 async function autenticarFirebase(req, res) {
   const authorization = String(req.headers.authorization || '');
   const match = authorization.match(/^Bearer\s+(.+)$/i);
@@ -198,17 +257,16 @@ async function autenticarFirebase(req, res) {
     res.status(401).json({ error: 'Sesión requerida' });
     return null;
   }
+  let decoded;
   try {
-    return await auth.verifyIdToken(match[1]);
+    decoded = await auth.verifyIdToken(match[1]);
   } catch (_) {
     res.status(401).json({ error: 'Sesión inválida o vencida' });
     return null;
   }
-}
-
-// Regla de administrador (compartida): existe admins/{uid} o miembros/{uid}.role === 'admin'.
-function esAdminPorDocumentos(adminDoc, miembroDoc) {
-  return adminDoc.exists || miembroDoc.data()?.role === 'admin';
+  // Quien inicia sesión con un correo de ADMIN_EMAILS queda marcado como administrador en Firestore (una vez cada 5 min).
+  if (esAdminPorCorreo(decoded) || adminsSincronizados.has(decoded.uid)) await sincronizarAdminPorCorreo(decoded);
+  return decoded;
 }
 
 // Exige sesión de Firebase y que sea administrador. Responde 401/403/500 y devuelve null si no pasa.
@@ -220,7 +278,14 @@ async function autenticarAdmin(req, res) {
       db.collection('admins').doc(decoded.uid).get(),
       db.collection('miembros').doc(decoded.uid).get()
     ]);
-    if (!esAdminPorDocumentos(adminDoc, miembroDoc)) {
+    // Una marca de administrador puesta por ADMIN_EMAILS deja de valer si el correo ya no está en la lista.
+    const m = miembroDoc.data() || {};
+    if (m.role === 'admin' && m.adminOrigen === 'ADMIN_EMAILS' && !esAdminPorCorreo(decoded)) {
+      await sincronizarAdminPorCorreo(decoded, { forzar: true });
+      res.status(403).json({ error: 'Solo los administradores pueden hacer esto' });
+      return null;
+    }
+    if (!esAdminPorDocumentos(adminDoc, miembroDoc, decoded)) {
       res.status(403).json({ error: 'Solo los administradores pueden hacer esto' });
       return null;
     }
@@ -649,7 +714,7 @@ app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
       db.collection('miembros').doc(decoded.uid).get(),
       db.collection('usuarios').doc(decoded.uid).get()
     ]);
-    const esAdmin = esAdminPorDocumentos(adminDoc, miembroDoc);
+    const esAdmin = esAdminPorDocumentos(adminDoc, miembroDoc, decoded);
     const tienePlan = tienePlanVigente(miembroDoc, usuarioDoc);
     const sinAcceso = !esAdmin && !tienePlan;
     // Prueba gratuita: solo se evalúa para quien no es admin ni tiene plan (a ellos no les cambia nada).
@@ -957,6 +1022,12 @@ app.publico = montarRutasPublico(app, {
 montarRutasNoticias(app, {
   express, db, autenticarFirebase, autenticarAdmin, errorHttp,
   cronKey: (process.env.CRON_KEY || '').trim().replace(/^["']|["']$/g, '')
+});
+
+// ── Panel de administración: resumen, miembros, comunidad, referidos, retos y estado (services/rutas-admin.js) ──
+// Todas las rutas /api/admin/* de este archivo exigen administrador verificado en el servidor (ADMIN_EMAILS o marca en Firestore).
+montarRutasAdmin(app, {
+  express, db, admin, autenticarAdmin, errorHttp, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador
 });
 
 // Solo escucha al ejecutarse directamente (node server.js); las pruebas importan `app`.
