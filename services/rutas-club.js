@@ -218,9 +218,14 @@ function montarRutasClub(app, deps) {
     if (pendientes.length) {
       const dispositivos = await dispositivosDeAnfitrion(hostUid);
       const verificados = await leerUsuariosAuth(pendientes.map(i => i.uid));
+      // Un invitado que confirma su correo solo cuenta si quien lo invitó sigue con membresía vigente.
+      // Si no la tiene, se queda pendiente (no se rechaza): cuenta cuando su anfitrión renueve.
+      let anfitrionEsMiembro = null;
       for (const i of pendientes) {
         const info = verificados.get(i.uid);
         if (!info || !info.emailVerified) continue;
+        if (anfitrionEsMiembro === null) anfitrionEsMiembro = (await leerContexto(hostUid)).membresia;
+        if (!anfitrionEsMiembro) continue;
         const motivo = referidos.evaluarDispositivo({ ...i, anfitrionUid: hostUid }, dispositivos, invitados);
         const cambios = motivo ? { estado: ESTADOS.RECHAZADO, motivo: referidos.MOTIVOS[motivo] } : { estado: ESTADOS.VALIDO, motivo: null };
         await db.collection('referidos').doc(i.uid).set(cambios, { merge: true });
@@ -725,6 +730,9 @@ function montarRutasClub(app, deps) {
       const anfitrionUid = await buscarAnfitrion(codigo);
       if (!anfitrionUid) return respuesta(ESTADOS.RECHAZADO, referidos.MOTIVOS['codigo-inexistente']);
       if (anfitrionUid === uid) return respuesta(ESTADOS.RECHAZADO, referidos.MOTIVOS['mismo-usuario']);
+      // Solo invitan los miembros: si quien invita no tiene membresía vigente (o la dejó), la invitación
+      // no cuenta y NO se guarda nada. El registro del invitado sigue su curso normal.
+      if (!(await leerContexto(anfitrionUid)).membresia) return respuesta(ESTADOS.RECHAZADO, referidos.MOTIVOS['anfitrion-sin-membresia']);
 
       const ip = referidos.ipDeSolicitud(req.headers, req.ip);
       const ua = String(req.get('user-agent') || '').slice(0, 200);
@@ -785,6 +793,9 @@ function montarRutasClub(app, deps) {
       if (!decoded) return;
       const uid = decoded.uid;
       limitar(limites.lecturas, uid, LECTURAS_POR_MINUTO);
+      // Invitar amigos es para miembros (membresía vigente o administrador): sin ella no hay enlace ni código.
+      const ctx = await leerContexto(uid);
+      if (!ctx.membresia) throw sinMembresia('Invitar amigos es para miembros. Activa tu membresía para obtener tu enlace de invitación');
 
       // El dispositivo desde el que el anfitrión mira su pantalla queda registrado como suyo
       const deviceId = idDe(req);

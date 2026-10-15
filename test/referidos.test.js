@@ -12,13 +12,14 @@ const {
 const HOST = 'Ab12Cd3456xyz';
 const CODIGO = 'ZOO-AB12CD';
 const INVITADOS = ['i1', 'i2', 'i3', 'i4', 'i5', 'i6', 'i7', 'i8'];
-const tokens = tokensDe(HOST, 'otrapersona', ...INVITADOS);
+const tokens = tokensDe(HOST, 'otrapersona', 'sinplan', ...INVITADOS);
 const usuariosAuth = () => Object.fromEntries(INVITADOS.map(u => [u, { emailVerified: true }]));
 const NOMBRES = { i1: 'Luis Gómez Ruiz', i2: 'María García', i3: 'Pedro Sánchez', i4: 'Ana López', i5: 'Jorge Díaz', i6: 'Carla Mora', i7: 'Raúl Peña', i8: 'Sofía Luna' };
 const baseSeed = (extra = {}) => ({
   ...cursosSeed(15),
   [`miembros/${HOST}`]: miembroConPlan({ name: 'Ana Pérez', email: 'ana@example.com', phone: '2361110000' }),
-  'miembros/otrapersona': miembroSinPlan({ name: 'Otro Sin Plan' }),
+  'miembros/otrapersona': miembroConPlan({ name: 'Otro Miembro', stripeSubscriptionId: 'sub_otra' }),
+  'miembros/sinplan': miembroSinPlan({ name: 'Sin Plan Ninguno' }),
   ...Object.fromEntries(INVITADOS.map(u => [`miembros/${u}`, miembroSinPlan({ name: NOMBRES[u], email: `${u}@example.com`, phone: `236000000${u.slice(1)}` })])),
   ...extra
 });
@@ -331,7 +332,7 @@ test('estado: sin invitados trae el código, el enlace y el único premio con lo
   assert.deepEqual(db.value(`codigosReferido/${CODIGO}`).uid, HOST);
 });
 
-test('estado: cualquier miembro tiene su código, incluso sin plan', async () => {
+test('estado: cada miembro con membresía vigente tiene su código', async () => {
   const { app } = montar();
   const b = (await estado(app, 'otrapersona')).body;
   assert.equal(b.codigo, 'ZOO-OTRAPE');
@@ -522,4 +523,75 @@ test('los invitados no cambian el acceso de nadie a los videos (embed-token inta
   assert.equal(inv.status, 403);
   const host = await request(app).post('/api/bunny/embed-token').set(auth(`token-${HOST}`)).send({ videoId: VIDEO_PREMIUM });
   assert.equal(host.status, 200);
+});
+
+// ── Invitar amigos es solo para miembros ──
+test('estado: sin membresía -> 403 membresia-requerida, sin código ni enlace y sin escribir nada', async () => {
+  const { app, db } = montar();
+  const r = await estado(app, 'sinplan', { 'X-Device-Id': 'dispositivo-sinplan-01' });
+  assert.equal(r.status, 403);
+  assert.equal(r.body.codigo, 'membresia-requerida');
+  assert.equal(r.body.enlace, undefined);
+  assert.equal(JSON.stringify(r.body).includes('ZOO-'), false, 'no revela ningún código');
+  assert.equal(db.value('codigosReferido/ZOO-SINPLA'), undefined, 'no se crea el código');
+  assert.equal(db.value('dispositivosAnfitrion/sinplan'), undefined, 'no se guarda el dispositivo');
+});
+
+test('estado: el administrador cuenta como miembro', async () => {
+  const { app } = montar({ seed: { 'admins/sinplan': { role: 'admin' } } });
+  const r = await estado(app, 'sinplan');
+  assert.equal(r.status, 200);
+  assert.equal(r.body.codigo, 'ZOO-SINPLA');
+});
+
+test('estado: cancelada con acceso vigente (cancelled_active) todavía puede invitar; vencida ya no', async () => {
+  const vigente = miembroConPlan({ planStatus: 'cancelled_active', planCancelado: true, planVence: ts(dias(10)) });
+  let m = montar({ seed: { 'miembros/otrapersona': vigente } });
+  assert.equal((await estado(m.app, 'otrapersona')).status, 200);
+  const vencida = miembroSinPlan({ planStatus: 'expired', planVence: ts(dias(-3)), planCancelado: true });
+  m = montar({ seed: { 'miembros/otrapersona': vencida } });
+  const r = await estado(m.app, 'otrapersona');
+  assert.equal(r.status, 403);
+  assert.equal(r.body.codigo, 'membresia-requerida');
+});
+
+test('registrar: si quien invita no es miembro, la invitación NO cuenta, no se guarda y la persona puede registrarse sin problema', async () => {
+  const { app, db } = montar({ seed: { 'miembros/Ab12Cd3456xyz': miembroSinPlan({ name: 'Ana Pérez', email: 'ana@example.com' }) } });
+  const r = await registrar(app, 'i1', cuerpo(1));
+  assert.equal(r.status, 200);
+  assert.equal(r.body.ok, true);
+  assert.equal(r.body.estado, 'rechazado');
+  assert.match(r.body.motivo, /membresía vigente/);
+  assert.equal(db.value('referidos/i1'), undefined, 'no se guarda el referido');
+  assert.equal(db.value('miembros/i1').name, NOMBRES.i1, 'su cuenta queda intacta');
+});
+
+test('registrar: cuando el anfitrión vuelve a ser miembro, los nuevos invitados sí cuentan', async () => {
+  const { app, db } = montar({ seed: { 'miembros/Ab12Cd3456xyz': miembroSinPlan({ name: 'Ana Pérez' }) } });
+  assert.equal((await registrar(app, 'i1', cuerpo(1))).body.estado, 'rechazado');
+  db._data.set('miembros/Ab12Cd3456xyz', miembroConPlan({ name: 'Ana Pérez' }));
+  assert.equal((await registrar(app, 'i2', cuerpo(2), '198.51.100.2')).body.estado, 'valido');
+});
+
+test('un anfitrión que deja de ser miembro conserva a sus invitados válidos y el XP ya ganado; los pendientes esperan', async () => {
+  const au = { i1: { emailVerified: true }, i2: { emailVerified: false } };
+  const { app, db } = montar({ usuariosAuth: au });
+  assert.equal((await registrar(app, 'i1', cuerpo(1), '198.51.100.1')).body.estado, 'valido');
+  assert.equal((await registrar(app, 'i2', cuerpo(2), '198.51.100.2')).body.estado, 'pendiente-correo');
+  db._data.set('miembros/i1', miembroConPlan({ name: NOMBRES.i1 }));
+  assert.equal((await estado(app)).body.puntosTotales, 120);
+  // el anfitrión pierde la membresía
+  db._data.set('miembros/Ab12Cd3456xyz', miembroSinPlan({ name: 'Ana Pérez', planStatus: 'expired', planVence: ts(dias(-2)) }));
+  assert.equal((await estado(app)).status, 403);
+  assert.equal((await premios(app)).status, 200);
+  assert.equal(db.value('referidos/i1').estado, 'valido', 'el invitado ya válido sigue válido');
+  assert.equal(db.value('referidos/i1').hitos.pago, true, 'el hito ya logrado no se toca');
+  // el pendiente confirma su correo mientras el anfitrión no es miembro: se queda pendiente
+  au.i2.emailVerified = true;
+  assert.equal((await registrar(app, 'i2', cuerpo(2), '198.51.100.2')).body.estado, 'pendiente-correo');
+  assert.equal(db.value('referidos/i2').estado, 'pendiente-correo');
+  // al renovar, todo vuelve: el XP ya otorgado sigue ahí y el pendiente ya cuenta
+  db._data.set('miembros/Ab12Cd3456xyz', miembroConPlan({ name: 'Ana Pérez' }));
+  assert.equal((await premios(app)).body.xp.referidos, 120);
+  assert.equal(db.value('referidos/i2').estado, 'valido');
 });

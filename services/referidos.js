@@ -35,7 +35,8 @@ const MOTIVOS = Object.freeze({
   'mismo-usuario': 'No puedes usar tu propio código de invitación',
   'dispositivo-anfitrion': 'Se registró desde el mismo dispositivo de quien lo invitó',
   'dispositivo-invitado': 'Ya hay otra persona invitada desde ese mismo dispositivo',
-  'cuenta-antigua': 'Esa cuenta ya existía antes de la invitación'
+  'cuenta-antigua': 'Esa cuenta ya existía antes de la invitación',
+  'anfitrion-sin-membresia': 'Quien te invitó no tiene una membresía vigente, por eso esta invitación no cuenta'
 });
 
 // ── Código y enlace ──
