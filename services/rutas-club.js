@@ -936,6 +936,39 @@ function montarRutasClub(app, deps) {
     }
   });
 
+  // GET /api/perfil-profesional — mis datos de perfil para precargar el formulario de bienvenida (cualquier cuenta)
+  app.get('/api/perfil-profesional', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarFirebase(req, res);
+      if (!decoded) return;
+      limitar(limites.lecturas, decoded.uid, LECTURAS_POR_MINUTO);
+      const doc = await db.collection('directorio').doc(decoded.uid).get();
+      return res.json({ ok: true, perfil: directorio.perfilPropio(doc.exists ? doc.data() : null) });
+    } catch (error) {
+      return responderError(res, error, 'No se pudo cargar tu perfil', 'perfil');
+    }
+  });
+
+  // POST /api/perfil-profesional — guarda mi ficha PRIVADA (puesto, institución, ciudad, WhatsApp, correo) sin membresía.
+  // Se mezcla con la tarjeta existente y NUNCA cambia "publicado": publicar es de miembros (POST /api/directorio).
+  app.post('/api/perfil-profesional', express.json(), async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarFirebase(req, res);
+      if (!decoded) return;
+      limitar(limites.directorio, decoded.uid, CAMBIOS_DIRECTORIO_POR_MINUTO);
+      const ref = db.collection('directorio').doc(decoded.uid);
+      const previo = await ref.get();
+      const r = directorio.fusionarPerfil(previo.exists ? previo.data() : null, req.body);
+      if (r.error) throw errorHttp(400, r.error);
+      await ref.set({ uid: decoded.uid, ...r.tarjeta, actualizado: FieldValue.serverTimestamp() });
+      return res.json({ ok: true, perfil: directorio.perfilPropio((await ref.get()).data()) });
+    } catch (error) {
+      return responderError(res, error, 'No se pudo guardar tu perfil', 'perfil');
+    }
+  });
+
   return { leerContexto, calcularResumen, leerEstadoRetos, limites, limitar, sinMembresia, responderError, FieldValue };
 }
 

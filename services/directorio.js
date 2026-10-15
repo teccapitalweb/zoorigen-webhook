@@ -117,6 +117,44 @@ function validarTarjeta(cuerpo) {
   };
 }
 
+// ── Perfil profesional de bienvenida (POST /api/perfil-profesional) ──
+// Cualquier cuenta (con o sin membresía) puede guardar su ficha PRIVADA: nombre, puesto, institución, ciudad, WhatsApp y
+// correo de contacto. Se mezcla con la tarjeta que ya exista (no borra sector, descripción, estado, cédula ni el
+// "publicado"): publicar la tarjeta sigue siendo POST /api/directorio y es solo para miembros.
+const CAMPOS_PERFIL = Object.freeze(['nombre', 'profesion', 'institucion', 'ciudad', 'whatsapp', 'email']);
+
+// existente: documento directorio/{uid} (o null). entrada: cuerpo recibido (solo se leen los campos de CAMPOS_PERFIL
+// que vienen como texto). Devuelve { error } o { tarjeta } lista para guardar (misma validación que la tarjeta).
+function fusionarPerfil(existente, entrada) {
+  const e = existente && typeof existente === 'object' ? existente : {};
+  const x = entrada && typeof entrada === 'object' && !Array.isArray(entrada) ? entrada : null;
+  if (!x) return { error: 'Faltan los datos de tu perfil' };
+  for (const k of CAMPOS_PERFIL) {
+    if (x[k] !== undefined && x[k] !== null && typeof x[k] !== 'string') return { error: 'Los datos de tu perfil no son válidos' };
+  }
+  const pon = (k, previo) => (typeof x[k] === 'string' ? x[k] : previo);
+  const c = e.contacto && typeof e.contacto === 'object' ? e.contacto : {};
+  const contacto = { ...c };
+  for (const k of ['whatsapp', 'email']) {
+    if (typeof x[k] !== 'string') continue;
+    if (x[k].trim() === '') delete contacto[k]; else contacto[k] = x[k];
+  }
+  const cuerpo = {
+    nombre: pon('nombre', e.nombre), profesion: pon('profesion', e.profesion), institucion: pon('institucion', e.institucion),
+    sector: e.sector, ciudad: pon('ciudad', e.ciudad), bio: e.bio, estado: e.estado, cedula: e.cedula,
+    cedulaVisible: e.cedulaVisible === true, publicado: e.publicado === true, contacto
+  };
+  return validarTarjeta(cuerpo);
+}
+
+// Lo que se le devuelve a su dueña o dueño para precargar el formulario (solo sus propios datos)
+function perfilPropio(doc) {
+  const d = doc && typeof doc === 'object' ? doc : {};
+  const c = d.contacto && typeof d.contacto === 'object' ? d.contacto : {};
+  const t = v => (typeof v === 'string' ? v : '');
+  return { existe: Boolean(doc), nombre: t(d.nombre), profesion: t(d.profesion), institucion: t(d.institucion), ciudad: t(d.ciudad), whatsapp: t(c.whatsapp), email: t(c.email), publicado: d.publicado === true };
+}
+
 // Vista previa para quien no tiene membresía: seis tarjetas ficticias, sin datos de contacto reales.
 // Los sectores son los de la lista del sitio (SECTORES de assets/js/club-directorio.js); el sitio trae las mismas
 // tarjetas por su cuenta, así que si cambias estas, cambia también EJEMPLOS allí.
@@ -169,4 +207,4 @@ function tarjetaPublica(uid, doc, { esMia = false, verificado = false } = {}) {
   };
 }
 
-module.exports = { LIMITES, ESTADOS, MAX_TARJETAS, EJEMPLOS, escaparHtml, validarTarjeta, filtrar, tarjetaPublica, normalizarUrl };
+module.exports = { LIMITES, ESTADOS, MAX_TARJETAS, EJEMPLOS, CAMPOS_PERFIL, fusionarPerfil, perfilPropio, escaparHtml, validarTarjeta, filtrar, tarjetaPublica, normalizarUrl };
