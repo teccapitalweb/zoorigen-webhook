@@ -5,17 +5,26 @@
 // montarRutasClub (leerContexto, leerEstadoRetos, limitar...). Los libros y el catálogo de PDF se cargan UNA vez al arrancar
 // (services/libros.js y services/materiales.js). Cuántos retos superó la persona sale de retosUsuario/{uid}
 // (misma función que usa /api/retos). Nada de aquí escribe en Firestore salvo los avisos de la campana.
+// Materiales ligados a un curso y a una clase (services/materiales-curso.js): se abren cuando la persona terminó esa clase
+// (miembros/{uid}/progresoCursos/{cursoId}.sesionesVistas, que escribe solo este servidor). Los PDF de Drive que carga el
+// administrador (colección pdfs) también salen de aquí: el enlace se entrega solo a quien cumple la regla.
 
 const fs = require('fs');
 const { permitirSolicitud } = require('./rutas-club');
 const libros = require('./libros');
 const materiales = require('./materiales');
+const porCurso = require('./materiales-curso');
+const cert = require('./certificados');
 
 const LECTURAS_POR_MINUTO = 60;
 const DESCARGAS_POR_MINUTO = 20;
 
 function montarRutasMateriales(app, deps) {
   const { db, autenticarFirebase, autenticarAdmin, errorHttp, club, catalogoLibros, catalogoMateriales } = deps;
+  // Importa (una sola vez por cuenta) el avance anterior de la persona antes de leer sus clases vistas. Nunca lanza.
+  const importarAvanceAnterior = async uid => {
+    try { if (typeof deps.importarLegado === 'function') await deps.importarLegado(uid); } catch (_) { /* se reintenta en la siguiente consulta */ }
+  };
   const limites = { lecturas: new Map(), descargas: new Map(), admin: new Map() };
 
   const limitar = (mapa, clave, maximo) => {
@@ -63,7 +72,45 @@ function montarRutasMateriales(app, deps) {
   };
 
   const noExiste = mensaje => errorHttp(404, mensaje);
+
+  // Título y número de clases de cada curso ligado a un material y, para quien tiene membresía, qué clases ya terminó.
+  // Deja `cursos` y `vistas` en el estado (los usa materiales-curso.acceso). Solo lee los cursos que hacen falta.
+  async function cargarCursosLigados(uid, estado, ids) {
+    const lista = [...new Set(ids.filter(Boolean))].slice(0, 100);
+    estado.cursos = new Map();
+    estado.vistas = new Map();
+    if (!lista.length) return estado;
+    const conProgreso = Boolean(estado.membresia && !estado.esAdmin);
+    if (conProgreso) await importarAvanceAnterior(uid);
+    await Promise.all(lista.map(async id => {
+      const snap = await db.collection('cursos').doc(id).get();
+      const datos = snap.exists ? (snap.data() || {}) : null;
+      estado.cursos.set(id, datos ? { titulo: cert.tituloDeCurso(datos), total: cert.leccionesDe(datos).length } : null);
+      if (conProgreso && datos) {
+        const progreso = await db.collection('miembros').doc(uid).collection('progresoCursos').doc(id).get();
+        estado.vistas.set(id, new Set(cert.normalizarProgreso(progreso.exists ? progreso.data() : null).sesionesVistas));
+      }
+    }));
+    return estado;
+  }
+
+  // PDF cargados por el administrador (colección pdfs): solo los que tienen título y un enlace de Drive válido
+  async function leerPdfsDrive() {
+    const snap = await db.collection('pdfs').get();
+    const lista = [];
+    for (const d of snap.docs) {
+      const m = porCurso.normalizarPdfDrive(d.id, d.data());
+      if (m) lista.push(m);
+    }
+    lista.sort((a, b) => (a.creado < b.creado ? 1 : a.creado > b.creado ? -1 : 0));
+    return lista.slice(0, 300);
+  }
+  const idsDeCursos = lista => lista.map(m => m.cursoId).filter(Boolean);
   const bloqueado = (item, estado, que) => {
+    if (item.acceso === 'curso' || item.fuente === 'drive') {
+      const b = porCurso.bloqueo(item, estado);
+      if (b) return Object.assign(errorHttp(403, b.mensaje), { codigo: b.codigo, extra: { requiere: item.requiereRetos || 0, superados: estado.superados, faltan: porCurso.acceso(item, estado).faltan } });
+    }
     const sinMembresia = !(estado.membresia || estado.esAdmin);
     const faltan = libros.acceso({ requiereRetos: item.requiereRetos || 0 }, estado).faltan;
     return Object.assign(
@@ -102,6 +149,7 @@ function montarRutasMateriales(app, deps) {
   // MATERIALES (PDF)
   // ════════════════════════════════════════════════════════════
   app.get('/api/materiales', conEstado('No se pudieron cargar los materiales', 'materiales', limites.lecturas, LECTURAS_POR_MINUTO, async (req, res, decoded, estado) => {
+    await cargarCursosLigados(decoded.uid, estado, idsDeCursos(catalogoMateriales.materiales));
     return res.json({
       ok: true, membresia: estado.membresia || estado.esAdmin, superados: estado.superados,
       materiales: materiales.resumenMateriales(catalogoMateriales.materiales, estado)
@@ -113,6 +161,7 @@ function montarRutasMateriales(app, deps) {
   app.get('/api/materiales/:id/archivo', conEstado('No se pudo abrir el material', 'archivo', limites.descargas, DESCARGAS_POR_MINUTO, async (req, res, decoded, estado) => {
     const material = materiales.buscarMaterial(catalogoMateriales.materiales, req.params.id);
     if (!material) throw noExiste('Ese material no existe');
+    if (material.acceso === 'curso') await cargarCursosLigados(decoded.uid, estado, [material.cursoId]);
     if (!materiales.acceso(material, estado).desbloqueado) return rechazar(res, bloqueado(material, estado, 'Los materiales'));
     let contenido;
     try {
@@ -130,6 +179,43 @@ function montarRutasMateriales(app, deps) {
     return res.end(contenido);
   }));
 
+  // ── PDF de Drive que carga el administrador (colección pdfs), con las mismas reglas por curso, clase y retos ──
+  // GET /api/materiales/drive — la lista SIN el enlace. Quien no es miembro ve el catálogo con el candado "Solo miembros".
+  app.get('/api/materiales/drive', conEstado('No se pudieron cargar los materiales', 'materiales-drive', limites.lecturas, LECTURAS_POR_MINUTO, async (req, res, decoded, estado) => {
+    const lista = await leerPdfsDrive();
+    await cargarCursosLigados(decoded.uid, estado, idsDeCursos(lista));
+    return res.json({
+      ok: true, membresia: estado.membresia || estado.esAdmin, superados: estado.superados,
+      materiales: lista.map(m => porCurso.resumenPdfDrive(m, estado))
+    });
+  }));
+
+  // GET /api/materiales/drive/:id/enlace — el enlace de Drive solo si la persona cumple la regla del material
+  app.get('/api/materiales/drive/:id/enlace', conEstado('No se pudo abrir el material', 'enlace-drive', limites.descargas, DESCARGAS_POR_MINUTO, async (req, res, decoded, estado) => {
+    const id = typeof req.params.id === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(req.params.id) ? req.params.id : '';
+    const snap = id ? await db.collection('pdfs').doc(id).get() : null;
+    const material = snap && snap.exists ? porCurso.normalizarPdfDrive(id, snap.data()) : null;
+    if (!material) throw noExiste('Ese material no existe');
+    await cargarCursosLigados(decoded.uid, estado, [material.cursoId]);
+    if (!porCurso.acceso(material, estado).desbloqueado) return rechazar(res, bloqueado(material, estado, 'Los materiales'));
+    const enlaces = porCurso.enlacesDrive(material.driveId);
+    if (!enlaces) throw noExiste('El archivo de este material no está disponible por ahora');
+    return res.json({ ok: true, id: material.id, titulo: material.titulo, url: enlaces.ver, vista: enlaces.vista });
+  }));
+
+  // GET /api/materiales/cursos — los materiales ligados a un curso (de las dos fuentes), agrupados por curso, con su estado.
+  // La pantalla del curso la usa para listar "Material de este curso" y decir qué falta para abrir cada uno.
+  app.get('/api/materiales/cursos', conEstado('No se pudieron cargar los materiales de los cursos', 'materiales-cursos', limites.lecturas, LECTURAS_POR_MINUTO, async (req, res, decoded, estado) => {
+    const catalogo = catalogoMateriales.materiales.filter(m => m.acceso === 'curso');
+    const drive = (await leerPdfsDrive()).filter(m => m.cursoId);
+    await cargarCursosLigados(decoded.uid, estado, [...idsDeCursos(catalogo), ...idsDeCursos(drive)]);
+    const resumenes = [
+      ...catalogo.map(m => ({ ...materiales.resumenMaterial(m, estado), fuente: 'catalogo' })),
+      ...drive.map(m => porCurso.resumenPdfDrive(m, estado))
+    ];
+    return res.json({ ok: true, membresia: estado.membresia || estado.esAdmin, cursos: porCurso.agruparPorCurso(resumenes) });
+  }));
+
   // ════════════════════════════════════════════════════════════
   // ADMINISTRADOR (solo lectura): qué se cargó y qué se descartó
   // ════════════════════════════════════════════════════════════
@@ -143,9 +229,17 @@ function montarRutasMateriales(app, deps) {
   }));
 
   app.get('/api/admin/materiales', conAdmin('No se pudo cargar el estado de los materiales', 'admin-materiales', async (req, res) => {
+    const drive = await leerPdfsDrive();
+    const estado = await cargarCursosLigados('', { ...todoAbierto }, [...idsDeCursos(catalogoMateriales.materiales), ...idsDeCursos(drive)]);
     return res.json({
       ok: true,
-      materiales: catalogoMateriales.materiales.map(m => ({ ...materiales.resumenMaterial(m, todoAbierto), kb: Math.max(1, Math.round(m.bytes / 1024)) })),
+      materiales: catalogoMateriales.materiales.map(m => ({ ...materiales.resumenMaterial(m, estado), kb: Math.max(1, Math.round(m.bytes / 1024)) })),
+      // PDF de Drive cargados desde el panel: con su curso y clase, y si la liga es válida (el curso y la clase existen)
+      drive: drive.map(m => {
+        const info = m.cursoId ? estado.cursos.get(m.cursoId) : null;
+        const ligaValida = !m.cursoId || Boolean(info && (!m.clase || m.clase <= info.total) && !m.configuracionInvalida);
+        return { ...porCurso.resumenPdfDrive(m, estado), ligaValida };
+      }),
       errores: catalogoMateriales.errores
     });
   }));

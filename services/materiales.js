@@ -6,16 +6,18 @@
 // existir dentro de la carpeta de materiales (también tras resolver enlaces simbólicos) y empezar con "%PDF-".
 // Lo inválido se descarta con aviso en consola y queda en `errores` (nunca con la ruta del disco).
 // Acceso:  'miembros' abre con membresía vigente · 'retos' abre con membresía y retos superados >= requiereRetos
-//          · administrador: todo abierto · sin membresía: nada abre.
+//          · 'curso' (con "cursoId" y, opcional, "clase") abre con membresía cuando la persona terminó esa clase del curso
+//            (services/materiales-curso.js) · administrador: todo abierto · sin membresía: nada abre.
 
 const fs = require('fs');
 const path = require('path');
 const { limpiarTexto, urlHttps } = require('./texto');
+const porCurso = require('./materiales-curso');
 
 const ID_MATERIAL = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ARCHIVO_PDF = /^[a-z0-9]+(?:-[a-z0-9]+)*\.pdf$/;
 const TIPOS = Object.freeze(['guia', 'plantilla', 'checklist', 'glosario', 'infografia', 'presentacion']);
-const ACCESOS = Object.freeze(['miembros', 'retos']);
+const ACCESOS = Object.freeze(['miembros', 'retos', 'curso']);
 const ETIQUETA = /<[a-z/!?]/i;
 const ID_MAXIMO = 60;
 const BYTES_CATALOGO = 1024 * 1024;
@@ -46,7 +48,7 @@ function normalizarMaterial(crudo) {
   const id = typeof crudo.id === 'string' ? crudo.id : '';
   if (!id || id.length > ID_MAXIMO || !ID_MATERIAL.test(id)) falla('El "id" solo puede llevar minúsculas, números y guiones');
   if (!TIPOS.includes(crudo.tipo)) falla(`"tipo" debe ser uno de: ${TIPOS.join(', ')}`);
-  if (!ACCESOS.includes(crudo.acceso)) falla('"acceso" debe ser "miembros" o "retos"');
+  if (!ACCESOS.includes(crudo.acceso)) falla('"acceso" debe ser "miembros", "retos" o "curso"');
   if (typeof crudo.archivo !== 'string' || !ARCHIVO_PDF.test(crudo.archivo)) {
     falla('"archivo" debe ser un nombre como <id>.pdf (sin carpetas, sin "..", en minúsculas)');
   }
@@ -63,7 +65,19 @@ function normalizarMaterial(crudo) {
     }
     material.requiereRetos = crudo.requiereRetos;
   } else if (crudo.requiereRetos !== undefined && crudo.requiereRetos !== null) {
-    falla('Un material de acceso "miembros" no lleva "requiereRetos"');
+    falla(`Un material de acceso "${crudo.acceso}" no lleva "requiereRetos"`);
+  }
+  if (crudo.acceso === 'curso') {
+    const cursoId = porCurso.idCurso(crudo.cursoId);
+    if (!cursoId) falla('Un material de acceso "curso" necesita "cursoId" (el id del curso)');
+    material.cursoId = cursoId;
+    if (crudo.clase !== undefined && crudo.clase !== null) {
+      const clase = porCurso.numeroClase(crudo.clase);
+      if (!clase) falla('"clase" debe ser un entero de 1 a ' + porCurso.CLASE_MAX + ' (la primera clase es la 1)');
+      material.clase = clase;
+    } else material.clase = 0;
+  } else if ((crudo.cursoId !== undefined && crudo.cursoId !== null) || (crudo.clase !== undefined && crudo.clase !== null)) {
+    falla('Solo un material de acceso "curso" lleva "cursoId" y "clase"');
   }
   if (crudo.fuentes !== undefined) {
     if (!Array.isArray(crudo.fuentes)) falla('"fuentes" debe ser una lista');
@@ -141,8 +155,12 @@ function cargarMateriales(carpeta, { avisar = true } = {}) {
   return { materiales, errores };
 }
 
-// ── Estado de acceso ──  estado: { superados, membresia, esAdmin }
+// ── Estado de acceso ──  estado: { superados, membresia, esAdmin, vistas, cursos } (vistas y cursos: solo para los de acceso "curso")
 function acceso(material, estado) {
+  if (material.acceso === 'curso') {
+    const a = porCurso.acceso({ cursoId: material.cursoId, clase: material.clase, requiereRetos: 0 }, estado);
+    return { desbloqueado: a.desbloqueado, faltan: 0, soloMiembros: a.soloMiembros, cursoTitulo: a.cursoTitulo, pendiente: a.pendiente };
+  }
   const e = estado || {};
   const superados = Number.isInteger(e.superados) && e.superados > 0 ? e.superados : 0;
   const membresia = Boolean(e.esAdmin || e.membresia);
@@ -156,11 +174,14 @@ function acceso(material, estado) {
 // Lo que se lista (sin ruta, sin nombre de archivo, sin tamaño)
 function resumenMaterial(material, estado) {
   const a = acceso(material, estado);
-  return {
+  const resumen = {
     id: material.id, titulo: material.titulo, tipo: material.tipo, area: material.area, descripcion: material.descripcion,
     paginas: material.paginas, acceso: material.acceso, requiereRetos: material.requiereRetos || 0, licencia: material.licencia,
     desbloqueado: a.desbloqueado, faltan: a.faltan, soloMiembros: a.soloMiembros
   };
+  // Solo los ligados a un curso suman estos campos (el resto conserva la forma de siempre)
+  if (material.acceso === 'curso') Object.assign(resumen, porCurso.camposDeCondicion({ cursoId: material.cursoId, clase: material.clase }, { condicion: porCurso.condicionDe(material), cursoTitulo: a.cursoTitulo, pendiente: a.pendiente }));
+  return resumen;
 }
 
 const resumenMateriales = (materiales, estado) => (materiales || []).map(m => resumenMaterial(m, estado));
