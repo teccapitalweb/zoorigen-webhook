@@ -63,12 +63,15 @@ function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {}, 
   firestore.Timestamp = FakeTimestamp;
   firestore.FieldPath = { documentId: () => NOMBRE_DOC };
 
-  const registroAuth = { getUser: 0, getUsers: 0, enlaces: [], actualizaciones: [] };
+  const registroAuth = { getUser: 0, getUsers: 0, enlaces: [], actualizaciones: [], borrados: [], creados: [] };
   const usuarioAuth = uid => {
     const u = usuariosAuth[uid];
     if (!u) return null;
     const creacion = u.creationTime === undefined ? new Date().toUTCString() : u.creationTime;
-    return { uid, emailVerified: u.emailVerified === true, metadata: { creationTime: creacion } };
+    return {
+      uid, emailVerified: u.emailVerified === true, metadata: { creationTime: creacion },
+      email: u.email, displayName: u.displayName, providerData: u.providerData || []
+    };
   };
 
   const admin = {
@@ -88,6 +91,20 @@ function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {}, 
         return u;
       },
       updateUser: async (uid, cambios) => { registroAuth.actualizaciones.push({ uid, cambios }); return { uid }; },
+      deleteUser: async uid => {
+        if (!usuariosAuth[uid]) throw Object.assign(new Error('There is no user record'), { code: 'auth/user-not-found' });
+        registroAuth.borrados.push(uid);
+        delete usuariosAuth[uid];
+      },
+      createUser: async datos => {
+        if (usuariosAuth[datos.uid]) throw Object.assign(new Error('uid exists'), { code: 'auth/uid-already-exists' });
+        if (Object.values(usuariosAuth).some(u => u.email && datos.email && u.email.toLowerCase() === datos.email.toLowerCase())) {
+          throw Object.assign(new Error('email exists'), { code: 'auth/email-already-exists' });
+        }
+        registroAuth.creados.push(datos);
+        usuariosAuth[datos.uid] = { emailVerified: datos.emailVerified === true, email: datos.email, displayName: datos.displayName };
+        return { uid: datos.uid };
+      },
       generateEmailVerificationLink: async (email, opciones) => {
         registroAuth.enlaces.push({ email, opciones });
         return 'https://club-zoorigen.firebaseapp.com/__/auth/action?mode=verifyEmail&oobCode=CODIGO-PRUEBA&apiKey=x&lang=es';

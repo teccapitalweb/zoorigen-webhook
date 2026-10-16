@@ -52,12 +52,23 @@ const mesMexico = (fecha) => diaMexico(fecha).slice(0, 7);
 // ── Clasificación de un miembro ──
 function origenPlan(m = {}) {
   if (m.stripeSubscriptionId) return 'stripe';
+  if (m.esRegalo === true) return 'regalo';
   if (m.activadoManualmente) return 'manual';
   if (m.shopifyOrderId || m.viaShopify) return 'heredado';
   return (m.planVence || m.ultimoPago) ? 'otro' : 'ninguno';
 }
 
 const COBRO_FALLIDO = ['past_due', 'unpaid', 'incomplete'];
+const ESTADOS_STRIPE_TERMINADOS = ['canceled', 'cancelled', 'incomplete_expired'];
+
+// ¿Sigue cobrándose en Stripe? Regla conservadora a partir de lo que guarda el documento (nunca se consulta ni se toca
+// Stripe desde aquí): cualquier suscripción que no esté marcada como terminada cuenta como activa.
+function stripeActiva(m = {}) {
+  if (!m || !m.stripeSubscriptionId) return false;
+  if (ESTADOS_STRIPE_TERMINADOS.includes(String(m.stripeSubscriptionStatus || '').toLowerCase())) return false;
+  if (['cancelled', 'expired'].includes(m.planStatus)) return false;
+  return true;
+}
 
 // tieneAcceso: la MISMA regla del servidor (tieneAccesoVigente en server.js), inyectada para no duplicarla.
 function clasificarMiembro(m = {}, tieneAcceso) {
@@ -91,6 +102,8 @@ function vistaMiembro(id, m = {}, tieneAcceso) {
     esAdmin: m.role === 'admin',
     estado,
     conAcceso,
+    stripeActiva: stripeActiva(m),
+    esRegalo: m.esRegalo === true,
     planTipo: m.planTipo === 'anual' ? 'anual' : (m.planTipo === 'mensual' ? 'mensual' : null),
     origen: origenPlan(m),
     vence: aIso(m.planVence || m.fechaExpiracion),
@@ -134,7 +147,7 @@ function construirResumen({ miembros, certificados = { total: 0, completados: 0 
     cancelados: 0, vencidos: 0, administradores: 0
   };
   const porEstado = Object.fromEntries(Object.values(ESTADOS).map(e => [e, 0]));
-  const porOrigen = { stripe: 0, manual: 0, heredado: 0, otro: 0 };
+  const porOrigen = { stripe: 0, manual: 0, regalo: 0, heredado: 0, otro: 0 };
   const porPlan = { mensual: 0, anual: 0, otro: 0 };
   const proximosVencimientos = [];
 
@@ -262,6 +275,6 @@ function validarActivacion(cuerpo) {
 }
 
 module.exports = {
-  PRECIOS_LISTA_MXN, ESTADOS, ETIQUETAS_ESTADO, aFecha, aIso, diaMexico, mesMexico, origenPlan, clasificarMiembro,
+  PRECIOS_LISTA_MXN, ESTADOS, ETIQUETAS_ESTADO, aFecha, aIso, diaMexico, mesMexico, origenPlan, clasificarMiembro, stripeActiva,
   vistaMiembro, fichaMiembro, construirResumen, enmascararCorreo, limpiarTexto, validarActivacion, numeroMonto
 };
