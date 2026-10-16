@@ -149,7 +149,7 @@ test('administrador: 403 y GET no le ofrece el premio', async () => {
   assert.equal(g.xp.bienvenida, 0);
 });
 
-test('sin membresía: se puede reclamar, el XP queda guardado y GET sigue en vista previa sin revelar XP', async () => {
+test('sin membresía: se puede reclamar, el XP queda guardado y GET lo muestra en solo lectura (los logros siguen en vista previa)', async () => {
   const { app, db } = montar();
   const previa = (await premiosDe(app, 'sinplan')).body;
   assert.equal(previa.membresia, false);
@@ -164,10 +164,11 @@ test('sin membresía: se puede reclamar, el XP queda guardado y GET sigue en vis
 
   const despues = (await premiosDe(app, 'sinplan')).body;
   assert.equal(despues.membresia, false);
-  assert.deepEqual(despues.xp, { total: 0, logros: 0, retos: 0, referidos: 0, cursos: 0, bienvenida: 0 }, 'la vista previa no revela el XP');
+  assert.deepEqual(despues.xp, { total: 100, logros: 0, retos: 0, referidos: 0, cursos: 0, bienvenida: 100 }, 'el +100 de bienvenida SÍ se ve');
   assert.deepEqual(despues.cursos, { terminados: 0, lista: [] });
   assert.deepEqual(despues.bienvenida, { disponible: false, xp: 100 });
-  assert.equal(despues.nivel.xp, 0);
+  assert.equal(despues.nivel.xp, 100);
+  assert.ok(despues.logros.every(l => !('ganado' in l) && !('xp' in l)), 'la lista de logros sigue siendo vista previa');
 
   // Al suscribirse, el XP guardado cuenta
   db._data.set('miembros/sinplan', miembroConPlan({ name: 'Ya paga' }));
