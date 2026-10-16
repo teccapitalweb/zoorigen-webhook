@@ -372,3 +372,33 @@ test('15 retos: dos solicitudes a la vez abren el curso una sola vez', async () 
   assert.equal(db.value('calendariosCursos/ana').cursoAdelantado.cursoId, 'c2');
   assert.equal((await calendario(app)).body.primerCurso.aplica, false);
 });
+
+/* ───────────── Solo miembros nuevos pueden abrir el curso con 15 retos ───────────── */
+
+test('15 retos: un miembro de antes (plan anterior a la activación del calendario) NO abre su curso con retos, aunque ya tenga 15 hechos', async () => {
+  // La activación del calendario fue hace 10 días (ver activo()); este miembro empezó su plan hace 20 días y se registró hace 22
+  const { app, db } = servidor({
+    'miembros/ana': miembroConPlan({ name: 'Ana', createdAt: new Date(Date.now() - 22 * DIA).toISOString(), planInicio: ts(Date.now() - 20 * DIA) }),
+    'retosUsuario/ana': retosHechos(8, 6, 5)
+  });
+  const r = await leerRetos(app);
+  assert.equal(r.body.primerCurso.aplica, false, 'la tarjeta de los 15 retos no aplica a miembros de antes');
+  const c = (await calendario(app)).body;
+  assert.equal(c.primerCurso.aplica, false);
+  const calDoc = db.value('calendariosCursos/ana');
+  assert.ok(!calDoc || !calDoc.cursoAdelantado, 'no se adelantó ningún curso');
+  assert.ok(!db.value('miembros/ana').cursoAdelantado, 'la ficha no se tocó');
+});
+
+test('15 retos: el curso cerrado de un miembro de antes no ofrece la vía de los 15 retos en su mensaje; el de un miembro nuevo sí', async () => {
+  const antiguo = servidor({ 'miembros/ana': miembroConPlan({ name: 'Ana', createdAt: new Date(Date.now() - 12 * DIA).toISOString(), planInicio: ts(Date.now() - 20 * DIA) }) }, { CALENDARIO_MODO: 'estricto' });
+  const c0 = (await calendario(antiguo.app)).body;
+  const cerrado0 = c0.cursos.find(x => !x.abierto);
+  if (cerrado0) {
+    const rr = await request(antiguo.app).post('/api/bunny/embed-token').set(auth('token-ana')).send({ videoId: cerrado0.videoIds ? cerrado0.videoIds[0] : '00000000-0000-0000-0000-000000000000', cursoId: cerrado0.cursoId });
+    if (rr.status === 403 && rr.body && rr.body.error) assert.doesNotMatch(rr.body.error, /15 retos/, 'un miembro de antes no ve la oferta de 15 retos');
+  }
+  const nuevo = servidor({ 'miembros/ana': miembroNuevo(2) }, { CALENDARIO_MODO: 'estricto' });
+  const c1 = (await calendario(nuevo.app)).body;
+  assert.equal(c1.primerCurso.aplica, true, 'el miembro nuevo sí tiene la vía de los 15 retos');
+});

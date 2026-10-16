@@ -161,6 +161,13 @@ function crearServicioCalendario(deps) {
   const tituloDe = (lista, id) => { const c = lista.find(x => x.id === id); return c ? c.titulo : ''; };
 
   /* ── Primer curso con 15 retos ── */
+  // ¿Empezó su plan desde que se activó el calendario del servidor (config/calendario.nuevoDesde)? Sin esa fecha o sin fecha de plan: no.
+  async function esMiembroNuevo(doc, ahoraMs) {
+    try {
+      const desde = await leerNuevoDesde(ahoraMs);
+      return Number.isFinite(desde) && doc && Number.isFinite(doc.planInicioMs) && doc.planInicioMs >= desde;
+    } catch (error) { return false; }
+  }
   // Devuelve { aplica, estado: 'pendiente' | 'abierto-ahora' | 'ninguno', cursoId, titulo, desbloqueoEn, diasFalta, progreso }
   // Si el avance ya completa los 15 retos y el curso sigue cerrado, lo abre (una sola vez) y lo anota en el calendario.
   async function evaluarPrimerCurso(uid, estadoRetos, ctx, ahoraMs = Date.now()) {
@@ -171,6 +178,8 @@ function crearServicioCalendario(deps) {
       if (!cuadro) return sin;
       const { doc, lista } = cuadro;
       if (doc.cursoAdelantado || !doc.primerCursoId) return sin;
+      // Solo miembros NUEVOS: quien empezó su plan desde que se activó el calendario del servidor. Los miembros de antes conservan su calendario de siempre.
+      if (!(await esMiembroNuevo(doc, ahoraMs))) return sin;
       const estado = cuadro.estados.find(e => e.cursoId === doc.primerCursoId);
       if (!estado || estado.abierto) return sin;          // ya se abrió por su fecha o por un premio
       const progreso = retos.progresoPrimerCurso(estadoRetos);
@@ -250,7 +259,8 @@ function crearServicioCalendario(deps) {
       const e = cuadro.estados.find(x => x.cursoId === cursoId);
       if (!e) return { permitido: true, motivo: 'curso-fuera-de-fila' };
       if (e.abierto) return { permitido: true, motivo: 'abierto' };
-      return { permitido: false, motivo: 'bloqueado', cursoId, desbloqueoEn: e.desbloqueoEn, diasFalta: e.diasFalta };
+      const puedeAdelantar = !cuadro.doc.cursoAdelantado && cuadro.doc.primerCursoId === cursoId && await esMiembroNuevo(cuadro.doc, ahoraMs);
+      return { permitido: false, motivo: 'bloqueado', cursoId, desbloqueoEn: e.desbloqueoEn, diasFalta: e.diasFalta, puedeAdelantar };
     } catch (error) {
       console.warn('[Calendario] No se pudo revisar el acceso al curso; se permite:', error && error.message);
       return { permitido: true, motivo: 'error' };
@@ -280,7 +290,7 @@ function crearServicioCalendario(deps) {
   function mensajeBloqueado(r) {
     const n = Number(r && r.diasFalta);
     const cuando = Number.isFinite(n) ? (n <= 1 ? 'mañana' : `en ${n} días`) : 'más adelante';
-    return `Este curso todavía no está abierto: se desbloquea ${cuando}. También puedes abrirlo antes resolviendo 15 retos en la sección Retos.`;
+    return `Este curso todavía no está abierto: se desbloquea ${cuando}.` + (r && r.puedeAdelantar ? ' También puedes abrirlo antes resolviendo 15 retos en la sección Retos.' : '');
   }
 
   // Aplica la decisión: en modo estricto rechaza; en transición solo lo anota y deja pasar.
