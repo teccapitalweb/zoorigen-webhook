@@ -53,9 +53,9 @@ function conAdminEmails(valor, fn) {
 
 const RUTAS_GET = [
   '/api/admin/yo', '/api/admin/resumen', '/api/admin/miembros', '/api/admin/miembros/miembro1', '/api/admin/comunidad',
-  '/api/admin/referidos', '/api/admin/retos', '/api/admin/estado'
+  '/api/admin/referidos', '/api/admin/retos', '/api/admin/estado', '/api/admin/progreso-legado'
 ];
-const RUTAS_POST = ['/api/admin/miembros/miembro1/activar', '/api/admin/miembros/miembro1/cancelar'];
+const RUTAS_POST = ['/api/admin/miembros/miembro1/activar', '/api/admin/miembros/miembro1/cancelar', '/api/admin/progreso-legado/miembro1/importar'];
 
 test('sin sesión: todas las rutas del panel responden 401 y no devuelven datos', conAdminEmails(CORREO_ADMIN, async () => {
   const { app } = montar();

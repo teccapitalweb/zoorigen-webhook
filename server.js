@@ -1027,7 +1027,11 @@ montarRutasNoticias(app, {
 // ── Panel de administración: resumen, miembros, comunidad, referidos, retos y estado (services/rutas-admin.js) ──
 // Todas las rutas /api/admin/* de este archivo exigen administrador verificado en el servidor (ADMIN_EMAILS o marca en Firestore).
 montarRutasAdmin(app, {
-  express, db, admin, autenticarAdmin, errorHttp, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador
+  express, db, admin, auth, autenticarAdmin, errorHttp, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador,
+  // Ensayo e importación del avance anterior de los miembros (GET/POST /api/admin/progreso-legado): las mismas reglas que la
+  // importación automática (services/rutas-certificados.js)
+  importarLegado: app.certificados.importarLegado,
+  corteLegado: LEGACY_PROGRESS_IMPORT_BEFORE, firmaClave: CERTIFICATE_SIGNING_KEY, limiteAnteriores: CERTIFICADOS_ANTERIORES_HASTA
 });
 
 // Solo escucha al ejecutarse directamente (node server.js); las pruebas importan `app`.

@@ -8,6 +8,8 @@
 //   GET  /api/admin/miembros/:uid              ficha: plan, progreso por curso, certificados, referidos y retos
 //   POST /api/admin/miembros/:uid/activar      activa o amplía el plan a mano (transferencia, efectivo, cortesía)
 //   POST /api/admin/miembros/:uid/cancelar     marca la membresía como cancelada (con acceso hasta su fecha)
+//   GET  /api/admin/progreso-legado            ensayo SIN escribir: qué importaría el avance anterior de cada miembro (paginado)
+//   POST /api/admin/progreso-legado/:uid/importar   la misma importación única e idempotente para una persona (se anota)
 //   GET  /api/admin/comunidad                  tarjetas del directorio y discusiones recientes del foro
 //   GET  /api/admin/referidos                  invitaciones por estado y quiénes invitan más
 //   GET  /api/admin/retos                      retos superados y XP de toda la comunidad
@@ -32,7 +34,7 @@ const CACHE_MS = 45 * 1000;
 const UID_VALIDO = /^[A-Za-z0-9_-]{1,128}$/;
 
 function montarRutasAdmin(app, deps) {
-  const { db, admin, errorHttp, autenticarAdmin, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador } = deps;
+  const { db, admin, auth, errorHttp, autenticarAdmin, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador } = deps;
   const FieldValue = admin.firestore.FieldValue;
   const limites = { lecturas: new Map(), escrituras: new Map() };
   const express = deps.express;
@@ -360,6 +362,195 @@ function montarRutasAdmin(app, deps) {
       top: filas.slice(0, 10)
     });
   }));
+
+  // ════════════════════════════════════════════════════════════
+  // Avance de miembros: ensayo (sin escribir nada) de la importación del progreso anterior, e importación por persona
+  // ════════════════════════════════════════════════════════════
+  // GET lee miembros, cursos, certificados y progreso, y calcula con services/certificados.js (diagnosticarLegado, que usa la
+  // MISMA planearImportacionLegado que la importación real) qué contendría la importación. NO escribe nada.
+  // POST ejecuta la misma importación única (idempotente, solo une, nunca quita ni borra courseProgress) y la anota.
+  const esObjeto = v => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
+  const certRegla = require('./certificados');
+  const POR_PAGINA_LEGADO = 25;
+  const MAX_POR_PAGINA_LEGADO = 50;
+  const TOPE_MIEMBROS_LEGADO = 400;
+  const corteMs = certRegla.corteLegado(deps.corteLegado);
+  const limiteTextoLegado = String(deps.limiteAnteriores || '').trim().replace(/^["']|["']$/g, '').trim();
+  const limiteAnteriores = certRegla.limiteEnMs(limiteTextoLegado);
+  const firmaClave = String(deps.firmaClave || '').trim();
+  const importarLegado = typeof deps.importarLegado === 'function' ? deps.importarLegado : null;
+
+  const cursosCompletos = refrescarLectura => conCache('cursos-completos', async () => {
+    const snap = await db.collection('cursos').get();
+    return new Map(snap.docs.map(d => [d.id, d.data() || {}]));
+  }, refrescarLectura);
+
+  async function creacionesDeAuth(uids) {
+    const salida = new Map();
+    if (!auth) return salida;
+    for (let i = 0; i < uids.length; i += 100) {
+      const trozo = uids.slice(i, i + 100);
+      try {
+        const r = await auth.getUsers(trozo.map(uid => ({ uid })));
+        for (const u of (r && r.users) || []) salida.set(u.uid, (u.metadata && u.metadata.creationTime) || null);
+      } catch (error) {
+        console.warn('[Admin avance] No se pudo leer la fecha de creación de las cuentas:', error && error.message);
+      }
+    }
+    return salida;
+  }
+
+  async function progresosDe(uids) {
+    const salida = new Map();
+    for (let i = 0; i < uids.length; i += 10) {
+      await Promise.all(uids.slice(i, i + 10).map(async uid => {
+        try {
+          const snap = await db.collection('miembros').doc(uid).collection('progresoCursos').get();
+          salida.set(uid, new Map(snap.docs.map(d => [d.id, d.data() || {}])));
+        } catch (_) { salida.set(uid, null); }
+      }));
+    }
+    return salida;
+  }
+
+  // Una fila del panel. certificadosDeUid: [{ id, ...datos }] · creacion: texto de fecha o null/undefined
+  function filaLegado(uid, data, { creacion, cursosMapa, certificadosDeUid, progresoActual, ahora }) {
+    const diag = certRegla.diagnosticarLegado({
+      uid, miembro: data, creacion, corte: corteMs, cursos: cursosMapa, certificados: certificadosDeUid,
+      progresoActual, llave: firmaClave, contexto: { ahora, limite: limiteAnteriores }
+    });
+    const v = panel.vistaMiembro(uid, data, tieneAcceso);
+    return {
+      uid, nombre: nombreDe(data), correo: panel.enmascararCorreo(data.email),
+      estadoPlan: v.estado, planTipo: v.planTipo, conAcceso: v.conAcceso,
+      veredicto: diag.veredicto, elegible: diag.elegible, motivoNoElegible: diag.motivoNoElegible,
+      importado: diag.importado, importadoEn: panel.aIso(data.progresoLegadoImportadoEn),
+      verificado: diag.verificado, formatoInvalido: diag.formatoInvalido,
+      cursosConAvance: diag.cursosConAvance, clasesViejas: diag.clasesViejas, clasesImportables: diag.clasesImportables,
+      clasesPerdidas: diag.clasesPerdidas, clasesFaltantes: diag.clasesFaltantes,
+      cursosCompletadosViejos: diag.cursosCompletadosViejos, listosParaCertificado: diag.listosParaCertificado,
+      entradasInvalidas: diag.entradasInvalidas, certificados: diag.certificados,
+      detalleRecortado: diag.detalleRecortado, cursos: diag.cursos
+    };
+  }
+
+  // Orden de la tabla: primero lo que pide atención
+  const ORDEN_VEREDICTO = { parcial: 0, 'no-elegible': 1, 'ya-importado': 2, completo: 3, 'sin-progreso-viejo': 4 };
+  function severidad(f) {
+    if (f.veredicto === 'ya-importado') return f.clasesFaltantes > 0 ? 0.5 : (f.clasesPerdidas > 0 ? 0.6 : 2);
+    return ORDEN_VEREDICTO[f.veredicto];
+  }
+
+  const tieneCampoViejo = d => {
+    const v = d.courseProgress;
+    if (v === undefined || v === null) return false;
+    return !(esObjeto(v) && !Object.keys(v).length);
+  };
+
+  async function revisarLegado(refrescarLectura) {
+    const [mi, ce, cursosMapa] = await Promise.all([miembros(refrescarLectura), certificados(refrescarLectura), cursosCompletos(refrescarLectura)]);
+    const candidatos = mi.docs.filter(({ data }) => tieneCampoViejo(data));
+    const analizados = candidatos.slice(0, TOPE_MIEMBROS_LEGADO);
+    const uids = analizados.map(d => d.id);
+    const porUid = new Map();
+    for (const { id, data } of ce.docs) {
+      for (const dueno of new Set([String(data.uid || ''), String(data.memberUid || '')])) {
+        if (!dueno) continue;
+        if (!porUid.has(dueno)) porUid.set(dueno, []);
+        porUid.get(dueno).push({ ...data, id });
+      }
+    }
+    const importadosUids = analizados.filter(({ data }) => data.progresoLegadoImportado === true).map(d => d.id);
+    const [creaciones, progresos] = await Promise.all([creacionesDeAuth(uids), progresosDe(importadosUids)]);
+    const ahora = new Date();
+    const filas = analizados.map(({ id, data }) => filaLegado(id, data, {
+      creacion: creaciones.get(id), cursosMapa, certificadosDeUid: porUid.get(id) || [],
+      progresoActual: progresos.get(id) || (data.progresoLegadoImportado === true ? new Map() : null), ahora
+    }));
+    filas.sort((a, b) => severidad(a) - severidad(b) || b.clasesViejas - a.clasesViejas || a.nombre.localeCompare(b.nombre, 'es'));
+
+    const cuenta = f => filas.filter(f).length;
+    const resumen = {
+      miembros: mi.docs.length,
+      conAvanceViejo: cuenta(f => f.veredicto !== 'sin-progreso-viejo'),
+      completos: cuenta(f => f.veredicto === 'completo'),
+      parciales: cuenta(f => f.veredicto === 'parcial'),
+      noElegibles: cuenta(f => f.veredicto === 'no-elegible'),
+      yaImportadosVerificados: cuenta(f => f.veredicto === 'ya-importado' && f.clasesFaltantes === 0 && f.clasesPerdidas === 0),
+      yaImportadosConFaltantes: cuenta(f => f.veredicto === 'ya-importado' && f.clasesFaltantes > 0),
+      yaImportadosConPerdidas: cuenta(f => f.veredicto === 'ya-importado' && f.clasesFaltantes === 0 && f.clasesPerdidas > 0),
+      clasesViejas: filas.reduce((n, f) => n + f.clasesViejas, 0),
+      clasesImportables: filas.reduce((n, f) => n + f.clasesImportables, 0),
+      clasesPerdidas: filas.reduce((n, f) => n + f.clasesPerdidas, 0),
+      listosParaCertificado: filas.reduce((n, f) => n + f.listosParaCertificado, 0)
+    };
+    resumen.sinProgresoViejo = mi.docs.length - resumen.conAvanceViejo;
+    resumen.verificados = resumen.completos + resumen.yaImportadosVerificados;
+    resumen.requierenRevision = resumen.parciales + resumen.noElegibles + resumen.yaImportadosConFaltantes + resumen.yaImportadosConPerdidas;
+    return { filas, resumen, truncado: mi.truncado || candidatos.length > TOPE_MIEMBROS_LEGADO, generado: ahora.toISOString() };
+  }
+
+  const enteroEnRango = (valor, porDefecto, min, max) => {
+    const n = Number.parseInt(valor, 10);
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : porDefecto;
+  };
+
+  app.get('/api/admin/progreso-legado', conAdmin('No se pudo revisar el avance de los miembros', 'avance', async (req, res) => {
+    const r = await conCache('legado', () => revisarLegado(refrescar(req)), refrescar(req));
+    const limite = enteroEnRango(req.query.limite, POR_PAGINA_LEGADO, 1, MAX_POR_PAGINA_LEGADO);
+    const paginas = Math.max(1, Math.ceil(r.filas.length / limite));
+    const pagina = enteroEnRango(req.query.pagina, 1, 1, paginas);
+    return res.json({
+      ok: true, generado: r.generado, truncado: r.truncado,
+      configuracion: {
+        importacionActiva: Number.isFinite(corteMs), corte: Number.isFinite(corteMs) ? new Date(corteMs).toISOString() : null,
+        certificados: limiteTextoLegado === '' ? 'transicion' : (Number.isNaN(limiteAnteriores) ? 'limite-invalido' : 'con-limite'),
+        firmaConfigurada: firmaClave !== ''
+      },
+      resumen: r.resumen, pagina, paginas, limite, total: r.filas.length,
+      miembros: r.filas.slice((pagina - 1) * limite, pagina * limite)
+    });
+  }));
+
+  app.post('/api/admin/progreso-legado/:uid/importar', analizadorJson, conAdmin('No se pudo importar el avance', 'importar-avance', async (req, res, decoded) => {
+    if (!importarLegado) throw errorHttp(503, 'La importación del avance no está disponible');
+    const uid = uidDe(req);
+    const cuerpo = esObjeto(req.body) ? req.body : {};
+    for (const campo of ['reintentar', 'aceptarCuentaPosterior']) {
+      if (cuerpo[campo] !== undefined && typeof cuerpo[campo] !== 'boolean') throw errorHttp(400, 'Los datos enviados no son válidos');
+    }
+    const opciones = { reintentar: cuerpo.reintentar === true, aceptarCuentaPosterior: cuerpo.aceptarCuentaPosterior === true };
+    const snap = await db.collection('miembros').doc(uid).get();
+    if (!snap.exists) throw errorHttp(404, 'No encontramos a esa persona');
+
+    const resultado = await importarLegado(uid, opciones);
+    cache.delete('miembros'); cache.delete('legado');
+    if (resultado.estado === 'importado') {
+      await anotarAccion(decoded, 'importar-avance', uid,
+        `Importó el avance anterior de ${nombreDe(snap.data())}: ${resultado.clasesImportadas} clases en ${resultado.cursosImportados} cursos`,
+        { clases: resultado.clasesImportadas, cursos: resultado.cursosImportados, reintento: opciones.reintentar, cuentaPosterior: opciones.aceptarCuentaPosterior });
+    }
+
+    // Lectura fresca de esta persona para que el panel actualice su fila
+    const [miembroSnap, cursosMapa, porMiembro, porUid, progresoSnap, creaciones] = await Promise.all([
+      db.collection('miembros').doc(uid).get(), cursosCompletos(true),
+      db.collection('certificados').where('memberUid', '==', uid).limit(200).get(),
+      db.collection('certificados').where('uid', '==', uid).limit(200).get(),
+      db.collection('miembros').doc(uid).collection('progresoCursos').get(),
+      creacionesDeAuth([uid])
+    ]);
+    const certs = new Map();
+    for (const d of [...porMiembro.docs, ...porUid.docs]) certs.set(d.id, { ...(d.data() || {}), id: d.id });
+    const fila = filaLegado(uid, miembroSnap.data() || {}, {
+      creacion: creaciones.get(uid), cursosMapa, certificadosDeUid: [...certs.values()],
+      progresoActual: new Map(progresoSnap.docs.map(d => [d.id, d.data() || {}])), ahora: new Date()
+    });
+    const cuerpoRespuesta = { ok: resultado.estado !== 'no-elegible', resultado, miembro: fila };
+    if (resultado.estado === 'no-elegible') {
+      return res.status(409).json({ ...cuerpoRespuesta, error: 'Esta cuenta no cumple la regla de fecha para importar el avance automáticamente' });
+    }
+    return res.json(cuerpoRespuesta);
+  }, { escritura: true }));
 
   // ════════════════════════════════════════════════════════════
   // Estado del sistema (solo nombres de variables y si están definidas; nunca sus valores)

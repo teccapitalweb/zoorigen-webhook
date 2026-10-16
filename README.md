@@ -527,6 +527,22 @@ completedAt? } }`). Sin importarlo, el orden secuencial dejaría a esas cuentas 
   se deja la última clase pendiente para que el flujo normal emita el certificado firmado. El campo viejo no se borra.
 Independientemente de esta importación, los cursos que tienen certificado vigente aparecen completados (ver «Certificados anteriores»).
 
+**Formato real del sitio viejo** (recuperado de `pages/club-biblioteca.html` y `assets/js/club.js` de la etiqueta
+`respaldo-sitio-antes-de-publicar-2026-10-15`): la clave es el id del documento de `cursos` y `completedLessons` guarda el **índice** de la
+clase dentro de `lecciones` (enteros desde 0; el sitio viejo permitía quitar una clase ya marcada, así que puede haber huecos). Las claves
+inválidas se descartan **antes** de aplicar el tope `MAX_CURSOS_LEGADO` (200). La importación es una unión: nunca quita avance ni toca
+`courseProgress`, y también se ejecuta antes de marcar una clase (`POST /api/cursos/:cursoId/progreso`) por si el miembro llega sin haber
+pedido su progreso.
+
+**Ensayo y reparación desde el panel** (solo administradores): `GET /api/admin/progreso-legado?pagina=1&limite=25&refrescar=1` calcula, SIN
+escribir nada y con las mismas reglas que la importación real (`diagnosticarLegado` usa `planearImportacionLegado`), qué importaría el avance
+anterior de cada miembro: cursos y clases viejas, clases que se importarían, cursos completados, certificados anteriores, si ya se importó
+(y si lo guardado contiene todo), si la cuenta es elegible por fecha y un veredicto: `completo`, `parcial`, `sin-progreso-viejo`,
+`ya-importado` o `no-elegible`. Los correos salen enmascarados. `POST /api/admin/progreso-legado/:uid/importar` ejecuta la misma
+importación única para una persona (cuerpo opcional `{ "reintentar": true }` para volver a unir el avance de alguien ya importado y
+`{ "aceptarCuentaPosterior": true }` para una cuenta creada después del corte; ambos solo desde el panel). Se anota en `adminAcciones` y tiene
+límite de 20 peticiones por minuto. Pruebas: `test/avance-legado.test.js`.
+
 ### PDF y correo
 
 `services/certificado-pdf.js` genera el certificado en A4 horizontal (pdfkit + qrcode) con la identidad de Zoorigen (verde `#1F5F3A` y

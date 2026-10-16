@@ -379,6 +379,19 @@ function cuentaElegibleParaLegado(creacion, corte) {
   return Number.isFinite(creada) && Number.isFinite(corte) && creada < corte;
 }
 
+// Claves de courseProgress que se procesan: ids de curso con forma válida, hasta MAX_CURSOS_LEGADO
+function clavesDeCursoLegado(courseProgress) {
+  if (!esObjeto(courseProgress)) return [];
+  return Object.keys(courseProgress).filter(id => ID_CURSO_REGEX.test(id)).slice(0, MAX_CURSOS_LEGADO);
+}
+
+// Clases que el sitio viejo guardó como vistas de un curso: enteros >= 0, sin repetir, ordenados.
+// (El sitio viejo guardaba el ÍNDICE de la clase dentro de `lecciones` del curso: completedLessons: [0, 1, 4].)
+function clasesViejasDe(viejo) {
+  const pedidas = esObjeto(viejo) && Array.isArray(viejo.completedLessons) ? viejo.completedLessons : [];
+  return [...new Set(pedidas.filter(i => Number.isInteger(i) && i >= 0))].sort((a, b) => a - b);
+}
+
 // courseProgress: { [cursoId]: { completedLessons:[int], isCompleted, certificateFolio?, completedAt? } }
 // cursos: Map(cursoId -> datos del curso o null) · certificados: [{ id, ...datos }] de la persona
 // Devuelve { items: [{ cursoId, doc, completadoEnIso }], importadas }. Nunca emite certificados.
@@ -387,14 +400,14 @@ function planearImportacionLegado({ uid, courseProgress, cursos, certificados, l
   let importadas = 0;
   if (!esObjeto(courseProgress)) return { items, importadas };
   const lista = Array.isArray(certificados) ? certificados : [];
-  for (const cursoId of Object.keys(courseProgress).slice(0, MAX_CURSOS_LEGADO)) {
-    if (!ID_CURSO_REGEX.test(cursoId)) continue;
+  // Primero se descartan las claves que no son ids de curso y DESPUÉS se aplica el tope: así miles de claves basura
+  // no desplazan a los cursos reales.
+  for (const cursoId of clavesDeCursoLegado(courseProgress)) {
     const curso = cursos instanceof Map ? cursos.get(cursoId) : null;
     const total = leccionesDe(curso).length;
     if (!total) continue;
     const viejo = courseProgress[cursoId];
-    const pedidas = esObjeto(viejo) && Array.isArray(viejo.completedLessons) ? viejo.completedLessons : [];
-    let vistas = [...new Set(pedidas.filter(i => Number.isInteger(i) && i >= 0 && i < total))].sort((a, b) => a - b);
+    let vistas = clasesViejasDe(viejo).filter(i => i < total);
     if (!vistas.length) continue;
 
     const delCurso = lista.filter(c => String(c.courseId || c.cursoId || '') === cursoId
@@ -430,6 +443,145 @@ function unirProgreso(existente, importado) {
     quizzesAprobados: enteros([...e.quizzesAprobados, ...importado.quizzesAprobados]),
     completado: e.completado || importado.completado === true,
     certificadoFolio: e.certificadoFolio || importado.certificadoFolio || null
+  };
+}
+
+// ── Revisión (sin escribir nada) de lo que importaría la importación única ──
+// Es el "ensayo" que usa el panel de administración: llama a la MISMA planearImportacionLegado que la importación real,
+// así que lo que muestra es exactamente lo que se importaría.
+//   miembro: datos de miembros/{uid} · creacion: fecha de creación de la cuenta en Firebase Auth (o null)
+//   corte: milisegundos (corteLegado) o NaN · cursos: Map(cursoId -> datos del curso | null)
+//   certificados: [{ id, ...datos }] de la persona · progresoActual: Map(cursoId -> documento crudo de progresoCursos) | null
+//   contexto: { ahora, limite } para revisar los certificados anteriores como lo hace el servidor
+// Devuelve { veredicto, elegible, motivoNoElegible, importado, ... , cursos:[{ cursoId, estado, ... }] }.
+// Estados de curso: 'ok' · 'listo-para-certificado' (terminado sin certificado: queda la última clase para emitirlo)
+//   · 'fuera-de-rango' (clases que el curso ya no tiene) · 'curso-eliminado' · 'sin-clases' · 'id-invalido' · 'excede-limite'
+//   · 'datos-invalidos' (la entrada no se puede leer; no cuenta como avance).
+// Veredictos: 'sin-progreso-viejo' · 'ya-importado' · 'no-elegible' · 'completo' · 'parcial'.
+const MAX_DETALLE_LEGADO = 60;
+
+function diagnosticarLegado({ uid, miembro, creacion, corte, cursos, certificados, progresoActual, llave, contexto }) {
+  const m = esObjeto(miembro) ? miembro : {};
+  const ctx = esObjeto(contexto) ? contexto : {};
+  const viejo = m.courseProgress;
+  const importado = m.progresoLegadoImportado === true;
+  const formatoInvalido = viejo !== undefined && viejo !== null && !esObjeto(viejo);
+  const claves = esObjeto(viejo) ? Object.keys(viejo) : [];
+  const procesadas = new Set(clavesDeCursoLegado(viejo));
+  const mapaCursos = cursos instanceof Map ? cursos : new Map();
+  const lista = Array.isArray(certificados) ? certificados : [];
+
+  // ¿La cuenta puede importar? (misma regla que la importación real)
+  let elegible = cuentaElegibleParaLegado(creacion, corte);
+  let motivoNoElegible = null;
+  if (!elegible) {
+    if (!Number.isFinite(corte)) motivoNoElegible = 'sin-corte';
+    else if (!Date.parse(String(creacion || ''))) motivoNoElegible = 'sin-fecha-cuenta';
+    else motivoNoElegible = 'cuenta-posterior';
+  }
+
+  const plan = planearImportacionLegado({ uid, courseProgress: viejo, cursos: mapaCursos, certificados: lista, llave });
+  const itemDe = new Map(plan.items.map(i => [i.cursoId, i]));
+
+  // Certificados de la persona, revisados como los revisa el servidor
+  const propios = lista.filter(c => String(c.memberUid || c.uid || '') === uid)
+    .map(c => ({ id: String(c.id), data: c }));
+  const filasCert = evaluarCertificados(propios, {
+    llave, ahora: ctx.ahora instanceof Date ? ctx.ahora : new Date(), limite: ctx.limite,
+    cursoExiste: id => Boolean(mapaCursos.get(id)), miembroExiste: id => id === uid
+  });
+  const certificadosResumen = {
+    total: filasCert.length,
+    firmados: filasCert.filter(f => f.estado === 'firmado').length,
+    aceptables: filasCert.filter(f => f.estado === 'aceptable').length,
+    noAceptables: filasCert.filter(f => f.estado === 'no-aceptable').length
+  };
+  const estadoCertDe = cursoId => {
+    const del = filasCert.filter(f => f.cursoId === cursoId);
+    if (!del.length) return null;
+    return del.some(f => f.estado === 'firmado') ? 'firmado' : (del.some(f => f.estado === 'aceptable') ? 'aceptable' : 'no-aceptable');
+  };
+
+  const actuales = progresoActual instanceof Map ? progresoActual : null;
+  const detalle = [];
+  const totales = {
+    cursosConAvance: 0, clasesViejas: 0, clasesImportables: 0, clasesPerdidas: 0, clasesFaltantes: 0,
+    cursosCompletadosViejos: 0, listosParaCertificado: 0, entradasInvalidas: 0
+  };
+
+  for (const cursoId of claves) {
+    const v = viejo[cursoId];
+    const viejas = clasesViejasDe(v);
+    const completadoViejo = esObjeto(v) && v.isCompleted === true;
+    const base = { cursoId: String(cursoId).slice(0, 150), clasesViejas: viejas.length, completadoViejo };
+
+    if (!viejas.length && !completadoViejo) {
+      // Vacía (sin clases ni marca de completado) o ilegible: no hay avance que perder
+      if (v !== null && v !== undefined && !(esObjeto(v) && Array.isArray(v.completedLessons))) {
+        totales.entradasInvalidas += 1;
+        if (detalle.length < MAX_DETALLE_LEGADO) detalle.push({ ...base, estado: 'datos-invalidos', curso: null, clasesImportables: 0, clasesPerdidas: 0, clasesActuales: 0, certificado: null, faltantes: 0 });
+      }
+      continue;
+    }
+
+    totales.cursosConAvance += 1;
+    totales.clasesViejas += viejas.length;
+    if (completadoViejo) totales.cursosCompletadosViejos += 1;
+
+    let estado;
+    let curso = null;
+    let total = 0;
+    let importables = 0;
+    let perdidas = viejas.length;
+    let faltantes = 0;
+    if (!ID_CURSO_REGEX.test(cursoId)) estado = 'id-invalido';
+    else if (!procesadas.has(cursoId)) estado = 'excede-limite';
+    else {
+      curso = mapaCursos.get(cursoId) || null;
+      total = curso ? leccionesDe(curso).length : 0;
+      if (!curso) estado = 'curso-eliminado';
+      else if (!total) estado = 'sin-clases';
+      else {
+        const item = itemDe.get(cursoId);
+        importables = item ? item.doc.sesionesVistas.length : 0;
+        const dentro = viejas.filter(i => i < total);
+        // Curso terminado sin certificado (o con un certificado que no sirve): queda la última clase pendiente
+        const ultimaPendiente = dentro.length > 0 && todasVistas(dentro, total) && !(item && item.doc.completado === true);
+        perdidas = viejas.length - importables - (ultimaPendiente ? 1 : 0);
+        estado = perdidas > 0 ? 'fuera-de-rango' : (ultimaPendiente ? 'listo-para-certificado' : 'ok');
+        if (ultimaPendiente) totales.listosParaCertificado += 1;
+        if (actuales && item) {
+          const ahora = normalizarProgreso(actuales.get(cursoId));
+          faltantes = item.doc.sesionesVistas.filter(i => !ahora.sesionesVistas.includes(i)).length;
+          if (item.doc.completado === true && !ahora.completado) faltantes += 1;
+        }
+      }
+    }
+    totales.clasesImportables += importables;
+    totales.clasesPerdidas += perdidas;
+    totales.clasesFaltantes += faltantes;
+    if (detalle.length < MAX_DETALLE_LEGADO) {
+      detalle.push({
+        ...base, estado, curso: curso ? tituloDeCurso(curso) : null, clasesActuales: total,
+        clasesImportables: importables, clasesPerdidas: perdidas, faltantes, certificado: estadoCertDe(cursoId)
+      });
+    }
+  }
+
+  const tieneAvance = totales.cursosConAvance > 0;
+  let veredicto;
+  if (!tieneAvance) veredicto = 'sin-progreso-viejo';
+  else if (importado) veredicto = 'ya-importado';
+  else if (!elegible) veredicto = 'no-elegible';
+  else veredicto = totales.clasesPerdidas > 0 ? 'parcial' : 'completo';
+
+  return {
+    veredicto, elegible, motivoNoElegible: elegible ? null : motivoNoElegible, importado, formatoInvalido,
+    ...totales, certificados: certificadosResumen,
+    // Solo para "ya importado": ¿el avance guardado por el servidor ya contiene todo lo que se importaría?
+    verificado: importado && actuales ? totales.clasesFaltantes === 0 : null,
+    detalleRecortado: claves.length > MAX_DETALLE_LEGADO,
+    cursos: detalle
   };
 }
 
@@ -705,6 +857,7 @@ module.exports = {
   preguntasDeLeccion, calificarQuiz,
   normalizarProgreso, evaluarAvance, todasVistas,
   corteLegado, cuentaElegibleParaLegado, planearImportacionLegado, unirProgreso,
+  clavesDeCursoLegado, clasesViejasDe, diagnosticarLegado, MAX_DETALLE_LEGADO,
   camposDesdeLegado, parcheLegadoValidado, auditarCertificados,
   TOLERANCIA_FUTURO_MS, limiteEnMs, certificadoAnteriorAceptable, evaluarCertificados, compararVigentes,
   parcheAnteriorAutomatico, planearProgresoDesdeCertificados

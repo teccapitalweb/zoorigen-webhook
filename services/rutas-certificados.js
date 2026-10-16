@@ -153,62 +153,83 @@ function montarRutasCertificados(app, deps) {
   // Importación ÚNICA del progreso viejo (miembros/{uid}.courseProgress, lo escribía el navegador)
   // ════════════════════════════════════════════════════════════
   // Solo si existe LEGACY_PROGRESS_IMPORT_BEFORE y la cuenta de Firebase Auth se creó antes de esa fecha.
-  // Solo clases que existen en el curso. Nunca emite certificados. Nunca lanza: si algo falla se registra y
-  // la consulta sigue (la importación se reintenta en la siguiente).
-  async function importarLegadoSiCorresponde(uid) {
-    try {
-      const corte = cert.corteLegado(corteLegado);
-      if (!Number.isFinite(corte)) return;
-      const miembroRef = db.collection('miembros').doc(uid);
-      const miembroSnap = await miembroRef.get();
-      if (!miembroSnap.exists) return;
-      const miembro = miembroSnap.data() || {};
-      if (miembro.progresoLegadoImportado === true) return;
-      const viejo = miembro.courseProgress;
-      if (!esObjeto(viejo) || !Object.keys(viejo).length) return;
+  // Solo clases que existen en el curso. Nunca emite certificados. NO borra ni cambia miembros/{uid}.courseProgress:
+  // el dato viejo queda intacto como respaldo y lo que se guarda en progresoCursos es siempre una UNIÓN.
+  // Núcleo de la importación. Devuelve { estado, ... } y LANZA si algo falla (el llamador decide qué hacer):
+  //   estado: 'importado' | 'ya-importado' | 'sin-progreso' | 'no-elegible' | 'sin-miembro'
+  // Opciones (solo las usa el administrador desde el panel, nunca el navegador del miembro):
+  //   aceptarCuentaPosterior: no exige que la cuenta sea anterior a la fecha de corte
+  //   reintentar: vuelve a unir el avance viejo aunque ya se haya importado (nunca quita nada: es una unión)
+  async function importarLegado(uid, { aceptarCuentaPosterior = false, reintentar = false } = {}) {
+    const corte = cert.corteLegado(corteLegado);
+    const miembroRef = db.collection('miembros').doc(uid);
+    const miembroSnap = await miembroRef.get();
+    if (!miembroSnap.exists) return { estado: 'sin-miembro' };
+    const miembro = miembroSnap.data() || {};
+    const yaImportado = miembro.progresoLegadoImportado === true;
+    if (yaImportado && !reintentar) return { estado: 'ya-importado' };
+    const viejo = miembro.courseProgress;
+    if (!esObjeto(viejo) || !Object.keys(viejo).length) return { estado: 'sin-progreso' };
 
+    if (!aceptarCuentaPosterior) {
+      if (!Number.isFinite(corte)) return { estado: 'no-elegible', motivo: 'sin-corte' };
       let creacion = null;
       try {
         const info = await auth.getUser(uid);
         creacion = info && info.metadata && info.metadata.creationTime;
-      } catch (_) { return; } // sin dato de la cuenta: no es elegible
-      if (!cert.cuentaElegibleParaLegado(creacion, corte)) return;
+      } catch (_) { return { estado: 'no-elegible', motivo: 'sin-fecha-cuenta' }; } // sin dato de la cuenta: no es elegible
+      if (!cert.cuentaElegibleParaLegado(creacion, corte)) return { estado: 'no-elegible', motivo: 'cuenta-posterior' };
+    }
 
-      const ids = Object.keys(viejo).filter(id => cert.ID_CURSO_REGEX.test(id)).slice(0, cert.MAX_CURSOS_LEGADO);
-      const cursoSnaps = await Promise.all(ids.map(id => db.collection('cursos').doc(id).get()));
-      const cursos = new Map(cursoSnaps.map((s, i) => [ids[i], s.exists ? s.data() : null]));
-      const [porMiembro, porUid] = await Promise.all([
-        colCertificados().where('memberUid', '==', uid).limit(200).get(),
-        colCertificados().where('uid', '==', uid).limit(200).get()
-      ]);
-      const certificados = new Map();
-      for (const d of [...porMiembro.docs, ...porUid.docs]) certificados.set(d.id, { ...d.data(), id: d.id });
-      const plan = cert.planearImportacionLegado({
-        uid, courseProgress: viejo, cursos, certificados: [...certificados.values()], llave: firmaClave
+    const ids = cert.clavesDeCursoLegado(viejo);
+    const cursoSnaps = await Promise.all(ids.map(id => db.collection('cursos').doc(id).get()));
+    const cursos = new Map(cursoSnaps.map((s, i) => [ids[i], s.exists ? s.data() : null]));
+    const [porMiembro, porUid] = await Promise.all([
+      colCertificados().where('memberUid', '==', uid).limit(200).get(),
+      colCertificados().where('uid', '==', uid).limit(200).get()
+    ]);
+    const certificados = new Map();
+    for (const d of [...porMiembro.docs, ...porUid.docs]) certificados.set(d.id, { ...d.data(), id: d.id });
+    const plan = cert.planearImportacionLegado({
+      uid, courseProgress: viejo, cursos, certificados: [...certificados.values()], llave: firmaClave
+    });
+
+    const hecho = await db.runTransaction(async tx => {
+      const actual = await tx.get(miembroRef);
+      if (!actual.exists) return false;
+      // Otra consulta simultánea ya lo importó: no se repite (salvo reintento explícito, que es una unión inofensiva)
+      if ((actual.data() || {}).progresoLegadoImportado === true && !reintentar) return false;
+      const refs = plan.items.map(item => refProgreso(uid, item.cursoId));
+      const existentes = await Promise.all(refs.map(ref => tx.get(ref)));
+      plan.items.forEach((item, n) => {
+        const previo = existentes[n].exists ? existentes[n].data() : null;
+        const unido = cert.unirProgreso(previo, item.doc);
+        const datos = {
+          cursoId: item.cursoId, uid, sesionesVistas: unido.sesionesVistas, quizzesAprobados: unido.quizzesAprobados,
+          origenLegado: true, actualizadoEn: FieldValue.serverTimestamp()
+        };
+        if (unido.completado) {
+          datos.completado = true;
+          datos.certificadoFolio = unido.certificadoFolio;
+          const fecha = item.completadoEnIso ? new Date(item.completadoEnIso) : null;
+          if (fecha && !Number.isNaN(fecha.getTime()) && !(previo && previo.completadoEn)) datos.completadoEn = Timestamp.fromDate(fecha);
+        }
+        tx.set(refs[n], datos, { merge: true });
       });
-
-      await db.runTransaction(async tx => {
-        const actual = await tx.get(miembroRef);
-        if (!actual.exists || (actual.data() || {}).progresoLegadoImportado === true) return;
-        const refs = plan.items.map(item => refProgreso(uid, item.cursoId));
-        const existentes = await Promise.all(refs.map(ref => tx.get(ref)));
-        plan.items.forEach((item, n) => {
-          const previo = existentes[n].exists ? existentes[n].data() : null;
-          const unido = cert.unirProgreso(previo, item.doc);
-          const datos = {
-            cursoId: item.cursoId, uid, sesionesVistas: unido.sesionesVistas, quizzesAprobados: unido.quizzesAprobados,
-            origenLegado: true, actualizadoEn: FieldValue.serverTimestamp()
-          };
-          if (unido.completado) {
-            datos.completado = true;
-            datos.certificadoFolio = unido.certificadoFolio;
-            const fecha = item.completadoEnIso ? new Date(item.completadoEnIso) : null;
-            if (fecha && !Number.isNaN(fecha.getTime()) && !(previo && previo.completadoEn)) datos.completadoEn = Timestamp.fromDate(fecha);
-          }
-          tx.set(refs[n], datos, { merge: true });
-        });
+      if ((actual.data() || {}).progresoLegadoImportado !== true) {
         tx.set(miembroRef, { progresoLegadoImportado: true, progresoLegadoImportadoEn: FieldValue.serverTimestamp() }, { merge: true });
-      });
+      }
+      return true;
+    });
+    if (!hecho) return { estado: 'ya-importado' };
+    return { estado: 'importado', cursosImportados: plan.items.length, clasesImportadas: plan.importadas, reintento: yaImportado };
+  }
+
+  // Versión automática: la usan las consultas del miembro. Nunca lanza: si algo falla se registra y la consulta sigue
+  // (la importación se reintenta en la siguiente).
+  async function importarLegadoSiCorresponde(uid) {
+    try {
+      await importarLegado(uid);
     } catch (error) {
       console.error('[Certificados legado] No se pudo importar el progreso anterior:', error && error.message);
     }
@@ -438,6 +459,9 @@ function montarRutasCertificados(app, deps) {
     const leccion = cert.leccionDe(curso, indice);
     if (!leccion) throw errorHttp(404, 'Clase no encontrada');
     const acceso = await exigirAcceso(uid, leccion);
+    // Si la persona llega aquí sin haber pedido antes su progreso, primero se trae el avance anterior (así no se le pide
+    // repetir clases que ya había terminado). Si ya se importó, es una sola lectura.
+    await importarLegadoSiCorresponde(uid);
 
     const total = cert.leccionesDe(curso).length;
     const exigeQuiz = cert.preguntasDeLeccion(leccion).length > 0;
@@ -784,6 +808,7 @@ function montarRutasCertificados(app, deps) {
 
   return {
     limites,
+    importarLegado,
     esperar: () => Promise.allSettled([...pendientes]),
     firmaConfigurada: Boolean(firmaClave)
   };
