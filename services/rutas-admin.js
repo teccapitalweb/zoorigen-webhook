@@ -8,6 +8,8 @@
 //   GET  /api/admin/miembros/:uid              ficha: plan, progreso por curso, certificados, referidos y retos
 //   POST /api/admin/miembros/:uid/activar      activa o amplía el plan a mano (transferencia, efectivo, cortesía)
 //   POST /api/admin/miembros/:uid/cancelar     marca la membresía como cancelada (con acceso hasta su fecha)
+//   (regalar, eliminar con respaldo, restaurar, métricas, pruebas gratuitas, encuesta, configuración y el contador de
+//    visitas están en services/rutas-admin-extra.js)
 //   GET  /api/admin/progreso-legado            ensayo SIN escribir: qué importaría el avance anterior de cada miembro (paginado)
 //   POST /api/admin/progreso-legado/:uid/importar   la misma importación única e idempotente para una persona (se anota)
 //   GET  /api/admin/comunidad                  tarjetas del directorio y discusiones recientes del foro
@@ -26,9 +28,11 @@
 const { permitirSolicitud } = require('./rutas-club');
 const panel = require('./admin-panel');
 const bitacora = require('./bitacora-memoria');
+const { montarRutasAdminExtra } = require('./rutas-admin-extra');
 
 const LECTURAS_POR_MINUTO = 90;
 const ESCRITURAS_POR_MINUTO = 20;
+const ELIMINACIONES_POR_MINUTO = 10;
 const TOPE_DOCUMENTOS = 5000;
 const CACHE_MS = 45 * 1000;
 const UID_VALIDO = /^[A-Za-z0-9_-]{1,128}$/;
@@ -36,7 +40,7 @@ const UID_VALIDO = /^[A-Za-z0-9_-]{1,128}$/;
 function montarRutasAdmin(app, deps) {
   const { db, admin, auth, errorHttp, autenticarAdmin, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador } = deps;
   const FieldValue = admin.firestore.FieldValue;
-  const limites = { lecturas: new Map(), escrituras: new Map() };
+  const limites = { lecturas: new Map(), escrituras: new Map(), eliminaciones: new Map() };
   const express = deps.express;
   const analizadorJson = express.json({ limit: '4kb' });
 
@@ -45,18 +49,20 @@ function montarRutasAdmin(app, deps) {
   };
 
   function responderError(res, err, mensajeGenerico, etiqueta) {
-    if (err && err.status) return res.status(err.status).json({ error: err.message });
+    if (err && err.status) return res.status(err.status).json(err.codigo ? { error: err.message, codigo: err.codigo } : { error: err.message });
     console.error(`[Admin ${etiqueta || 'api'}]`, err && err.message);
     return res.status(500).json({ error: mensajeGenerico });
   }
 
   // Envoltura común: sin caché, administrador verificado en el servidor y límite por persona.
-  const conAdmin = (mensajeGenerico, etiqueta, fn, { escritura = false } = {}) => async (req, res) => {
+  // limite: 'eliminaciones' aplica además el tope de 10 por minuto a las acciones más delicadas.
+  const conAdmin = (mensajeGenerico, etiqueta, fn, { escritura = false, limite = null } = {}) => async (req, res) => {
     res.set('Cache-Control', 'no-store');
     try {
       const decoded = await autenticarAdmin(req, res);
       if (!decoded) return undefined;
       limitar(escritura ? limites.escrituras : limites.lecturas, decoded.uid, escritura ? ESCRITURAS_POR_MINUTO : LECTURAS_POR_MINUTO);
+      if (limite === 'eliminaciones') limitar(limites.eliminaciones, decoded.uid, ELIMINACIONES_POR_MINUTO);
       return await fn(req, res, decoded);
     } catch (error) {
       return responderError(res, error, mensajeGenerico, etiqueta);
@@ -251,7 +257,7 @@ function montarRutasAdmin(app, deps) {
       planActivo: true, planCancelado: false, planTipo, planStatus: 'active',
       planInicio: admin.firestore.Timestamp.fromDate(ahora), planVence: admin.firestore.Timestamp.fromDate(vence),
       ultimoPago: admin.firestore.Timestamp.fromDate(ahora), planActivadoEn: admin.firestore.Timestamp.fromDate(ahora),
-      activadoManualmente: true, activadoPor: 'admin', metodoPago: metodo, montoPagado: monto,
+      activadoManualmente: true, activadoPor: 'admin', metodoPago: metodo, montoPagado: monto, esRegalo: false,
       needsLinkToAuth: typeof FieldValue.delete === 'function' ? FieldValue.delete() : null
     };
     await ref.set(cambios, { merge: true });
@@ -621,6 +627,12 @@ function montarRutasAdmin(app, deps) {
       })
     });
   }));
+
+  // ── Segunda parte: regalar, eliminar y restaurar, métricas, pruebas gratuitas, encuesta, configuración y visitas ──
+  montarRutasAdminExtra(app, deps, {
+    conAdmin, uidDe, anotarAccion, cache, conCache, miembros, certificados, cursosCompletos, leerColeccion, refrescar,
+    tieneAcceso, nombreDe, analizadorJson
+  });
 
   return { limpiarCache: () => cache.clear() };
 }
