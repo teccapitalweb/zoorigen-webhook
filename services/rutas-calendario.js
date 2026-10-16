@@ -161,12 +161,9 @@ function crearServicioCalendario(deps) {
   const tituloDe = (lista, id) => { const c = lista.find(x => x.id === id); return c ? c.titulo : ''; };
 
   /* ── Primer curso con 15 retos ── */
-  // ¿Empezó su plan desde que se activó el calendario del servidor (config/calendario.nuevoDesde)? Sin esa fecha o sin fecha de plan: no.
+  // Solo cuentas nuevas que usaron su prueba gratuita y ya pagaron (no miembros de antes ni quien volvió a pagar tras vencerse): ver cal.elegibleParaAdelanto.
   async function esMiembroNuevo(doc, ahoraMs) {
-    try {
-      const desde = await leerNuevoDesde(ahoraMs);
-      return Number.isFinite(desde) && doc && Number.isFinite(doc.planInicioMs) && doc.planInicioMs >= desde;
-    } catch (error) { return false; }
+    try { return cal.elegibleParaAdelanto(doc, await leerNuevoDesde(ahoraMs)); } catch (error) { return false; }
   }
   // Devuelve { aplica, estado: 'pendiente' | 'abierto-ahora' | 'ninguno', cursoId, titulo, desbloqueoEn, diasFalta, progreso }
   // Si el avance ya completa los 15 retos y el curso sigue cerrado, lo abre (una sola vez) y lo anota en el calendario.
@@ -178,7 +175,7 @@ function crearServicioCalendario(deps) {
       if (!cuadro) return sin;
       const { doc, lista } = cuadro;
       if (doc.cursoAdelantado || !doc.primerCursoId) return sin;
-      // Solo miembros NUEVOS: quien empezó su plan desde que se activó el calendario del servidor. Los miembros de antes conservan su calendario de siempre.
+      // Solo cuentas nuevas con prueba gratuita ya pagada. Los miembros de antes y quien vuelve a pagar tras vencerse conservan su calendario de siempre.
       if (!(await esMiembroNuevo(doc, ahoraMs))) return sin;
       const estado = cuadro.estados.find(e => e.cursoId === doc.primerCursoId);
       if (!estado || estado.abierto) return sin;          // ya se abrió por su fecha o por un premio

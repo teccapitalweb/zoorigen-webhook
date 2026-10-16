@@ -123,6 +123,20 @@ function inicioDelCalendario({ miembro, usuario, tieneEleccion, nuevoDesdeMs, cu
   return { inicioMs: ahora, modo: 'legado', fuente: 'hoy' };
 }
 
+// ¿Puede esta persona abrir su primer curso cerrado resolviendo 15 retos?
+// SOLO quien es miembro nuevo de verdad: usó su prueba gratuita (la regla de la prueba ya exige no haber pagado nunca), empezó
+// su plan desde que se activó el calendario del servidor y NO es alguien que volvió a pagar después de vencerse.
+//   doc          : documento del calendario (modo, eleccion, fuente, inicioMs, planInicioMs)
+//   nuevoDesdeMs : fecha de activación del calendario (config/calendario.nuevoDesde)
+function elegibleParaAdelanto(doc, nuevoDesdeMs) {
+  if (!doc || typeof doc !== 'object' || !Number.isFinite(nuevoDesdeMs)) return false;
+  if (doc.modo !== 'prueba' || !doc.eleccion || doc.fuente !== 'plan') return false;
+  if (!Number.isFinite(doc.inicioMs) || doc.inicioMs < nuevoDesdeMs) return false;
+  // Si el inicio de su plan se movió después, volvió a pagar tras vencerse: no cuenta como cuenta nueva
+  if (Number.isFinite(doc.planInicioMs) && doc.planInicioMs > doc.inicioMs + 1000) return false;
+  return true;
+}
+
 /* ───────────────────────── Fila de desbloqueo ───────────────────────── */
 
 // Cursos que entran a la fila de 8 días: todos menos los "disponibles siempre" y el curso de prueba elegido.
@@ -220,6 +234,6 @@ function textoBloqueado(estado) {
 module.exports = {
   DIA_MS, DIAS_POR_CURSO, VIDEO_GRATIS_FIJO, aMs,
   resumirCursoCalendario, ordenPorCreacion, ordenParaDesbloqueo, inicioDePlanMs, inicioDelCalendario,
-  colaDeDesbloqueo, construirEntradas, completarEntradas, reanudarEntradas, primerCursoCerrado,
+  colaDeDesbloqueo, construirEntradas, completarEntradas, reanudarEntradas, primerCursoCerrado, elegibleParaAdelanto,
   estadoDeCursos, proximoDesbloqueo, textoBloqueado
 };

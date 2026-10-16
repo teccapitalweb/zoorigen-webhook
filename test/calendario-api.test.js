@@ -270,13 +270,16 @@ test('si el catálogo no se puede leer o la persona no está en la fila, nunca s
 
 /* ───────────── 15 retos ───────────── */
 
+// Cuenta nueva que usó su prueba gratuita (curso c1) y ya pagó: la única que puede abrir su siguiente curso con 15 retos
+const PRUEBA_ANA = { 'pruebasGratuitas/ana': { uid: 'ana', cursoId: 'c1', elegidoEn: ts(Date.now() - 6 * DIA) } };
+
 const rango = n => Array.from({ length: n }, (_, i) => i);
 const retosHechos = (q, d, o) => ({ uid: 'ana', xp: 0, xpPractica: 0, superados: q + d + o, camino: { quiz: q, detective: d, orden: o }, caminoHechos: { quiz: rango(q), detective: rango(d), orden: rango(o) } });
 const camino = (app, cuerpo, t = 'token-ana') => request(app).post('/api/retos/camino').set(auth(t)).send(cuerpo);
 const leerRetos = (app, t = 'token-ana') => request(app).get('/api/retos').set(auth(t));
 
 test('15 retos: el primer curso cerrado muestra su avance (N de 15) y sigue cerrado hasta cumplirlos', async () => {
-  const { app } = servidor({ 'miembros/ana': miembroNuevo(2), 'retosUsuario/ana': retosHechos(6, 3, 2) });
+  const { app } = servidor({ ...PRUEBA_ANA, 'miembros/ana': miembroNuevo(2), 'retosUsuario/ana': retosHechos(6, 3, 2) });
   const r = await leerRetos(app);
   const p = r.body.primerCurso;
   assert.deepEqual([p.aplica, p.estado, p.cursoId, p.titulo], [true, 'pendiente', 'c2', 'Curso 2']);
@@ -290,7 +293,7 @@ test('15 retos: el primer curso cerrado muestra su avance (N de 15) y sigue cerr
 });
 
 test('15 retos: al superar el reto número 15 el primer curso se abre, se avisa y el contador de días desaparece', async () => {
-  const { app, db } = servidor({ 'miembros/ana': miembroNuevo(2), 'retosUsuario/ana': retosHechos(6, 4, 4) }, { CALENDARIO_MODO: 'estricto' });   // 6 + 4 + 4 = 14 retos
+  const { app, db } = servidor({ ...PRUEBA_ANA, 'miembros/ana': miembroNuevo(2), 'retosUsuario/ana': retosHechos(6, 4, 4) }, { CALENDARIO_MODO: 'estricto' });   // 6 + 4 + 4 = 14 retos
   assert.equal((await embed(app, U(21))).status, 403, 'antes: cerrado');
   assert.equal((await leerRetos(app)).body.primerCurso.estado, 'pendiente');
   const r = await camino(app, { modo: 'quiz', indice: 20, puntaje: 5, total: 5 });
@@ -322,14 +325,14 @@ test('15 retos: al superar el reto número 15 el primer curso se abre, se avisa 
 });
 
 test('15 retos: no basta con 15 de un solo tipo (mínimo 4 de quiz, detective y ordena)', async () => {
-  const { app } = servidor({ 'miembros/ana': miembroNuevo(2), 'retosUsuario/ana': retosHechos(20, 0, 0) });
+  const { app } = servidor({ ...PRUEBA_ANA, 'miembros/ana': miembroNuevo(2), 'retosUsuario/ana': retosHechos(20, 0, 0) });
   const p = (await leerRetos(app)).body.primerCurso;
   assert.deepEqual([p.estado, p.progreso.completo, p.progreso.hechos], ['pendiente', false, 7]);
   assert.equal(por((await calendario(app)).body, 'c2').abierto, false);
 });
 
 test('15 retos: lo que no cuenta (flashcards, historia, práctica diaria) no suma', async () => {
-  const { app } = servidor({ 'miembros/ana': miembroNuevo(2), 'retosUsuario/ana': { ...retosHechos(4, 4, 4), superados: 40, porReto: { flashcards: { veces: 20, mejor: 8, total: 8, superados: 20, perfectos: 0 }, historia: { veces: 20, mejor: 4, total: 4, superados: 20, perfectos: 0 } } } });
+  const { app } = servidor({ ...PRUEBA_ANA, 'miembros/ana': miembroNuevo(2), 'retosUsuario/ana': { ...retosHechos(4, 4, 4), superados: 40, porReto: { flashcards: { veces: 20, mejor: 8, total: 8, superados: 20, perfectos: 0 }, historia: { veces: 20, mejor: 4, total: 4, superados: 20, perfectos: 0 } } } });
   const p = (await leerRetos(app)).body.primerCurso;
   assert.deepEqual([p.estado, p.progreso.hechos], ['pendiente', 12]);
   const r = await request(app).post('/api/retos/resultado').set(auth('token-ana')).send({ retoId: 'flashcards', puntaje: 8, total: 8 });
@@ -360,12 +363,12 @@ test('15 retos: miembro de siempre con todo abierto o administrador o sin plan: 
 });
 
 test('15 retos: una cuenta que ya tenía 15 retos hechos antes recibe su curso la primera vez que se consulta', async () => {
-  const { app } = servidor({ 'miembros/ana': miembroNuevo(1), 'retosUsuario/ana': retosHechos(8, 6, 5) });
+  const { app } = servidor({ ...PRUEBA_ANA, 'miembros/ana': miembroNuevo(1), 'retosUsuario/ana': retosHechos(8, 6, 5) });
   assert.equal((await calendario(app)).body.primerCurso.estado, 'abierto-ahora');
 });
 
 test('15 retos: dos solicitudes a la vez abren el curso una sola vez', async () => {
-  const { app, db } = servidor({ 'miembros/ana': miembroNuevo(2), 'retosUsuario/ana': retosHechos(7, 4, 4) });
+  const { app, db } = servidor({ ...PRUEBA_ANA, 'miembros/ana': miembroNuevo(2), 'retosUsuario/ana': retosHechos(7, 4, 4) });
   db.lenta = true;
   const [a, b] = await Promise.all([leerRetos(app), leerRetos(app)]);
   assert.ok([a, b].some(x => x.body.primerCurso.estado === 'abierto-ahora'));
@@ -398,7 +401,36 @@ test('15 retos: el curso cerrado de un miembro de antes no ofrece la vía de los
     const rr = await request(antiguo.app).post('/api/bunny/embed-token').set(auth('token-ana')).send({ videoId: cerrado0.videoIds ? cerrado0.videoIds[0] : '00000000-0000-0000-0000-000000000000', cursoId: cerrado0.cursoId });
     if (rr.status === 403 && rr.body && rr.body.error) assert.doesNotMatch(rr.body.error, /15 retos/, 'un miembro de antes no ve la oferta de 15 retos');
   }
-  const nuevo = servidor({ 'miembros/ana': miembroNuevo(2) }, { CALENDARIO_MODO: 'estricto' });
+  const nuevo = servidor({ ...PRUEBA_ANA, 'miembros/ana': miembroNuevo(2) }, { CALENDARIO_MODO: 'estricto' });
   const c1 = (await calendario(nuevo.app)).body;
   assert.equal(c1.primerCurso.aplica, true, 'el miembro nuevo sí tiene la vía de los 15 retos');
+});
+
+/* ───────────── Quién puede usar los 15 retos (regla del dueño) ───────────── */
+
+test('15 retos: cuenta nueva que pagó SIN usar la prueba gratuita no los puede usar', async () => {
+  const { app, db } = servidor({ 'miembros/ana': miembroNuevo(2), 'retosUsuario/ana': retosHechos(8, 6, 5) });
+  assert.equal((await leerRetos(app)).body.primerCurso.aplica, false);
+  const doc = db.value('calendariosCursos/ana');
+  assert.ok(!doc || !doc.cursoAdelantado);
+});
+
+test('15 retos: cuenta nueva que usó su prueba y pagó SÍ los puede usar', async () => {
+  const { app } = servidor({ ...PRUEBA_ANA, 'miembros/ana': miembroNuevo(2), 'retosUsuario/ana': retosHechos(8, 6, 5) });
+  assert.equal((await calendario(app)).body.primerCurso.estado, 'abierto-ahora');
+});
+
+test('15 retos: elegibleParaAdelanto (regla pura): solo prueba usada + plan nuevo + sin volver a pagar tras vencerse', () => {
+  const cal = require('../services/calendario');
+  const desde = Date.now() - 10 * DIA;
+  const base = { modo: 'prueba', eleccion: 'c1', fuente: 'plan', inicioMs: Date.now() - 2 * DIA, planInicioMs: Date.now() - 2 * DIA };
+  assert.equal(cal.elegibleParaAdelanto(base, desde), true);
+  assert.equal(cal.elegibleParaAdelanto({ ...base, modo: 'nuevo', eleccion: null }, desde), false, 'sin prueba');
+  assert.equal(cal.elegibleParaAdelanto({ ...base, modo: 'legado', eleccion: null }, desde), false, 'miembro de antes');
+  assert.equal(cal.elegibleParaAdelanto({ ...base, inicioMs: desde - DIA, planInicioMs: desde - DIA }, desde), false, 'plan anterior a la activación');
+  assert.equal(cal.elegibleParaAdelanto({ ...base, planInicioMs: base.inicioMs + 5 * DIA }, desde), false, 'volvió a pagar después de vencerse');
+  assert.equal(cal.elegibleParaAdelanto({ ...base, planInicioMs: base.inicioMs + 500 }, desde), true, 'diferencia de milisegundos: mismo plan');
+  assert.equal(cal.elegibleParaAdelanto({ ...base, fuente: 'hoy' }, desde), false, 'sin fecha de plan conocida');
+  assert.equal(cal.elegibleParaAdelanto(base, null), false, 'sin fecha de activación');
+  assert.equal(cal.elegibleParaAdelanto(null, desde), false);
 });
