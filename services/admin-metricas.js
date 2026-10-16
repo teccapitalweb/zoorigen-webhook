@@ -10,7 +10,7 @@
 //  - "Retención" = de quienes alguna vez tuvieron plan, cuántos tienen acceso hoy.
 //  - Los días se cuentan en hora de México (UTC-6), igual que el resto del panel.
 
-const { aFecha, aIso, diaMexico, clasificarMiembro, ESTADOS } = require('./admin-panel');
+const { aFecha, aIso, diaMexico, clasificarMiembro, valorPago, origenPlan, ESTADOS } = require('./admin-panel');
 const pruebaGratuita = require('./prueba-gratuita');
 
 const DIA_MS = 86400000;
@@ -106,13 +106,22 @@ function construirMetricas({ miembros = [], certificados = [], retos = [], prueb
   // Pagos (último pago de cada miembro)
   const fechasPagos = personas.map(v => aFecha(v.m.ultimoPago));
   const pagosSerie = serieDiaria(fechasPagos, desde, hasta);
+  // Ingresos estimados: el último pago de cada miembro valorado con el precio de lista (o el monto manual). No es contabilidad.
+  const tipoPlan = m => (m.planTipo === 'anual' ? 'anual' : m.planTipo === 'mensual' ? 'mensual' : null);
+  const pagosValorados = personas.map(v => ({ fecha: aFecha(v.m.ultimoPago), monto: v.m.ultimoPago ? valorPago(v.m, tipoPlan(v.m)) : 0 }));
+  const sumaIngresos = (d1, d2) => pagosValorados.reduce((t, x) => { if (!x.fecha) return t; const d = diaMexico(x.fecha); return d >= d1 && d <= d2 ? t + x.monto : t; }, 0);
+  const ingresosPorDia = new Map(listaDeDias(desde, hasta).map(d => [d, 0]));
+  for (const x of pagosValorados) { if (!x.fecha) continue; const d = diaMexico(x.fecha); if (ingresosPorDia.has(d)) ingresosPorDia.set(d, ingresosPorDia.get(d) + x.monto); }
+  const ingresosSerie = [...ingresosPorDia].map(([dia, n]) => ({ dia, n }));
+  const ingresosTotal = ingresosSerie.reduce((t, x) => t + x.n, 0);
 
   const anterior = {
     desde: previoDesde, hasta: previoHasta,
     altas: contarEnRango(fechasAltas, previoDesde, previoHasta),
     pruebas: contarEnRango(fechasPruebas, previoDesde, previoHasta),
     certificados: contarEnRango(fechasCerts, previoDesde, previoHasta),
-    pagos: contarEnRango(fechasPagos, previoDesde, previoHasta)
+    pagos: contarEnRango(fechasPagos, previoDesde, previoHasta),
+    ingresos: sumaIngresos(previoDesde, previoHasta)
   };
 
   // Cuentas hoy
@@ -129,6 +138,17 @@ function construirMetricas({ miembros = [], certificados = [], retos = [], prueb
     conAccesoHoy, conPlanAlgunaVez, sinAccesoConPlan,
     retencion: conPlanAlgunaVez ? Math.round((conAccesoHoy / conPlanAlgunaVez) * 100) : null
   };
+
+  // Con acceso hoy: plan y origen (de dónde viene el acceso)
+  const planes = { mensual: 0, anual: 0, otro: 0 };
+  const origenes = { stripe: 0, manual: 0, regalo: 0, heredado: 0, otro: 0 };
+  for (const v of personas) {
+    if (!v.conAcceso) continue;
+    planes[tipoPlan(v.m) || 'otro'] += 1;
+    const o = origenPlan(v.m);
+    origenes[origenes[o] !== undefined ? o : 'otro'] += 1;
+  }
+  cuentas.planes = planes; cuentas.origenes = origenes;
 
   // Cohortes por mes de registro (últimos 12 meses con registros)
   const porMes = new Map();
@@ -200,6 +220,64 @@ function construirMetricas({ miembros = [], certificados = [], retos = [], prueb
   }
   const actividadRetos = listaDeDias(desde, hasta).map(dia => ({ dia, n: actividadSemanal.get(dia) || 0 }));
 
+  // Embudo: de las personas que se registraron, cuántas siguen cada paso (cada etapa exige haber llegado a las anteriores)
+  const eligio = new Set(pruebas.map(({ id, data }) => String((data && data.uid) || id)));
+  const vioClases = new Set(); const terminoCurso = new Set();
+  for (const p of progreso) {
+    const d = p.data || {};
+    if ((Array.isArray(d.sesionesVistas) && d.sesionesVistas.length > 0) || d.completado === true) vioClases.add(p.uid);
+    if (d.completado === true) terminoCurso.add(p.uid);
+  }
+  for (const { data } of certsValidos) { const u = String((data && (data.uid || data.memberUid)) || ''); if (u) terminoCurso.add(u); }
+  const construirEmbudo = grupo => {
+    const e1 = grupo;
+    const e2 = e1.filter(v => eligio.has(v.id));
+    const e3 = e2.filter(v => vioClases.has(v.id));
+    const e4 = e3.filter(huboPlan);
+    const e5 = e4.filter(v => terminoCurso.has(v.id));
+    return {
+      personas: e1.length,
+      etapas: [
+        { clave: 'registro', etiqueta: 'Se registraron', valor: e1.length },
+        { clave: 'prueba', etiqueta: 'Eligieron su prueba gratuita', valor: e2.length },
+        { clave: 'clases', etiqueta: 'Vieron al menos una clase', valor: e3.length },
+        { clave: 'pago', etiqueta: 'Tuvieron membresía de pago', valor: e4.length },
+        { clave: 'curso', etiqueta: 'Terminaron un curso', valor: e5.length }
+      ],
+      pagaronSinPrueba: e1.filter(v => huboPlan(v) && !eligio.has(v.id)).length
+    };
+  };
+  const enRangoV = v => { if (!v.registro) return false; const d = diaMexico(v.registro); return d >= desde && d <= hasta; };
+  const embudo = {
+    rango: construirEmbudo(personas.filter(enRangoV)),
+    total: construirEmbudo(personas),
+    nota: 'Cada paso cuenta solo a quien llegó a los anteriores. Quien pagó sin pasar por la prueba gratuita (por ejemplo, cuentas de antes) no entra en el embudo.'
+  };
+
+  // Actividad por día de la semana y hora (hora de México): altas, pruebas, certificados, pagos y retos jugados del periodo
+  const mapa = Array.from({ length: 7 }, () => Array(24).fill(0));
+  let eventosTotal = 0;
+  const sumarEvento = f => {
+    if (!f) return;
+    const dia = diaMexico(f);
+    if (dia < desde || dia > hasta) return;
+    const local = new Date(f.getTime() - 6 * 3600 * 1000);
+    mapa[(local.getUTCDay() + 6) % 7][local.getUTCHours()] += 1;
+    eventosTotal += 1;
+  };
+  [fechasAltas, fechasPruebas, fechasCerts, fechasPagos].forEach(lista => lista.forEach(sumarEvento));
+  for (const { data } of retos) sumarEvento(aFecha(data && data.actualizadoEn));
+  const porDiaSemana = mapa.map(fila => fila.reduce((t, n) => t + n, 0));
+  const diasPorSemana = Array(7).fill(0);
+  for (const d of listaDeDias(desde, hasta)) diasPorSemana[(new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7] += 1;
+  const porHora = Array(24).fill(0);
+  mapa.forEach(fila => fila.forEach((n, h) => { porHora[h] += n; }));
+  const horaPico = eventosTotal ? porHora.indexOf(Math.max(...porHora)) : null;
+  const actividad = {
+    total: eventosTotal, mapa, porDiaSemana, diasPorSemana, porHora, horaPico,
+    nota: 'Cuenta altas, pruebas elegidas, certificados, últimos pagos y la última vez que cada persona jugó retos. No incluye visitas ni inicios de sesión: el servidor no los guarda.'
+  };
+
   // Visitas (solo si el contador está encendido)
   let visitasBloque = { activo: Boolean(visitasActivo), total: 0, porDia: [], porPagina: [] };
   if (visitas) {
@@ -221,10 +299,11 @@ function construirMetricas({ miembros = [], certificados = [], retos = [], prueb
 
   return {
     rango: { desde, hasta, dias },
-    totales: { altas: altas.total, pruebas: pruebasSerie.total, certificados: certsSerie.total, pagos: pagosSerie.total },
+    totales: { altas: altas.total, pruebas: pruebasSerie.total, certificados: certsSerie.total, pagos: pagosSerie.total, ingresos: ingresosTotal },
     anterior,
-    series: { altas: altas.serie, pruebas: pruebasSerie.serie, certificados: certsSerie.serie, pagos: pagosSerie.serie },
-    cuentas, cohortes, conversion,
+    seriesAnterior: { altas: serieDiaria(fechasAltas, previoDesde, previoHasta).serie, pruebas: serieDiaria(fechasPruebas, previoDesde, previoHasta).serie },
+    series: { altas: altas.serie, pruebas: pruebasSerie.serie, certificados: certsSerie.serie, pagos: pagosSerie.serie, ingresos: ingresosSerie },
+    cuentas, cohortes, conversion, embudo, actividad,
     cursos: {
       masElegidos: topCursos(elegidos, cursos), masCompletados: topCursos(completados, cursos), masEmpezados: topCursos(empezados, cursos)
     },
@@ -237,6 +316,7 @@ function construirMetricas({ miembros = [], certificados = [], retos = [], prueb
     visitas: visitasBloque,
     notas: {
       pagos: 'Cuenta el último pago de cada miembro, no cada cobro: no hay libro de cobros.',
+      ingresos: 'Estimación: último pago de cada miembro por el precio de lista (o el monto anotado en una activación manual). No es contabilidad.',
       retencion: 'De quienes alguna vez tuvieron plan, cuántos tienen acceso hoy.',
       retos: 'Los retos no guardan una fecha por intento: la actividad por día usa la última vez que cada persona jugó.'
     }
