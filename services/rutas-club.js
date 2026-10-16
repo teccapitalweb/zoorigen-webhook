@@ -360,6 +360,36 @@ function montarRutasClub(app, deps) {
     return retos.normalizarEstado(snap.exists ? snap.data() : null);
   }
 
+  // ── Resumen de SOLO LECTURA (sin membresía vigente) ──
+  // Quien no tiene membresía (cuenta gratuita o membresía vencida) VE su XP y su nivel, pero no puede jugar ni ganar más.
+  // Se suman las mismas fuentes que a un miembro (bienvenida + retos + cursos + logros + invitados), con la misma fórmula,
+  // para que Retos, Logros, el panel del perfil y la respuesta del premio de bienvenida den SIEMPRE el mismo total.
+  // Aquí NO se escribe nada: no se registra el día de hoy, no se sincronizan invitados, no se crean avisos, no se guarda el
+  // XP del ranking y no se ganan premios. Si algo falla devuelve null y la pantalla cae en la vista previa a cero.
+  async function leerReferidosGuardados(uid) {
+    const snap = await db.collection('referidos').where('anfitrionUid', '==', uid).limit(MAX_INVITADOS_LEIDOS).get();
+    const r = referidos.resumirInvitados(referidos.ordenarInvitados(snap.docs.map(d => ({ ...d.data(), uid: d.id }))));
+    return { validos: r.validos, xp: r.xp };
+  }
+
+  async function calcularResumenLectura(ctx) {
+    try {
+      const uid = ctx.uid;
+      const [actividad, estado, previo, referidosInfo] = await Promise.all([
+        db.collection('actividadUsuario').doc(uid).get(),
+        leerEstadoRetos(uid),
+        leerPremiosGuardados(uid),
+        leerReferidosGuardados(uid)
+      ]);
+      const dias = actividad.exists && Array.isArray(actividad.data().dias) ? actividad.data().dias.filter(d => typeof d === 'string') : [];
+      const datos = { ...(await datosParaLogros(ctx, dias, referidosInfo.validos)), bienvenida: Boolean(previo.bienvenida) };
+      return { ev: logros.evaluar(datos, estado, referidosInfo.xp), estadoRetos: estado };
+    } catch (error) {
+      console.error('[Club premios] No se pudo calcular el XP de solo lectura:', error && error.message);
+      return null;
+    }
+  }
+
   const NIVEL_VISTA_PREVIA = logros.infoNivel(0);
 
   // ── Premio de bienvenida: la fecha de creación de la cuenta la da Firebase Auth (no el navegador) ──
@@ -403,9 +433,12 @@ function montarRutasClub(app, deps) {
         const guardado = await leerPremiosGuardados(decoded.uid);
         const lista = premios.armarPremios({ ...guardado, membresia: false });
         const disponible = await bienvenidaOfrecida(ctx, Boolean(guardado.bienvenida));
+        // Solo lectura: el nivel y el XP reales (también el +100 de bienvenida); los logros siguen siendo vista previa.
+        const lectura = await calcularResumenLectura(ctx);
         return res.json({
-          ok: true, membresia: false, nivel: NIVEL_VISTA_PREVIA, niveles: logros.listaNiveles(),
-          xp: { total: 0, logros: 0, retos: 0, referidos: 0, cursos: 0, bienvenida: 0 }, cursos: { terminados: 0, lista: [] },
+          ok: true, membresia: false, nivel: lectura ? lectura.ev.nivel : NIVEL_VISTA_PREVIA, niveles: logros.listaNiveles(),
+          xp: lectura ? lectura.ev.xp : { total: 0, logros: 0, retos: 0, referidos: 0, cursos: 0, bienvenida: 0 },
+          cursos: lectura ? lectura.ev.cursos : { terminados: 0, lista: [] },
           bienvenida: { disponible, xp: logros.XP_BIENVENIDA },
           racha: 0, diasActivos: 0, logros: logros.logrosVistaPrevia(), premios: lista, disponibles: 0
         });
@@ -467,10 +500,14 @@ function montarRutasClub(app, deps) {
         });
       }
 
-      // Con membresía se devuelve el XP total real; sin ella solo cuenta lo guardado (los 100 de bienvenida)
+      // Se devuelve el XP total real, el mismo que verá en Retos y Logros (sin membresía se calcula en solo lectura)
       let xpTotal = logros.XP_BIENVENIDA;
       let nivel = logros.infoNivel(xpTotal);
       if (ctx.membresia) { const { ev } = await calcularResumen(ctx); xpTotal = ev.xp.total; nivel = ev.nivel; }
+      else {
+        const lectura = await calcularResumenLectura(ctx);
+        if (lectura) { xpTotal = lectura.ev.xp.total; nivel = lectura.ev.nivel; }
+      }
       return res.json({ ok: true, xp: logros.XP_BIENVENIDA, yaReclamado, xpTotal, nivel });
     } catch (error) {
       return responderError(res, error, 'No se pudo darte el premio de bienvenida', 'premios');
@@ -504,6 +541,9 @@ function montarRutasClub(app, deps) {
       limitar(limites.lecturas, decoded.uid, LECTURAS_POR_MINUTO);
       const ctx = await leerContexto(decoded.uid);
       if (!ctx.membresia) {
+        // Vista de solo lectura: ve su nivel, su XP real (bienvenida, retos, cursos, logros) y sus retos superados, pero no puede jugar.
+        const lectura = await calcularResumenLectura(ctx);
+        if (lectura) return res.json({ ok: true, membresia: false, nivel: lectura.ev.nivel, xp: lectura.ev.xp.total, ...vistaRetos(lectura.estadoRetos) });
         return res.json({
           ok: true, membresia: false, nivel: NIVEL_VISTA_PREVIA, xp: 0, superados: 0, porReto: {},
           camino: { ...CAMINO_VACIO }, caminoHechos: HECHOS_VACIO(), retosHoy: [], totales: retos.TOTALES_CAMINO

@@ -105,8 +105,10 @@ el sitio pregunta y pinta; el servidor decide. No se tocan `/api/bunny/embed-tok
 quien ya paga conserva exactamente el mismo acceso a los videos (el "adelanto" de un curso es solo del calendario del sitio).
 
 Todas responden con `Cache-Control: no-store` y errores `{ error }` en español. Sin membresía vigente (administradores cuentan como
-con membresía), `GET /api/premios`, `GET /api/retos` y `GET /api/directorio` devuelven una **vista previa** (`membresia: false`, nivel 1 / 0 XP,
-logros sin XP ni "ganado", 3 tarjetas ficticias) y no escriben nada; las rutas que cambian algo responden
+con membresía), `GET /api/premios`, `GET /api/retos` y `GET /api/directorio` devuelven una **vista previa** (`membresia: false`, logros sin
+XP ni "ganado", 3 tarjetas ficticias) y no escriben nada. El nivel y el XP de `/api/premios` y `/api/retos` son de **solo lectura reales**: se suman
+las mismas fuentes que a un miembro (bienvenida + retos + cursos + logros + invitados), así que Retos, Logros y el panel del perfil dan el mismo total
+(una cuenta gratuita con el +100 de bienvenida ve 100 XP; un miembro vencido conserva lo que ganó). Las rutas que cambian algo responden
 `403 { codigo: 'membresia-requerida' }`. Un administrador no canjea premios (400).
 
 ### Colecciones nuevas (solo las escribe el servidor; NO se cambian las reglas de Firestore)

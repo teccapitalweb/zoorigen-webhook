@@ -152,13 +152,16 @@ test('GET /api/premios: sin certificados no hay XP de cursos', async () => {
   assert.equal(res.body.xp.cursos, 0);
 });
 
-test('GET /api/premios sin membresía no revela XP ni cursos (vista previa a cero)', async () => {
+test('GET /api/premios sin membresía muestra en solo lectura el XP de los cursos que ya terminó', async () => {
   const seed = Object.fromEntries([cert2('sinplan', 'c1', '2026-09-01T10:00:00.000Z'), cert2('sinplan', 'c2', '2026-09-02T10:00:00.000Z')]);
   const res = await premiosDe(montar(seed).app, 'token-sinplan');
   assert.equal(res.body.membresia, false);
-  assert.equal(res.body.xp.total, 0);
-  assert.equal(res.body.xp.cursos, 0);
-  assert.deepEqual(res.body.cursos, { terminados: 0, lista: [] });
+  assert.equal(res.body.xp.cursos, 20 + 30);
+  // 50 de los cursos + los logros por curso (Primer curso 20, Curiosidad en marcha 30, Mirada amplia 30); el de "membresía vigente" no aplica
+  assert.equal(res.body.xp.logros, 80);
+  assert.equal(res.body.xp.total, 50 + 80);
+  assert.equal(res.body.cursos.terminados, 2);
+  assert.deepEqual(res.body.cursos.lista.map(c => c.courseId), ['c1', 'c2']);
 });
 
 test('el XP de cursos entra al total guardado para la clasificación', async () => {
