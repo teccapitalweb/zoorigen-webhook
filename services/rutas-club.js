@@ -32,7 +32,7 @@ function permitirSolicitud(mapa, clave, ventanaMs, maximo) {
 function montarRutasClub(app, deps) {
   const {
     express, db, auth, admin, autenticarFirebase, esAdminPorDocumentos, tienePlanVigente,
-    obtenerIndiceVideos, leerEleccionPrueba, errorHttp, catalogoLibros
+    obtenerIndiceVideos, leerEleccionPrueba, errorHttp, catalogoLibros, calendario
   } = deps;
   const FieldValue = admin.firestore.FieldValue;
 
@@ -543,14 +543,14 @@ function montarRutasClub(app, deps) {
       if (!ctx.membresia) {
         // Vista de solo lectura: ve su nivel, su XP real (bienvenida, retos, cursos, logros) y sus retos superados, pero no puede jugar.
         const lectura = await calcularResumenLectura(ctx);
-        if (lectura) return res.json({ ok: true, membresia: false, nivel: lectura.ev.nivel, xp: lectura.ev.xp.total, ...vistaRetos(lectura.estadoRetos) });
+        if (lectura) return res.json({ ok: true, membresia: false, nivel: lectura.ev.nivel, xp: lectura.ev.xp.total, ...vistaRetos(lectura.estadoRetos), primerCurso: SIN_PRIMER_CURSO });
         return res.json({
           ok: true, membresia: false, nivel: NIVEL_VISTA_PREVIA, xp: 0, superados: 0, porReto: {},
-          camino: { ...CAMINO_VACIO }, caminoHechos: HECHOS_VACIO(), retosHoy: [], totales: retos.TOTALES_CAMINO
+          camino: { ...CAMINO_VACIO }, caminoHechos: HECHOS_VACIO(), retosHoy: [], totales: retos.TOTALES_CAMINO, primerCurso: SIN_PRIMER_CURSO
         });
       }
       const { ev, estadoRetos } = await calcularResumen(ctx);
-      return res.json({ ok: true, membresia: true, nivel: ev.nivel, xp: ev.xp.total, ...vistaRetos(estadoRetos) });
+      return res.json({ ok: true, membresia: true, nivel: ev.nivel, xp: ev.xp.total, ...vistaRetos(estadoRetos), primerCurso: await primerCursoDe(ctx, estadoRetos) });
     } catch (error) {
       return responderError(res, error, 'No se pudieron cargar tus retos', 'retos');
     }
@@ -586,6 +586,13 @@ function montarRutasClub(app, deps) {
   }
 
   const resumenInsignias = lista => lista.map(i => ({ id: i.id, nombre: i.nombre }));
+
+  // Primer curso de la fila: avance de los 15 retos y, si ya se cumplieron, lo abre (services/rutas-calendario.js). Nunca lanza.
+  const SIN_PRIMER_CURSO = Object.freeze({ aplica: false, estado: 'ninguno' });
+  async function primerCursoDe(ctx, estadoRetos) {
+    if (!calendario || !ctx || !ctx.tienePlan || ctx.esAdmin) return SIN_PRIMER_CURSO;
+    try { return await calendario.evaluarPrimerCurso(ctx.uid, estadoRetos, ctx); } catch (error) { return SIN_PRIMER_CURSO; }
+  }
 
   // POST /api/retos/resultado — práctica diaria (XP una vez por reto por día)
   app.post('/api/retos/resultado', express.json(), async (req, res) => {
@@ -633,6 +640,8 @@ function montarRutasClub(app, deps) {
         return { ...o, guardar: o.aceptado };
       });
       const salida = { ok: true, aceptado: r.aceptado, aprobado: r.aprobado, xpGanado: r.xpGanado, camino: r.estado.camino, caminoHechos: r.estado.caminoHechos };
+      // Con 15 retos del camino superados se abre el primer curso de la fila (la verificación es siempre del servidor)
+      salida.primerCurso = await primerCursoDe(ctx, r.estado);
       if (r.aceptado) {
         const { ev } = await calcularResumen(ctx, { estadoRetos: r.estado });
         Object.assign(salida, { xp: ev.xp.total, nivel: ev.nivel, insigniasNuevas: resumenInsignias(retos.insigniasNuevas(r.antes, r.estado)),

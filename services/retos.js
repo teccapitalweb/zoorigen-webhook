@@ -28,11 +28,16 @@ const TOPE_XP_PRACTICA = 600;
 // "granjear" XP repitiendo el mismo reto. Resolver cualquiera exige membresía vigente (lo comprueba la ruta).
 // TOTALES_CAMINO es la cantidad de retos que existe en el sitio: un índice fuera de ese rango no es válido.
 const CAMINO_MODOS = RETOS_BASE;
-const TOTALES_CAMINO = Object.freeze({ quiz: 22, detective: 13, orden: 18 });
+const TOTALES_CAMINO = Object.freeze({ quiz: 32, detective: 21, orden: 24 });
 const XP_CAMINO = 6;
 const XP_CAMINO_PERFECTO = 10;
 const INDICE_MAXIMO = 200;
 const TOTAL_MAXIMO = 30;
+
+// Primer curso de la fila de desbloqueo: se puede abrir ANTES de su fecha superando 15 retos del camino, con un mínimo de 4 de cada
+// tipo (quiz, detective y ordena) y 3 más del tipo que la persona prefiera. Solo adelanta ESE curso (los demás conservan su
+// fecha). Es la regla de Alintec Food. Cada reto cuenta una sola vez (caminoHechos); flashcards, historia y práctica diaria no cuentan.
+const PRIMER_CURSO_RETOS = Object.freeze({ total: 15, porTipo: 4 });
 
 // XP máximo que pueden dar los retos en toda la vida de la cuenta (para el balance de niveles).
 const XP_MAXIMO_RETOS = TOPE_XP_PRACTICA +
@@ -214,6 +219,23 @@ function aplicarCaminoResultado(estadoPrevio, { modo, indice, puntaje, total }, 
   return { estado, xpGanado, aceptado: true, aprobado };
 }
 
+// Avance hacia abrir el primer curso: { tipos: { quiz: {hechos, meta}, ... }, libres: {hechos, meta}, hechos, meta, completo }
+function progresoPrimerCurso(estado) {
+  const e = normalizarEstado(estado);
+  const minimo = PRIMER_CURSO_RETOS.porTipo;
+  const metaLibres = PRIMER_CURSO_RETOS.total - minimo * CAMINO_MODOS.length;
+  const tipos = {};
+  let extras = 0;
+  CAMINO_MODOS.forEach(m => {
+    const n = e.caminoHechos[m].length;
+    tipos[m] = { hechos: Math.min(n, minimo), meta: minimo };
+    extras += Math.max(0, n - minimo);
+  });
+  const libres = { hechos: Math.min(extras, metaLibres), meta: metaLibres };
+  const hechos = CAMINO_MODOS.reduce((t, m) => t + tipos[m].hechos, 0) + libres.hechos;
+  return { tipos, libres, hechos, meta: PRIMER_CURSO_RETOS.total, completo: hechos >= PRIMER_CURSO_RETOS.total };
+}
+
 function insignias(estado) {
   const e = normalizarEstado(estado);
   return INSIGNIAS.map(i => ({ id: i.id, nombre: i.nombre, desc: i.desc, xp: i.xp, criterio: i.criterio, desbloqueada: Boolean(i.cumple(e)) }));
@@ -237,7 +259,7 @@ function resumenPorReto(estado) {
 
 module.exports = {
   RETOS_VALIDOS, RETOS_BASE, RETOS_SIN_XP, MINIMO_APROBAR, XP_SUPERADO, XP_PERFECTO, TOPE_XP_PRACTICA,
-  CAMINO_MODOS, TOTALES_CAMINO, XP_CAMINO, XP_CAMINO_PERFECTO, XP_MAXIMO_RETOS, INSIGNIAS,
+  CAMINO_MODOS, TOTALES_CAMINO, PRIMER_CURSO_RETOS, progresoPrimerCurso, XP_CAMINO, XP_CAMINO_PERFECTO, XP_MAXIMO_RETOS, INSIGNIAS,
   estadoInicial, normalizarEstado, fechaMexico, validarResultado, aplicarResultado,
   validarCaminoResultado, aplicarCaminoResultado, insignias, insigniasNuevas, resumenPorReto
 };

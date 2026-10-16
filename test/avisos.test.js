@@ -131,7 +131,7 @@ test('todos los tipos tienen preset de icono y color', () => {
   for (const tipo of [...A.TIPOS_PERSONALES, ...A.TIPOS_GLOBALES]) {
     assert.ok(A.PRESETS[tipo].icono && /^#[0-9A-F]{6}$/i.test(A.PRESETS[tipo].color), tipo);
   }
-  assert.deepEqual(A.TIPOS_PERSONALES, ['certificado', 'logro', 'premio', 'libro', 'xp', 'bienvenida']);
+  assert.deepEqual(A.TIPOS_PERSONALES, ['certificado', 'logro', 'premio', 'libro', 'xp', 'bienvenida', 'curso']);
   assert.deepEqual(A.TIPOS_GLOBALES, ['noticia', 'dato', 'sistema', 'clase', 'curso', 'general']);
   assert.equal(A.presetDe('inventado'), A.PRESETS.general);
 });

@@ -23,11 +23,11 @@ const RUTAS = {
   tipica: { cursos: 4, areas: 2, dias: 30, racha: 14, tarjeta: true, foroPosts: 1, retos: { practicaDias: 5 } },
   tipicaMasForo: { cursos: 4, areas: 4, dias: 30, racha: 14, tarjeta: true, foroPosts: 3, retos: { practicaDias: 5 } },
   constante: { cursos: 6, areas: 4, dias: 30, racha: 14, tarjeta: true, foroPosts: 3, retos: { practicaDias: 5 } },
-  dedicada: { cursos: 12, areas: 4, dias: 90, racha: 60, tarjeta: true, foroPosts: 6, foroRespuestas: 9, foroLikes: 25, retos: { camino: 53, practicaDias: 15 } },
+  dedicada: { cursos: 12, areas: 4, dias: 90, racha: 60, tarjeta: true, foroPosts: 6, foroRespuestas: 9, foroLikes: 25, retos: { camino: 77, practicaDias: 15 } },
   soloEstudiar: { cursos: 15, areas: 5, dias: 10, racha: 3, tarjeta: true },
-  soloRetos: { dias: 60, racha: 60, retos: { camino: 53, practicaDias: 15 } },
+  soloRetos: { dias: 60, racha: 60, retos: { camino: 77, practicaDias: 15 } },
   soloInvitar: { invitados: 6, dias: 3, racha: 3 },
-  todoMenosInvitados: { cursos: 15, areas: 5, dias: 90, racha: 60, tarjeta: true, foroPosts: 9, foroRespuestas: 9, foroLikes: 99, retos: { camino: 53, practicaDias: 15 } }
+  todoMenosInvitados: { cursos: 15, areas: 5, dias: 90, racha: 60, tarjeta: true, foroPosts: 9, foroRespuestas: 9, foroLikes: 99, retos: { camino: 77, practicaDias: 15 } }
 };
 const TODO = { ...RUTAS.todoMenosInvitados, invitados: 6 };
 
@@ -39,7 +39,9 @@ test('niveles: 5 niveles con nombres fijos, umbrales crecientes y tabla única (
 
 test('calibración: Profesional ~25 % y Maestro ~75 % del XP máximo, y Maestro sigue siendo alcanzable (<= 90 %)', () => {
   assert.ok(Math.abs(PROFESIONAL / MAX.total - 0.25) <= 0.03, `Profesional pide ${(PROFESIONAL / MAX.total * 100).toFixed(1)} % del máximo`);
-  assert.ok(Math.abs(MAESTRO / MAX.total - 0.75) <= 0.03, `Maestro pide ${(MAESTRO / MAX.total * 100).toFixed(1)} % del máximo`);
+  // Al agregar 24 retos al camino (+240 XP de máximo) los umbrales NO se movieron a propósito: subirlos haría bajar de nivel a
+  // quien ya lo tiene. Maestro pasó de 74.5 % a 71.9 % del máximo, por eso la tolerancia de Maestro es 4 puntos.
+  assert.ok(Math.abs(MAESTRO / MAX.total - 0.75) <= 0.04, `Maestro pide ${(MAESTRO / MAX.total * 100).toFixed(1)} % del máximo`);
   assert.ok(MAESTRO / MAX.total <= 0.9);
   assert.ok(MAX.total >= 6000 && MAX.total <= 7500, `máximo ${MAX.total}`);
 });

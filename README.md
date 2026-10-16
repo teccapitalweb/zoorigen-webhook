@@ -19,6 +19,8 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `GET /api/premios` | Nivel, XP, logros y premios (vista previa sin membresía) | Token de Firebase |
 | `POST /api/premios/usar` | Canjea UN premio por UN curso adelantado (`{ cursoId }`) | Token de Firebase + membresía |
 | `POST /api/premios/bienvenida` | +100 XP una sola vez, solo cuentas nuevas (14 días) | Token de Firebase (sin membresía también) |
+| `GET /api/calendario` | Calendario de cursos del miembro calculado en el servidor: cada curso (abierto, `diasFalta`, por premio, por retos, de prueba), próximo desbloqueo y avance de los 15 retos (`primerCurso`) | Token de Firebase |
+| `GET /api/admin/calendario`, `GET /api/admin/calendario/:uid` | Modo (`transicion` / `estricto`), cuántas veces se habría rechazado un video y el calendario guardado de una persona (solo lectura) | Token de Firebase + administrador |
 | `GET /api/retos` | Progreso de retos, camino y nivel (vista previa sin membresía) | Token de Firebase |
 | `POST /api/retos/resultado` | Resultado de un reto de práctica (`{ retoId, puntaje, total }`) | Token de Firebase + membresía |
 | `POST /api/retos/camino` | Resultado de un reto del camino (`{ modo, indice, puntaje, total }`); cualquier reto, en cualquier orden, XP una sola vez por reto | Token de Firebase + membresía |
@@ -702,3 +704,14 @@ credenciales ni tocan datos reales.
 - `npm run audit:certificates`: revisión global opcional de certificados sin firma (dry-run); con `--apply --allowlist=folios.json` firma solo los aprobados (ver «Certificados y progreso de cursos»).
 - `npm run normalize:membership-dates`: pasa `planVence` de texto a Timestamp (agrega `--apply` para escribir).
 - `npm run sync:memberships -- --subscription=sub_...`: repara suscripciones puntuales (agrega `--apply` para escribir).
+
+
+## Calendario de cursos y 15 retos para abrir el primer curso (services/calendario.js · rutas-calendario.js)
+
+Antes el calendario (1 curso nuevo cada 8 días desde que la persona es miembro) lo calculaba solo el navegador. Ahora lo calcula el servidor y el sitio pinta lo que éste dice; si el servidor no responde, el sitio usa la regla de siempre.
+
+- **Dónde se guarda:** `calendariosCursos/{uid}` (solo del servidor; las reglas de Firestore ya niegan todo lo no listado, no hay que cambiarlas) y `config/calendario` (`nuevoDesde`). Se guarda en una colección propia y no en `miembros` porque el miembro puede escribir casi cualquier campo de su propia ficha. Cuando se abre un curso con 15 retos, además se copia `cursoAdelantado` a `miembros/{uid}` solo para que lo vea el panel de administración (no se confía en esa copia).
+- **Reglas:** miembros de siempre (plan anterior a `nuevoDesde`, que se fija sola el día que corre por primera vez este servicio o con `CALENDARIO_NUEVO_DESDE`, fecha ISO): misma cuenta que hacía el navegador (desde que se creó la cuenta, o desde el plan si es anterior); nadie pierde un curso abierto. Quien empieza su plan después: cuenta desde `planInicio`. Con prueba gratuita elegida: la prueba es el curso abierto y los demás se abren cada 8 días desde `planInicio`, aunque la prueba no esté terminada. Los premios (`premiosUsuario.usados`) y los 15 retos abren un curso sin mover la fecha de los demás. Si alguien vuelve a pagar después de vencer, lo que seguía cerrado se vuelve a fechar (8 días por curso desde la reactivación).
+- **15 retos:** solo el primer curso de la fila que seguía cerrado al armar el calendario (`primerCursoId`), una sola vez. Cuentan retos del camino (quiz, detective, ordena) con mínimo 4 de cada tipo y 3 más de cualquiera; flashcards, historia y práctica diaria no cuentan. Lo verifica el servidor con `retosUsuario.caminoHechos`; `GET /api/retos`, `POST /api/retos/camino` y `GET /api/calendario` devuelven `primerCurso` ({ aplica, estado: pendiente | abierto-ahora, progreso }) y al cumplirse crean el aviso de la campana.
+- **Video y progreso:** `POST /api/bunny/embed-token`, `POST /api/cursos/:id/progreso` y `POST /api/cursos/:id/quiz` revisan que el curso esté abierto (una clase gratis siempre se puede ver; administrador y sin plan no cambian). Con `CALENDARIO_MODO=estricto` un curso cerrado responde 403 `{ error, codigo: 'curso-bloqueado', cursoId, desbloqueoEn, diasFalta }`. **Sin definir (modo transición) no rechaza nada**: solo anota "(modo transición) habría rechazado..." en la bitácora y cuenta los casos en `GET /api/admin/calendario`. Cualquier error interno deja pasar.
+- **Totales del camino** (`TOTALES_CAMINO` en services/retos.js): quiz 32, detective 21, ordena 24. Deben ser iguales a la cantidad de retos de assets/js/club-retos-datos.js del sitio.
