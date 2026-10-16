@@ -37,7 +37,7 @@ const MENSAJE_SIN_LLAVE = 'Los certificados aún no están configurados';
 function montarRutasCertificados(app, deps) {
   const {
     db, admin, auth, autenticarFirebase, autenticarAdmin, esAdminPorDocumentos, tienePlanVigente,
-    reglasPruebaParaVideo, videoEsGratis, obtenerIndiceVideos, errorHttp, club
+    reglasPruebaParaVideo, videoEsGratis, obtenerIndiceVideos, errorHttp, club, calendario
   } = deps;
   const firmaClave = String(deps.firmaClave || '').trim();
   const corteLegado = String(deps.corteLegado || '').trim();
@@ -125,7 +125,8 @@ function montarRutasCertificados(app, deps) {
   }
 
   // Misma regla que /api/bunny/embed-token: administrador, plan vigente, clase gratis o prueba gratuita.
-  async function exigirAcceso(uid, leccion) {
+  // Con plan vigente, además, el curso debe estar abierto en el calendario de la persona (modo estricto; en transición solo se anota).
+  async function exigirAcceso(uid, leccion, cursoId) {
     const [adminDoc, miembroDoc, usuarioDoc] = await Promise.all([
       db.collection('admins').doc(uid).get(),
       db.collection('miembros').doc(uid).get(),
@@ -138,8 +139,16 @@ function montarRutasCertificados(app, deps) {
       miembro: miembroDoc.exists ? miembroDoc.data() : null,
       usuario: usuarioDoc.exists ? usuarioDoc.data() : null
     };
-    if (esAdmin || tienePlan) return acceso;
+    if (esAdmin) return acceso;
     const videoId = typeof leccion.videoId === 'string' ? leccion.videoId.trim() : '';
+    if (tienePlan) {
+      if (calendario && cursoId) {
+        let libre = false;
+        try { libre = Boolean(videoId) && await videoEsGratis(videoId, { refrescar: false }); } catch (error) { libre = false; }
+        if (!libre) await calendario.exigirCurso(uid, cursoId, { uid, ...acceso }, 'el progreso');
+      }
+      return acceso;
+    }
     let gratis = false;
     if (videoId) {
       const prueba = await reglasPruebaParaVideo(uid, videoId, miembroDoc, usuarioDoc);
@@ -388,7 +397,7 @@ function montarRutasCertificados(app, deps) {
     const curso = await leerCurso(cursoId);
     const leccion = cert.leccionDe(curso, indice);
     if (!leccion) throw errorHttp(404, 'Clase no encontrada');
-    await exigirAcceso(uid, leccion);
+    await exigirAcceso(uid, leccion, cursoId);
 
     const preguntas = cert.preguntasDeLeccion(leccion);
     if (!preguntas.length) return res.json({ aprobado: true, correctas: 0, total: 0, detalle: [] });
@@ -458,7 +467,7 @@ function montarRutasCertificados(app, deps) {
     const curso = await leerCurso(cursoId);
     const leccion = cert.leccionDe(curso, indice);
     if (!leccion) throw errorHttp(404, 'Clase no encontrada');
-    const acceso = await exigirAcceso(uid, leccion);
+    const acceso = await exigirAcceso(uid, leccion, cursoId);
     // Si la persona llega aquí sin haber pedido antes su progreso, primero se trae el avance anterior (así no se le pide
     // repetir clases que ya había terminado). Si ya se importó, es una sola lectura.
     await importarLegadoSiCorresponde(uid);

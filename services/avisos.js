@@ -8,7 +8,7 @@
 
 const { texto, enlaceInterno, aIso, idSeguro } = require('./texto');
 
-const TIPOS_PERSONALES = Object.freeze(['certificado', 'logro', 'premio', 'libro', 'xp', 'bienvenida']);
+const TIPOS_PERSONALES = Object.freeze(['certificado', 'logro', 'premio', 'libro', 'xp', 'bienvenida', 'curso']);
 const TIPOS_GLOBALES = Object.freeze(['noticia', 'dato', 'sistema', 'clase', 'curso', 'general']);
 const LIMITES = Object.freeze({ titulo: 120, texto: 240, descripcion: 320, enlace: 40 });
 const MAX_PERSONALES = 30;

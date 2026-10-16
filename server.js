@@ -11,6 +11,8 @@ const crypto = require('crypto');
 const path = require('path');
 const bunnyCatalog = require('./data/zoorigen-bunny-catalog.json');
 const pruebaGratuita = require('./services/prueba-gratuita');
+const calendarioReglas = require('./services/calendario');
+const { crearServicioCalendario } = require('./services/rutas-calendario');
 const { montarRutasClub } = require('./services/rutas-club');
 const { montarRutasNoticias } = require('./services/rutas-noticias');
 const { iniciarProgramador } = require('./services/tarea-diaria');
@@ -501,7 +503,7 @@ let ultimaLecturaVideos = 0;     // momento del último intento de lectura (éxi
 let lecturaVideosEnCurso = null; // evita lecturas simultáneas duplicadas
 
 function indiceVacio() {
-  return { conocidos: new Set(), gratis: new Set(), cursos: new Map(), datos: new Map(), elegibles: [], porDefectoId: null, cargadoEn: 0 };
+  return { conocidos: new Set(), gratis: new Set(), cursos: new Map(), datos: new Map(), calendarioCursos: [], videoACursos: new Map(), elegibles: [], porDefectoId: null, cargadoEn: 0 };
 }
 
 async function leerIndiceVideosDeFirestore() {
@@ -510,8 +512,13 @@ async function leerIndiceVideosDeFirestore() {
   const gratis = new Set();
   const cursos = new Map();
   const datos = new Map(); // datos básicos de cada curso (logros y premios)
+  const resumenes = [];    // lo que necesita el calendario de desbloqueo (services/calendario.js)
+  const videoACursos = new Map();
   for (const doc of snapshot.docs) {
     const curso = doc.data() || {};
+    const resumen = calendarioReglas.resumirCursoCalendario(doc.id, curso);
+    resumenes.push(resumen);
+    for (const v of resumen.videoIds) { if (!videoACursos.has(v)) videoACursos.set(v, []); videoACursos.get(v).push(doc.id); }
     cursos.set(doc.id, pruebaGratuita.resumirCurso(curso, id => BUNNY_FREE_VIDEO_IDS.has(id)));
     datos.set(doc.id, {
       area: typeof curso.area === 'string' ? curso.area.trim().slice(0, 80) : '',
@@ -528,7 +535,8 @@ async function leerIndiceVideosDeFirestore() {
     }
   }
   const { elegibles, porDefectoId } = pruebaGratuita.resumenDeCursos(cursos, id => BUNNY_FREE_VIDEO_IDS.has(id));
-  return { conocidos, gratis, cursos, datos, elegibles, porDefectoId, cargadoEn: Date.now() };
+  // Mismo orden con el que el sitio lee los cursos (createdAt, más nuevo primero): de él sale la fila de desbloqueo
+  return { conocidos, gratis, cursos, datos, calendarioCursos: calendarioReglas.ordenPorCreacion(resumenes), videoACursos, elegibles, porDefectoId, cargadoEn: Date.now() };
 }
 
 // Devuelve siempre un índice (vacío si Firestore nunca respondió): jamás lanza, para que un
@@ -629,6 +637,18 @@ async function estadoPruebaGratuita(uid, indice) {
   });
 }
 
+// ── Calendario de cursos del miembro (services/calendario.js + services/rutas-calendario.js) ──
+// CALENDARIO_MODO=estricto rechaza un curso todavía cerrado en el video y en el progreso de clases. Sin definir (modo
+// transición) solo anota en la bitácora lo que habría rechazado: nadie pierde acceso mientras se comprueba que el calendario
+// del servidor coincide con lo que ven los miembros. CALENDARIO_NUEVO_DESDE (fecha ISO) fija desde cuándo quien empieza su plan
+// cuenta desde ese inicio; sin definir se fija sola el primer día que corre este servicio.
+const calendario = crearServicioCalendario({
+  db, admin, auth, autenticarFirebase, autenticarAdmin, esAdminPorDocumentos, tienePlanVigente, obtenerIndiceVideos, leerEleccionPrueba, errorHttp,
+  modo: process.env.CALENDARIO_MODO, nuevoDesde: process.env.CALENDARIO_NUEVO_DESDE
+});
+calendario.montar(app);
+calendario.montarAdmin(app);
+
 app.get('/api/prueba-gratuita', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   try {
@@ -728,6 +748,13 @@ app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
     if (!esClaseGratis && !esAdmin && !tienePlan) {
       return res.status(403).json({ error: 'Necesitas una membresía activa para ver esta clase' });
     }
+    // Con membresía, el curso de esta clase debe estar abierto en su calendario (una clase gratis siempre se puede ver)
+    if (tienePlan && !esAdmin && !esClaseGratis) {
+      await calendario.exigirVideo(decoded.uid, videoId, {
+        uid: decoded.uid, esAdmin, tienePlan,
+        miembro: miembroDoc.exists ? miembroDoc.data() : null, usuario: usuarioDoc.exists ? usuarioDoc.data() : null
+      }, 'el video');
+    }
 
     const expires = Math.floor(Date.now() / 1000) + BUNNY_TOKEN_TTL_SECONDS;
     const token = crypto
@@ -738,6 +765,9 @@ app.post('/api/bunny/embed-token', express.json(), async (req, res) => {
 
     return res.json({ embedUrl, expires, freePreview: esClaseGratis });
   } catch (error) {
+    if (error && error.codigo === 'curso-bloqueado') {
+      return res.status(error.status || 403).json({ error: error.message, codigo: error.codigo, cursoId: error.cursoId, desbloqueoEn: error.desbloqueoEn, diasFalta: error.diasFalta });
+    }
     console.error('[Bunny embed-token]', error);
     return res.status(500).json({ error: 'No se pudo preparar la reproducción' });
   }
@@ -991,7 +1021,7 @@ const catalogoLibros = libros.cargarLibros(process.env.LIBROS_DIR || path.join(_
 const catalogoMateriales = materiales.cargarMateriales(process.env.MATERIALES_DIR || path.join(__dirname, 'data', 'materiales'));
 const club = montarRutasClub(app, {
   express, db, auth, admin, autenticarFirebase, esAdminPorDocumentos, tienePlanVigente,
-  obtenerIndiceVideos, leerEleccionPrueba, errorHttp, catalogoLibros
+  obtenerIndiceVideos, leerEleccionPrueba, errorHttp, catalogoLibros, calendario
 });
 
 // ── Libros de lectura y materiales PDF que se abren con membresía y retos (services/rutas-materiales.js) ──
@@ -1009,7 +1039,7 @@ montarRutasAuth(app, { auth, autenticarFirebase, errorHttp, panelUrl: process.en
 // Sin CERTIFICATE_SIGNING_KEY arranca igual: el progreso funciona y los certificados responden 503.
 app.certificados = montarRutasCertificados(app, {
   db, admin, auth, autenticarFirebase, autenticarAdmin, esAdminPorDocumentos, tienePlanVigente,
-  reglasPruebaParaVideo, videoEsGratis, obtenerIndiceVideos, errorHttp, club,
+  reglasPruebaParaVideo, videoEsGratis, obtenerIndiceVideos, errorHttp, club, calendario,
   firmaClave: CERTIFICATE_SIGNING_KEY, corteLegado: LEGACY_PROGRESS_IMPORT_BEFORE, limiteAnteriores: CERTIFICADOS_ANTERIORES_HASTA,
   panelUrl: process.env.PANEL_URL || 'https://www.zoorigen.com'
 });
