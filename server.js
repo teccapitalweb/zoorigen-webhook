@@ -995,7 +995,11 @@ const club = montarRutasClub(app, {
 });
 
 // ── Libros de lectura y materiales PDF que se abren con membresía y retos (services/rutas-materiales.js) ──
-montarRutasMateriales(app, { db, autenticarFirebase, autenticarAdmin, errorHttp, club, catalogoLibros, catalogoMateriales });
+// importarLegado se resuelve al usarse: las rutas de certificados se montan más abajo (traen el avance anterior antes de leer las clases vistas).
+montarRutasMateriales(app, {
+  db, autenticarFirebase, autenticarAdmin, errorHttp, club, catalogoLibros, catalogoMateriales,
+  importarLegado: uid => (app.certificados && typeof app.certificados.importarLegado === 'function' ? app.certificados.importarLegado(uid) : null)
+});
 // ── Libro de registro de ejemplares: inventario, bitácora e informe anual de UMA/PIMVS (services/rutas-registro.js) ──
 // Datos por persona en registrosUma/{uid}/... (solo del servidor); solo con membresía vigente o administrador.
 montarRutasRegistro(app, { db, autenticarFirebase, errorHttp, club });

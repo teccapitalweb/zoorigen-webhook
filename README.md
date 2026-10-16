@@ -36,6 +36,8 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `GET /api/libros/:id` | El libro completo (meta + páginas); 403 `{ error, requiere, superados, faltan }` si sigue bloqueado | Token de Firebase + membresía + retos |
 | `GET /api/materiales` | Catálogo de PDF con su estado (`desbloqueado`, `faltan`, `soloMiembros`) | Token de Firebase (sin membresía: se listan cerrados) |
 | `GET /api/materiales/:id/archivo` | El PDF (`application/pdf`, `inline`, `private, no-store`); 403 igual que los libros | Token de Firebase + membresía (+ retos si el material lo pide) |
+| `GET /api/materiales/cursos` | Los materiales ligados a un curso (catálogo de archivos + PDF de Drive del panel), agrupados por curso, con su estado (`desbloqueado`, `condicion`, `clase`, `cursoTitulo`) | Token de Firebase (sin membresía: se listan cerrados) |
+| `GET /api/materiales/drive`, `GET /api/materiales/drive/:id/enlace` | Los PDF de Drive que carga el administrador (colección `pdfs`): la lista SIN enlace y, solo si se cumple la regla, la dirección de Drive | Token de Firebase + membresía (+ clase terminada o retos, según el material) |
 | `GET /api/admin/libros`, `GET /api/admin/materiales` | Qué se cargó del disco y qué se descartó (con el motivo), solo lectura | Token de Firebase + administrador |
 | `GET /api/registro` | Libro de registro de ejemplares: ejemplares (con estado), eventos, resumen por especie y límites | Token de Firebase + membresía |
 | `POST /api/registro/ejemplares`, `PATCH/DELETE /api/registro/ejemplares/:id` | Alta o nacimiento de un ejemplar, corregirlo, borrarlo (con sus eventos) | Token de Firebase + membresía |
@@ -402,6 +404,20 @@ muestra con una URL de blob.
 Respuestas: `GET /api/materiales` → `{ ok, membresia, superados, materiales:[{ id, titulo, tipo, area, descripcion, paginas, acceso, requiereRetos, licencia, desbloqueado, faltan, soloMiembros }] }`
 (sin nombre de archivo ni ruta). Bloqueado → 403 `{ error, codigo: 'membresia-requerida' | 'retos-insuficientes', requiere, superados, faltan }`;
 no existe → 404.
+
+### Materiales ligados a un curso y a una clase (`services/materiales-curso.js`)
+
+Un material puede ir ligado a un curso y, dentro del curso, a una clase: **se abre cuando la persona termina esa clase** (la marcó como vista;
+el servidor ya exigió el orden, las preguntas y el juego). Se declara de dos maneras con las MISMAS reglas:
+1. En `catalogo.json`: `"acceso": "curso", "cursoId": "<id del curso>", "clase": 2` (la primera clase es la 1; sin `clase` es material de todo el curso).
+2. En la colección `pdfs` de Firestore (la que llena el administrador desde el panel con un enlace de Drive): campos opcionales
+   `cursoId`, `clase` y `requiereRetos`. El enlace de Drive solo lo entrega `GET /api/materiales/drive/:id/enlace` a quien cumple.
+
+Reglas: con curso y clase → clase terminada (`miembros/{uid}/progresoCursos/{cursoId}.sesionesVistas`, tras importar el avance anterior si
+corresponde) · con curso y sin clase → membresía vigente · sin curso y con `requiereRetos` → membresía y esos retos · sin nada → membresía ·
+administrador: todo · sin membresía: nada (el catálogo se ve con `soloMiembros`). Un curso que no existe o una clase que el curso no tiene dejan
+el material **cerrado** (`pendiente: true`, código `material-no-disponible`) hasta corregirlo. Rechazos 403: `membresia-requerida`, `clase-pendiente`,
+`retos-insuficientes`, `material-no-disponible`. `GET /api/admin/materiales` suma `drive` con `ligaValida` para ver errores de captura.
 
 **Vista previa para quien no es miembro:** `GET /api/libros` y `GET /api/materiales` responden **200** a cualquier persona con
 sesión (también sin membresía o con la membresía vencida) con el catálogo COMPLETO y solo sus metadatos (título, subtítulo,
