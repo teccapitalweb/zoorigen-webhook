@@ -89,6 +89,48 @@ test('construirMetricas: altas, conversión de prueba a miembro, retención por 
   assert.ok(r.cohortes.length >= 1);
   assert.ok(r.cohortes.every(c => c.registrados >= c.conPlanAlgunaVez));
   assert.deepEqual(r.visitas, { activo: false, total: 0, porDia: [], porPagina: [] });
+  // embudo: se registraron > eligieron prueba > vieron clases > tuvieron membresía > terminaron un curso
+  assert.deepEqual(r.embudo.rango.etapas.map(e => e.valor), [3, 2, 2, 1, 1]);
+  assert.deepEqual(r.embudo.total.etapas.map(e => e.valor), [4, 3, 2, 1, 1]);
+  assert.equal(r.embudo.rango.pagaronSinPrueba, 0);
+  assert.ok(r.embudo.nota.length > 20);
+  // planes de quienes tienen acceso, ingresos y periodo anterior
+  assert.equal(r.cuentas.planes.mensual + r.cuentas.planes.anual + r.cuentas.planes.otro, r.cuentas.conAccesoHoy);
+  assert.equal(r.series.ingresos.length, 30);
+  assert.equal(typeof r.totales.ingresos, 'number');
+  assert.equal(typeof r.anterior.ingresos, 'number');
+  assert.equal(r.seriesAnterior.altas.length, 30);
+  assert.equal(r.seriesAnterior.altas.reduce((t, x) => t + x.n, 0), 1);
+  // actividad por día y hora: el mapa suma lo mismo que el total
+  assert.equal(r.actividad.mapa.length, 7);
+  assert.ok(r.actividad.mapa.every(f => f.length === 24));
+  assert.equal(r.actividad.mapa.flat().reduce((t, n) => t + n, 0), r.actividad.total);
+  assert.equal(r.actividad.porDiaSemana.reduce((t, n) => t + n, 0), r.actividad.total);
+  assert.ok(r.actividad.total >= 7);
+});
+
+test('construirMetricas: ingresos estimados por día (precio de lista o monto manual) y actividad por día y hora de México', () => {
+  const rango = { desde: '2026-10-10', hasta: '2026-10-16', dias: 7 };
+  const r = met.construirMetricas({
+    rango, tieneAcceso: () => true, ahora: new Date('2026-10-16T18:00:00Z'),
+    miembros: [
+      // miércoles 14 oct, 17:30 en México (23:30 UTC)
+      { id: 'a', data: { createdAt: '2026-10-14T23:30:00Z', planTipo: 'anual', ultimoPago: '2026-10-14T23:30:00Z', planVence: '2027-10-14T00:00:00Z' } },
+      { id: 'b', data: { createdAt: '2026-10-15T14:00:00Z', planTipo: 'mensual', activadoManualmente: true, montoPagado: 500, ultimoPago: '2026-10-15T15:00:00Z' } },
+      { id: 'c', data: { createdAt: '2026-08-01T14:00:00Z', planTipo: 'mensual', ultimoPago: '2026-10-05T14:00:00Z' } }
+    ]
+  });
+  assert.equal(r.totales.pagos, 2);
+  assert.equal(r.totales.ingresos, 1899 + 500);
+  assert.equal(r.series.ingresos.find(x => x.dia === '2026-10-14').n, 1899);
+  assert.equal(r.series.ingresos.find(x => x.dia === '2026-10-15').n, 500);
+  assert.equal(r.anterior.ingresos, 199, 'el pago del 5 de oct cae en el periodo anterior y vale el precio de lista mensual');
+  // 2 altas + 2 pagos en el periodo; el miércoles (índice 2) a las 17 h hay dos movimientos (alta y pago de a)
+  assert.equal(r.actividad.total, 4);
+  assert.equal(r.actividad.mapa[2][17], 2);
+  assert.equal(r.actividad.horaPico, 17);
+  assert.equal(r.actividad.diasPorSemana.reduce((t, n) => t + n, 0), 7);
+  assert.equal(r.embudo.rango.personas, 2);
 });
 
 test('construirMetricas con visitas: suma por día y por página dentro del rango', () => {

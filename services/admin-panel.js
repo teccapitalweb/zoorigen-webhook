@@ -276,5 +276,5 @@ function validarActivacion(cuerpo) {
 
 module.exports = {
   PRECIOS_LISTA_MXN, ESTADOS, ETIQUETAS_ESTADO, aFecha, aIso, diaMexico, mesMexico, origenPlan, clasificarMiembro, stripeActiva,
-  vistaMiembro, fichaMiembro, construirResumen, enmascararCorreo, limpiarTexto, validarActivacion, numeroMonto
+  vistaMiembro, fichaMiembro, valorPago, construirResumen, enmascararCorreo, limpiarTexto, validarActivacion, numeroMonto
 };
