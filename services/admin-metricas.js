@@ -331,7 +331,7 @@ function construirMetricas({ miembros = [], certificados = [], retos = [], prueb
 // ── Pruebas gratuitas ──
 //  pruebas: [{ id, data }] de pruebasGratuitas · miembros: Map(uid → { data }) · progreso: Map("uid|cursoId" → data)
 //  cursos: Map(id → { titulo, clases }) · sinElegir: lista ya calculada de miembros elegibles sin elegir
-function construirPruebas({ pruebas = [], miembros = new Map(), progreso = new Map(), cursos = new Map(), tieneAcceso, ahora = new Date() }) {
+function construirPruebas({ pruebas = [], miembros = new Map(), todosMiembros = [], progreso = new Map(), cursos = new Map(), tieneAcceso, ahora = new Date() }) {
   const filas = [];
   for (const { id, data } of pruebas) {
     const d = data || {};
@@ -378,8 +378,34 @@ function construirPruebas({ pruebas = [], miembros = new Map(), progreso = new M
   };
   totales.tasaMiembro = totales.elegidas ? Math.round((totales.seHicieronMiembro / totales.elegidas) * 100) : null;
   totales.tasaTerminaron = totales.elegidas ? Math.round((totales.terminaronGratis / totales.elegidas) * 100) : null;
+  totales.empezaron = filas.filter(f => f.clasesVistas > 0).length;
+
+  // Gráficas: embudo de la prueba (cada paso solo con quien llegó al anterior), avance, destino y semanas
+  const embudo = [
+    { clave: 'eligieron', etiqueta: 'Eligieron su prueba', valor: filas.length },
+    { clave: 'empezaron', etiqueta: 'Empezaron el curso', valor: totales.empezaron },
+    { clave: 'ultima', etiqueta: 'Llegaron a la última clase gratis', valor: filas.filter(f => f.clasesVistas > 0 && f.terminoGratis).length }
+  ];
+  const avance = [
+    { clave: 'sin-empezar', etiqueta: 'Sin empezar', valor: filas.filter(f => f.clasesGratis > 0 && f.clasesVistas === 0).length },
+    { clave: 'poco', etiqueta: 'Menos de la mitad', valor: filas.filter(f => f.clasesGratis > 0 && f.clasesVistas > 0 && f.avance !== null && f.avance < 50).length },
+    { clave: 'mitad', etiqueta: 'La mitad o más', valor: filas.filter(f => f.clasesGratis > 0 && f.avance !== null && f.avance >= 50 && !f.terminoGratis).length },
+    { clave: 'termino', etiqueta: 'Terminaron las clases gratis', valor: filas.filter(f => f.clasesGratis > 0 && f.terminoGratis).length },
+    { clave: 'sin-clases', etiqueta: 'Curso sin clases gratis', valor: filas.filter(f => !f.clasesGratis).length }
+  ];
+  const destino = { miembros: totales.seHicieronMiembro, noMiembros: filas.length - totales.seHicieronMiembro };
+  const SEMANAS = 12;
+  const hoyMs = ahora.getTime();
+  const semanas = [];
+  for (let i = SEMANAS - 1; i >= 0; i--) {
+    const hasta = hoyMs - i * 7 * 86400000; const desde = hasta - 7 * 86400000;
+    let cuentas = 0; let elegidas = 0;
+    for (const { data } of todosMiembros) { const f = aFecha(data && data.createdAt); if (f && f.getTime() > desde && f.getTime() <= hasta) cuentas += 1; }
+    for (const f of filas) { const t = f.elegidoEn ? Date.parse(f.elegidoEn) : NaN; if (Number.isFinite(t) && t > desde && t <= hasta) elegidas += 1; }
+    semanas.push({ desde: diaMexico(new Date(desde + 1)), cuentasNuevas: cuentas, pruebasElegidas: elegidas });
+  }
   return {
-    filas, totales,
+    filas, totales, embudo, avance, destino, semanas,
     porCurso: [...porCurso.values()].sort((a, b) => b.elegidas - a.elegidas || a.curso.localeCompare(b.curso, 'es')),
     generado: ahora.toISOString()
   };

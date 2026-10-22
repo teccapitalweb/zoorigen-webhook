@@ -23,6 +23,7 @@ const { montarRutasCertificados } = require('./services/rutas-certificados');
 const { montarRutasPublico } = require('./services/rutas-publico');
 const { montarRutasAdmin } = require('./services/rutas-admin');
 const bitacoraMemoria = require('./services/bitacora-memoria');
+const { crearBitacoraServidor } = require('./services/bitacora-servidor');
 const libros = require('./services/libros');
 const materiales = require('./services/materiales');
 
@@ -299,6 +300,61 @@ async function autenticarAdmin(req, res) {
   }
 }
 
+// ── Bitácora persistente (Firestore): reinicios, errores agrupados y avisos de Stripe ignorados ──
+let versionServidor = null;
+try { versionServidor = require('./package.json').version; } catch (_) { versionServidor = null; }
+const bitacoraServidor = crearBitacoraServidor({
+  db, admin, version: versionServidor, commit: String(process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || null
+});
+bitacoraMemoria.fijarDestino(mensaje => bitacoraServidor.registrarError(mensaje));
+
+// ── ¿De qué marca es un aviso de Stripe? ──
+// La cuenta de Stripe es COMPARTIDA con otras marcas del mismo dueño: Stripe envía a este servidor avisos de suscripciones y pagos
+// que NO son de Zoorigen (no hay ningún miembro con ese id). Antes de buscar al miembro se mira el PRECIO del aviso:
+//   · ninguno de sus precios es de Zoorigen  → se ignora (200) y solo se cuenta: no es un error nuestro;
+//   · alguno es de Zoorigen y no hay miembro  → error real, de ALTA PRIORIDAD (mismo mensaje de siempre);
+//   · no se puede saber el precio             → se conserva el comportamiento anterior, pero se anota como "por revisar".
+// Los precios de Zoorigen son los vigentes (mensual y anual) y los históricos de STRIPE_PRICES_HISTORICOS (ids separados por comas).
+const PRECIOS_HISTORICOS = new Set(String(process.env.STRIPE_PRICES_HISTORICOS || '').split(',').map(s => s.trim()).filter(Boolean));
+const TIPOS_DE_ZOORIGEN = new Set(['checkout.session.completed', 'invoice.payment_succeeded', 'invoice.payment_failed', 'customer.subscription.updated', 'customer.subscription.deleted']);
+const esPrecioDeZoorigen = id => Boolean(id) && (id === STRIPE_PRICES.mensual || id === STRIPE_PRICES.anual || PRECIOS_HISTORICOS.has(id));
+
+function preciosDeObjeto(obj) {
+  const ids = new Set();
+  const agrega = v => {
+    if (typeof v === 'string' && v.startsWith('price_')) ids.add(v);
+    else if (v && typeof v === 'object' && typeof v.id === 'string' && v.id.startsWith('price_')) ids.add(v.id);
+  };
+  if (!obj || typeof obj !== 'object') return [];
+  for (const it of (obj.items && Array.isArray(obj.items.data) ? obj.items.data : [])) { agrega(it && it.price); agrega(it && it.plan); }
+  for (const l of (obj.lines && Array.isArray(obj.lines.data) ? obj.lines.data : [])) {
+    agrega(l && l.price); agrega(l && l.plan); agrega(l && l.pricing && l.pricing.price_details && l.pricing.price_details.price);
+  }
+  for (const l of (obj.line_items && Array.isArray(obj.line_items.data) ? obj.line_items.data : [])) agrega(l && l.price);
+  return [...ids];
+}
+
+function clasificarPrecios(ids) {
+  if (!ids.length) return 'desconocido';
+  return ids.some(esPrecioDeZoorigen) ? 'zoorigen' : 'otra-marca';
+}
+
+// Se llama cuando NO hay miembro de Zoorigen para el aviso. Devuelve true si se ignora; si no, lanza el error con su clasificación.
+function resolverAvisoSinMiembro(evento, objetos, mensaje) {
+  const tipo = evento.type;
+  const ids = [...new Set(objetos.flatMap(preciosDeObjeto))];
+  const clase = clasificarPrecios(ids);
+  if (clase === 'otra-marca') {
+    evento.__ignorado = true;
+    bitacoraServidor.registrarIgnorado(tipo);
+    console.log(`ℹ️ Aviso de Stripe ignorado (${tipo}): es de otra marca de la cuenta compartida; ninguno de sus precios es de Zoorigen.`);
+    return true;
+  }
+  const error = new Error(mensaje);
+  error.clasificacion = clase === 'zoorigen' ? 'zoorigen' : 'revisar';
+  throw error;
+}
+
 // ── STRIPE WEBHOOK (necesita body RAW para verificar firma) ──
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   let event;
@@ -322,7 +378,11 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         const email = session.customer_email || session.customer_details?.email;
         const planType = session.metadata?.planType || 'mensual';
         const subscriptionId = idDeReferencia(session.subscription);
-        if (!firebaseUID || !subscriptionId) throw new Error('Checkout sin firebaseUID o subscriptionId');
+        if (!firebaseUID || !subscriptionId) {
+          let objetos = [session];
+          if (subscriptionId) { try { objetos.push(await stripe.subscriptions.retrieve(subscriptionId)); } catch (_) { /* se clasifica con lo que haya */ } }
+          if (resolverAvisoSinMiembro(event, objetos, 'Checkout sin firebaseUID o subscriptionId')) break;
+        }
         if (session.payment_status !== 'paid') {
           console.warn(`Pago no confirmado para checkout ${session.id}: ${session.payment_status}`);
           break;
@@ -347,7 +407,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         if (!subscriptionId || invoice.billing_reason === 'subscription_create') break;
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const firebaseUID = subscription.metadata?.firebaseUID || await buscarUidPorSubscription(subscriptionId);
-        if (!firebaseUID) throw new Error(`No se encontró miembro para la suscripción ${subscriptionId}`);
+        if (!firebaseUID && resolverAvisoSinMiembro(event, [subscription, invoice], `No se encontró miembro para la suscripción ${subscriptionId}`)) break;
         await sincronizarSubscription(firebaseUID, subscription, { pagoConfirmado: true });
         console.log(`🔄 Renovación exitosa para ${firebaseUID}`);
         break;
@@ -360,7 +420,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         if (!subscriptionId) break;
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const firebaseUID = subscription.metadata?.firebaseUID || await buscarUidPorSubscription(subscriptionId);
-        if (!firebaseUID) throw new Error(`No se encontró miembro para el pago fallido ${subscriptionId}`);
+        if (!firebaseUID && resolverAvisoSinMiembro(event, [subscription, invoice], `No se encontró miembro para el pago fallido ${subscriptionId}`)) break;
         await sincronizarSubscription(firebaseUID, { ...subscription, status: 'past_due' });
         console.log(`⚠️ Membresía suspendida por pago fallido para ${firebaseUID}`);
         break;
@@ -370,7 +430,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       case 'customer.subscription.updated': {
         const subscription = event.data.object;
         const firebaseUID = subscription.metadata?.firebaseUID || await buscarUidPorSubscription(subscription.id);
-        if (!firebaseUID) throw new Error(`No se encontró miembro para la suscripción ${subscription.id}`);
+        if (!firebaseUID && resolverAvisoSinMiembro(event, [subscription], `No se encontró miembro para la suscripción ${subscription.id}`)) break;
         await sincronizarSubscription(firebaseUID, subscription);
         console.log(`🔁 Suscripción sincronizada para ${firebaseUID}: ${subscription.status}`);
         break;
@@ -380,7 +440,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       case 'customer.subscription.deleted': {
         const subscription = event.data.object;
         const firebaseUID = subscription.metadata?.firebaseUID || await buscarUidPorSubscription(subscription.id);
-        if (!firebaseUID) throw new Error(`No se encontró miembro para cancelar ${subscription.id}`);
+        if (!firebaseUID && resolverAvisoSinMiembro(event, [subscription], `No se encontró miembro para cancelar ${subscription.id}`)) break;
         await sincronizarSubscription(firebaseUID, { ...subscription, status: 'canceled' });
         await Promise.all([
           db.collection('miembros').doc(firebaseUID).set({ canceladoEn: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }),
@@ -394,11 +454,20 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         console.log(`ℹ️ Evento no manejado: ${event.type}`);
     }
   } catch (error) {
-    console.error('❌ Error procesando evento:', error);
+    if (error && error.clasificacion === 'revisar') {
+      // No se pudo saber de qué marca es (aviso sin precios): se conserva la respuesta de siempre, pero no cuenta como error
+      console.warn('⚠️ Aviso de Stripe por revisar (no se pudo saber de qué marca es):', error.message);
+      bitacoraServidor.registrarError('Aviso de Stripe por revisar: ' + error.message, { nivel: 'revisar' });
+    } else if (error && error.clasificacion === 'zoorigen') {
+      console.error('❌ [ALTA PRIORIDAD] Error procesando evento de Zoorigen:', error);
+    } else {
+      console.error('❌ Error procesando evento:', error);
+    }
     // Stripe reintentará el webhook. Nunca confirmar un evento que no se guardó.
     return res.status(500).json({ received: false });
   }
 
+  bitacoraServidor.registrarAvisoStripe(event.type, TIPOS_DE_ZOORIGEN.has(event.type) && !event.__ignorado);
   return res.json({ received: true });
 });
 
@@ -1061,7 +1130,8 @@ montarRutasNoticias(app, {
 // ── Panel de administración: resumen, miembros, comunidad, referidos, retos y estado (services/rutas-admin.js) ──
 // Todas las rutas /api/admin/* de este archivo exigen administrador verificado en el servidor (ADMIN_EMAILS o marca en Firestore).
 montarRutasAdmin(app, {
-  express, db, admin, auth, autenticarAdmin, errorHttp, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador,
+  express, db, admin, auth, autenticarAdmin, errorHttp, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador, bitacoraServidor,
+  precios: { stripe, STRIPE_PRICES },
   // Ensayo e importación del avance anterior de los miembros (GET/POST /api/admin/progreso-legado): las mismas reglas que la
   // importación automática (services/rutas-certificados.js)
   importarLegado: app.certificados.importarLegado,
@@ -1081,12 +1151,16 @@ if (require.main === module) {
       ? `Certificados anteriores sin firma: se aceptan los emitidos hasta ${CERTIFICADOS_ANTERIORES_HASTA}`
       : 'Certificados anteriores sin firma: modo transición (sin límite de fecha); define CERTIFICADOS_ANTERIORES_HASTA al publicar las reglas v6');
     // Tarea diaria (noticias y dato curioso). Se apaga con NOTICIAS_TAREA=off; las pruebas importan `app` y nunca llegan aquí.
+    // Bitácora persistente: arranque (normal o inesperado), latido, errores agrupados. Nunca bloquea ni rompe al servidor.
+    bitacoraServidor.iniciar().catch(error => console.warn('Bitácora del servidor no iniciada:', error && error.message));
     const tarea = iniciarProgramador(db);
     console.log(tarea.activo ? '📰 Tarea diaria de noticias: activa (13:00 UTC y al arrancar)' : '📰 Tarea diaria de noticias: apagada');
   });
 }
 
 module.exports = app;
+// Para pruebas y para el panel: la bitácora persistente del servidor.
+app.bitacoraServidor = bitacoraServidor;
 // Para pruebas: acceso al índice de videos y sus constantes (no altera el export de `app`).
 app.videosFirestore = {
   obtenerIndiceVideos,

@@ -175,8 +175,34 @@ test('construirPruebas: avance, si terminó las clases gratis, si ya es miembro 
   assert.equal(z.cuentaExiste, false);
   assert.equal(z.curso, 'cx');
   assert.equal(r.filas[0].uid, 'a'); // más reciente primero
-  assert.deepEqual(r.totales, { elegidas: 3, terminaronGratis: 1, seHicieronMiembro: 1, conAcceso: 1, tasaMiembro: 33, tasaTerminaron: 33 });
+  assert.deepEqual(r.totales, { elegidas: 3, terminaronGratis: 1, seHicieronMiembro: 1, conAcceso: 1, tasaMiembro: 33, tasaTerminaron: 33, empezaron: 2 });
   assert.equal(r.porCurso[0].elegidas, 2);
+  assert.deepEqual(r.embudo.map(p => p.valor), [3, 2, 1]);
+  assert.equal(r.avance.find(x => x.clave === 'mitad').valor, 1);
+  assert.equal(r.avance.find(x => x.clave === 'termino').valor, 1);
+  assert.equal(r.avance.find(x => x.clave === 'sin-clases').valor, 1);
+  assert.deepEqual(r.destino, { miembros: 1, noMiembros: 2 });
+});
+
+test('construirPruebas: doce semanas con cuentas nuevas y pruebas elegidas, sin inventar datos', () => {
+  const vacio = met.construirPruebas({ tieneAcceso });
+  assert.equal(vacio.semanas.length, 12);
+  assert.ok(vacio.semanas.every(w => w.cuentasNuevas === 0 && w.pruebasElegidas === 0));
+  assert.deepEqual(vacio.embudo.map(p => p.valor), [0, 0, 0]);
+  const ahora = new Date();
+  const r = met.construirPruebas({
+    ahora, tieneAcceso, miembros: new Map([['a', miembroSinPlan({ name: 'Ana' })]]),
+    todosMiembros: [
+      { id: 'a', data: miembroSinPlan({ createdAt: new Date(ahora.getTime() - 2 * DIA).toISOString() }) },
+      { id: 'b', data: miembroSinPlan({ createdAt: new Date(ahora.getTime() - 9 * DIA).toISOString() }) },
+      { id: 'c', data: miembroSinPlan({ createdAt: new Date(ahora.getTime() - 200 * DIA).toISOString() }) }
+    ],
+    pruebas: [{ id: 'a', data: { uid: 'a', cursoId: 'c1', elegidoEn: ts(ahora.getTime() - DIA) } }]
+  });
+  assert.equal(r.semanas[11].cuentasNuevas, 1);
+  assert.equal(r.semanas[10].cuentasNuevas, 1);
+  assert.equal(r.semanas[11].pruebasElegidas, 1);
+  assert.equal(r.semanas.reduce((t, w) => t + w.cuentasNuevas, 0), 2, 'la cuenta de hace 200 días queda fuera de las 12 semanas');
 });
 
 test('calcularSinElegir: solo quien nunca tuvo plan, no es admin y no eligió', () => {

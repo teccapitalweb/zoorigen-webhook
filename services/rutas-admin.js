@@ -30,6 +30,7 @@ const panel = require('./admin-panel');
 const bitacora = require('./bitacora-memoria');
 const { montarRutasAdminExtra } = require('./rutas-admin-extra');
 const { montarRutasAdminComunidad } = require('./rutas-admin-comunidad');
+const { montarRutasAdminServidor } = require('./rutas-admin-servidor');
 
 const LECTURAS_POR_MINUTO = 90;
 const ESCRITURAS_POR_MINUTO = 20;
@@ -151,7 +152,7 @@ function montarRutasAdmin(app, deps) {
   app.get('/api/admin/resumen', conAdmin('No se pudo cargar el resumen', 'resumen', async (req, res) => {
     const [mi, ce, acciones] = await Promise.all([
       miembros(refrescar(req)), certificados(refrescar(req)),
-      db.collection('adminAcciones').orderBy('en', 'desc').limit(5).get().catch(() => ({ docs: [] }))
+      db.collection('adminAcciones').orderBy('en', 'desc').limit(15).get().catch(() => ({ docs: [] }))
     ]);
     const ahora = new Date();
     const resumen = panel.construirResumen({
@@ -169,7 +170,7 @@ function montarRutasAdmin(app, deps) {
       const f = panel.aFecha(data.emitido || data.issuedAt);
       if (f) eventos.push({ tipo: 'certificado', en: f.toISOString(), texto: `Certificado de «${String(data.curso || data.courseTitle || 'curso').slice(0, 80)}»` });
     }
-    for (const d of acciones.docs) {
+    for (const d of acciones.docs.slice(0, 5)) {
       const a = d.data() || {};
       const f = panel.aFecha(a.en);
       if (f) eventos.push({ tipo: 'accion', en: f.toISOString(), texto: String(a.resumen || a.accion || 'Acción del equipo').slice(0, 140) });
@@ -178,7 +179,12 @@ function montarRutasAdmin(app, deps) {
 
     return res.json({
       ok: true, generado: ahora.toISOString(), truncado: mi.truncado,
-      ...resumen, actividadReciente: eventos.slice(0, 12)
+      ...resumen, actividadReciente: eventos.slice(0, 12),
+      // Lo último que hizo el equipo desde el panel (antes vivía en «Estado del sistema»)
+      accionesEquipo: acciones.docs.map(d => {
+        const a = d.data() || {};
+        return { accion: String(a.accion || '').slice(0, 40), resumen: String(a.resumen || '').slice(0, 160), en: panel.aIso(a.en) };
+      })
     });
   }));
 
@@ -684,6 +690,9 @@ function montarRutasAdmin(app, deps) {
   montarRutasAdminComunidad(app, deps, {
     conAdmin, anotarAccion, cache, conCache, miembros, leerColeccion, refrescar, tieneAcceso, nombreDe, analizadorJson
   });
+
+  // ── Cuarta parte: precios (solo lectura), contacto, estado de servicios e historial del servidor ──
+  montarRutasAdminServidor(app, deps, { conAdmin, anotarAccion, miembros, refrescar, tieneAcceso, analizadorJson });
 
   return { limpiarCache: () => cache.clear() };
 }

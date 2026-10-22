@@ -354,7 +354,7 @@ function montarRutasAdminExtra(app, deps, a) {
         } catch (_) { /* sin avance */ }
       }));
     }
-    const resultado = metricas.construirPruebas({ pruebas: docs, miembros: porUid, progreso, cursos, tieneAcceso, ahora });
+    const resultado = metricas.construirPruebas({ pruebas: docs, miembros: porUid, todosMiembros: mi.docs, progreso, cursos, tieneAcceso, ahora });
     const sinElegir = metricas.calcularSinElegir({ miembros: mi.docs, eleccionesUids: new Set(pr.docs.map(d => String((d.data && d.data.uid) || d.id))) });
     return res.json({ ok: true, truncado: pr.docs.length > PRUEBAS_TOPE, ...resultado, sinElegir });
   }));

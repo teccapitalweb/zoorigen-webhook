@@ -10,6 +10,7 @@ const { limpiarTexto } = require('./admin-panel');
 
 const MAXIMO = 100;
 const entradas = [];
+let destino = null; // opcional: bitacora-servidor.js guarda también lo importante en Firestore
 const arranque = new Date();
 let contador = 0;
 
@@ -26,6 +27,7 @@ function registrar(nivel, args) {
     contador += 1;
     entradas.push({ n: contador, nivel, en: new Date().toISOString(), mensaje: limpiarTexto(partes.join(' '), 280) });
     if (entradas.length > MAXIMO) entradas.splice(0, entradas.length - MAXIMO);
+    if (destino && nivel === 'error') destino(entradas[entradas.length - 1].mensaje);
   } catch (_) { /* la bitácora nunca rompe al servidor */ }
 }
 
@@ -42,4 +44,6 @@ function recientes(limite = 30) {
   return entradas.slice(-limite).reverse();
 }
 
-module.exports = { instalar, registrar, recientes, arranque: () => arranque, total: () => contador };
+function fijarDestino(fn) { destino = typeof fn === 'function' ? fn : null; }
+
+module.exports = { instalar, registrar, recientes, fijarDestino, arranque: () => arranque, total: () => contador };
