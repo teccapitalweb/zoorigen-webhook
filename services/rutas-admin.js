@@ -31,6 +31,7 @@ const bitacora = require('./bitacora-memoria');
 const { montarRutasAdminExtra } = require('./rutas-admin-extra');
 const { montarRutasAdminComunidad } = require('./rutas-admin-comunidad');
 const { montarRutasAdminServidor } = require('./rutas-admin-servidor');
+const { montarRutasAdminCreditos } = require('./rutas-creditos');
 
 const LECTURAS_POR_MINUTO = 90;
 const ESCRITURAS_POR_MINUTO = 20;
@@ -216,8 +217,8 @@ function montarRutasAdmin(app, deps) {
 
   // Lista de miembros con la fecha de registro REAL, de más reciente a más antigua. La fecha sale de miembros.createdAt (texto ISO
   // o Timestamp); si falta o no se puede leer, de la fecha de creación de la cuenta en Firebase Auth (registroOrigen: 'cuenta').
-  app.get('/api/admin/miembros', conAdmin('No se pudieron cargar los miembros', 'miembros', async (req, res) => {
-    const mi = await miembros(refrescar(req));
+  async function listaMiembros(refr) {
+    const mi = await miembros(refr);
     const lista = mi.docs.map(({ id, data }) => {
       const v = panel.vistaMiembro(id, data, tieneAcceso);
       v.registroOrigen = v.registro ? 'perfil' : null;
@@ -229,7 +230,12 @@ function montarRutasAdmin(app, deps) {
       for (const v of lista) if (!v.registro && altas.get(v.uid)) { v.registro = altas.get(v.uid); v.registroOrigen = 'cuenta'; }
     }
     lista.sort((a, b) => (a.registro && b.registro ? (a.registro < b.registro ? 1 : a.registro > b.registro ? -1 : 0) : (a.registro ? -1 : b.registro ? 1 : 0)));
-    return res.json({ ok: true, generado: new Date().toISOString(), total: lista.length, truncado: mi.truncado, sinFechaDeRegistro: lista.filter(v => !v.registro).length, miembros: lista });
+    return { lista, truncado: mi.truncado };
+  }
+
+  app.get('/api/admin/miembros', conAdmin('No se pudieron cargar los miembros', 'miembros', async (req, res) => {
+    const { lista, truncado } = await listaMiembros(refrescar(req));
+    return res.json({ ok: true, generado: new Date().toISOString(), total: lista.length, truncado, sinFechaDeRegistro: lista.filter(v => !v.registro).length, miembros: lista });
   }));
 
   app.get('/api/admin/miembros/:uid', conAdmin('No se pudo cargar la ficha del miembro', 'ficha', async (req, res) => {
@@ -693,6 +699,9 @@ function montarRutasAdmin(app, deps) {
 
   // ── Cuarta parte: precios (solo lectura), contacto, estado de servicios e historial del servidor ──
   montarRutasAdminServidor(app, deps, { conAdmin, anotarAccion, miembros, refrescar, tieneAcceso, analizadorJson });
+
+  // ── Quinta parte: créditos (regalo manual, historial y gráfica de canjes) ──
+  montarRutasAdminCreditos(app, deps, { conAdmin, anotarAccion, listaMiembros, refrescar, analizadorJson });
 
   return { limpiarCache: () => cache.clear() };
 }

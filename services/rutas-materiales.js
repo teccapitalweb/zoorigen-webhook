@@ -15,6 +15,7 @@ const libros = require('./libros');
 const materiales = require('./materiales');
 const porCurso = require('./materiales-curso');
 const cert = require('./certificados');
+const creditos = require('./creditos');
 
 const LECTURAS_POR_MINUTO = 60;
 const DESCARGAS_POR_MINUTO = 20;
@@ -53,6 +54,8 @@ function montarRutasMateriales(app, deps) {
       // Solo se leen los retos de quien puede usarlos (el administrador los tiene todos abiertos igual)
       const superados = ctx.membresia ? (await club.leerEstadoRetos(decoded.uid)).superados : 0;
       const estado = { superados, membresia: ctx.membresia, esAdmin: ctx.esAdmin };
+      // Lo que canjeó con créditos (services/creditos.js): se abre SOLO ese material, aunque no tenga membresía ni los retos
+      estado.creditos = ctx.esAdmin ? new Set() : await creditos.leerDesbloqueos(db, decoded.uid).catch(() => new Set());
       return await fn(req, res, decoded, estado);
     } catch (error) {
       return responderError(res, error, mensajeGenerico, etiqueta);
@@ -122,6 +125,9 @@ function montarRutasMateriales(app, deps) {
   };
   // responderError arma el cuerpo con { error, codigo }; aquí se le suman requiere / superados / faltan
   const rechazar = (res, err) => res.status(403).json({ error: err.message, codigo: err.codigo, ...err.extra });
+  // Estado efectivo para UN material: si lo canjeó con créditos se abre como si cumpliera la regla; los demás siguen igual
+  const paraMaterial = (estado, tipo, id) => creditos.estadoConCredito(estado, tipo, id, estado.creditos);
+  const marcaCreditos = (resumen, estado, tipo, id) => (estado.creditos && estado.creditos.has(creditos.claveMaterial(tipo, id)) ? { ...resumen, porCreditos: true } : resumen);
 
   // ════════════════════════════════════════════════════════════
   // LIBROS
@@ -131,7 +137,7 @@ function montarRutasMateriales(app, deps) {
     await libros.avisarLibros(db, decoded.uid, catalogoLibros.libros, estado);
     return res.json({
       ok: true, membresia: estado.membresia || estado.esAdmin, superados: estado.superados,
-      libros: libros.resumenLibros(catalogoLibros.libros, estado)
+      libros: catalogoLibros.libros.map(l => marcaCreditos(libros.resumenLibro(l, paraMaterial(estado, 'libro', l.id)), estado, 'libro', l.id))
     });
   }));
 
@@ -140,7 +146,7 @@ function montarRutasMateriales(app, deps) {
     const libro = (typeof req.params.id === 'string' && libros.ID_LIBRO.test(req.params.id))
       ? catalogoLibros.libros.find(l => l.id === req.params.id) : null;
     if (!libro) throw noExiste('Ese libro no existe');
-    const completo = libros.libroCompleto(libro, estado);
+    const completo = libros.libroCompleto(libro, paraMaterial(estado, 'libro', libro.id));
     if (!completo) return rechazar(res, bloqueado(libro, estado, 'Los libros'));
     return res.json({ ok: true, libro: completo });
   }));
@@ -152,7 +158,7 @@ function montarRutasMateriales(app, deps) {
     await cargarCursosLigados(decoded.uid, estado, idsDeCursos(catalogoMateriales.materiales));
     return res.json({
       ok: true, membresia: estado.membresia || estado.esAdmin, superados: estado.superados,
-      materiales: materiales.resumenMateriales(catalogoMateriales.materiales, estado)
+      materiales: catalogoMateriales.materiales.map(m => marcaCreditos(materiales.resumenMaterial(m, paraMaterial(estado, 'pdf', m.id)), estado, 'pdf', m.id))
     });
   }));
 
@@ -162,7 +168,7 @@ function montarRutasMateriales(app, deps) {
     const material = materiales.buscarMaterial(catalogoMateriales.materiales, req.params.id);
     if (!material) throw noExiste('Ese material no existe');
     if (material.acceso === 'curso') await cargarCursosLigados(decoded.uid, estado, [material.cursoId]);
-    if (!materiales.acceso(material, estado).desbloqueado) return rechazar(res, bloqueado(material, estado, 'Los materiales'));
+    if (!materiales.acceso(material, paraMaterial(estado, 'pdf', material.id)).desbloqueado) return rechazar(res, bloqueado(material, estado, 'Los materiales'));
     let contenido;
     try {
       contenido = await fs.promises.readFile(material.ruta);
@@ -186,7 +192,7 @@ function montarRutasMateriales(app, deps) {
     await cargarCursosLigados(decoded.uid, estado, idsDeCursos(lista));
     return res.json({
       ok: true, membresia: estado.membresia || estado.esAdmin, superados: estado.superados,
-      materiales: lista.map(m => porCurso.resumenPdfDrive(m, estado))
+      materiales: lista.map(m => (m.cursoId ? porCurso.resumenPdfDrive(m, estado) : marcaCreditos(porCurso.resumenPdfDrive(m, paraMaterial(estado, 'drive', m.id)), estado, 'drive', m.id)))
     });
   }));
 
@@ -197,7 +203,7 @@ function montarRutasMateriales(app, deps) {
     const material = snap && snap.exists ? porCurso.normalizarPdfDrive(id, snap.data()) : null;
     if (!material) throw noExiste('Ese material no existe');
     await cargarCursosLigados(decoded.uid, estado, [material.cursoId]);
-    if (!porCurso.acceso(material, estado).desbloqueado) return rechazar(res, bloqueado(material, estado, 'Los materiales'));
+    if (!porCurso.acceso(material, material.cursoId ? estado : paraMaterial(estado, 'drive', material.id)).desbloqueado) return rechazar(res, bloqueado(material, estado, 'Los materiales'));
     const enlaces = porCurso.enlacesDrive(material.driveId);
     if (!enlaces) throw noExiste('El archivo de este material no está disponible por ahora');
     return res.json({ ok: true, id: material.id, titulo: material.titulo, url: enlaces.ver, vista: enlaces.vista });

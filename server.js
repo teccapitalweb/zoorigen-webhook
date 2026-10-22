@@ -17,6 +17,7 @@ const { montarRutasClub } = require('./services/rutas-club');
 const { montarRutasNoticias } = require('./services/rutas-noticias');
 const { iniciarProgramador } = require('./services/tarea-diaria');
 const { montarRutasMateriales } = require('./services/rutas-materiales');
+const { montarRutasCreditos } = require('./services/rutas-creditos');
 const { montarRutasRegistro } = require('./services/rutas-registro');
 const { montarRutasAuth } = require('./services/rutas-auth');
 const { montarRutasCertificados } = require('./services/rutas-certificados');
@@ -1099,6 +1100,9 @@ montarRutasMateriales(app, {
   db, autenticarFirebase, autenticarAdmin, errorHttp, club, catalogoLibros, catalogoMateriales,
   importarLegado: uid => (app.certificados && typeof app.certificados.importarLegado === 'function' ? app.certificados.importarLegado(uid) : null)
 });
+// ── Créditos: el administrador los regala (100 por regalo) y la persona los canjea por un material sin curso (services/rutas-creditos.js) ──
+// creditosCuentas, creditosMovimientos y creditosDesbloqueos solo los escribe este servidor.
+montarRutasCreditos(app, { db, admin, autenticarFirebase, errorHttp, club, catalogoLibros, catalogoMateriales, analizadorJson: express.json({ limit: '2kb' }) });
 // ── Libro de registro de ejemplares: inventario, bitácora e informe anual de UMA/PIMVS (services/rutas-registro.js) ──
 // Datos por persona en registrosUma/{uid}/... (solo del servidor); solo con membresía vigente o administrador.
 montarRutasRegistro(app, { db, autenticarFirebase, errorHttp, club });
