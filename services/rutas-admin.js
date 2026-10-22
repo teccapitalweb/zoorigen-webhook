@@ -29,6 +29,7 @@ const { permitirSolicitud } = require('./rutas-club');
 const panel = require('./admin-panel');
 const bitacora = require('./bitacora-memoria');
 const { montarRutasAdminExtra } = require('./rutas-admin-extra');
+const { montarRutasAdminComunidad } = require('./rutas-admin-comunidad');
 
 const LECTURAS_POR_MINUTO = 90;
 const ESCRITURAS_POR_MINUTO = 20;
@@ -184,10 +185,45 @@ function montarRutasAdmin(app, deps) {
   // ════════════════════════════════════════════════════════════
   // Miembros
   // ════════════════════════════════════════════════════════════
+  // Fecha de alta de la cuenta (Firebase Auth) para quien no tiene createdAt legible en miembros (por ejemplo, las cuentas que
+  // creó el webhook de pagos antes de que la persona entrara al Club). Nunca cambia, así que se recuerda en memoria.
+  const altasAuth = new Map(); // uid -> ISO | null
+  async function altaDeAuth(uids) {
+    const faltan = uids.filter(u => !altasAuth.has(u));
+    for (let i = 0; i < faltan.length; i += 100) {
+      const trozo = faltan.slice(i, i + 100);
+      try {
+        const r = auth ? await auth.getUsers(trozo.map(uid => ({ uid }))) : { users: [] };
+        const halladas = new Set();
+        for (const u of (r && r.users) || []) {
+          const f = panel.aFecha(u.metadata && u.metadata.creationTime);
+          altasAuth.set(u.uid, f ? f.toISOString() : null);
+          halladas.add(u.uid);
+        }
+        for (const uid of trozo) if (!halladas.has(uid)) altasAuth.set(uid, null);
+      } catch (error) {
+        console.warn('[Admin miembros] No se pudo leer la fecha de alta de las cuentas:', error && error.message);
+      }
+    }
+    return altasAuth;
+  }
+
+  // Lista de miembros con la fecha de registro REAL, de más reciente a más antigua. La fecha sale de miembros.createdAt (texto ISO
+  // o Timestamp); si falta o no se puede leer, de la fecha de creación de la cuenta en Firebase Auth (registroOrigen: 'cuenta').
   app.get('/api/admin/miembros', conAdmin('No se pudieron cargar los miembros', 'miembros', async (req, res) => {
     const mi = await miembros(refrescar(req));
-    const lista = mi.docs.map(({ id, data }) => panel.vistaMiembro(id, data, tieneAcceso));
-    return res.json({ ok: true, generado: new Date().toISOString(), total: lista.length, truncado: mi.truncado, miembros: lista });
+    const lista = mi.docs.map(({ id, data }) => {
+      const v = panel.vistaMiembro(id, data, tieneAcceso);
+      v.registroOrigen = v.registro ? 'perfil' : null;
+      return v;
+    });
+    const sinFecha = lista.filter(v => !v.registro).map(v => v.uid);
+    if (sinFecha.length) {
+      const altas = await altaDeAuth(sinFecha);
+      for (const v of lista) if (!v.registro && altas.get(v.uid)) { v.registro = altas.get(v.uid); v.registroOrigen = 'cuenta'; }
+    }
+    lista.sort((a, b) => (a.registro && b.registro ? (a.registro < b.registro ? 1 : a.registro > b.registro ? -1 : 0) : (a.registro ? -1 : b.registro ? 1 : 0)));
+    return res.json({ ok: true, generado: new Date().toISOString(), total: lista.length, truncado: mi.truncado, sinFechaDeRegistro: lista.filter(v => !v.registro).length, miembros: lista });
   }));
 
   app.get('/api/admin/miembros/:uid', conAdmin('No se pudo cargar la ficha del miembro', 'ficha', async (req, res) => {
@@ -195,12 +231,13 @@ function montarRutasAdmin(app, deps) {
     const snap = await db.collection('miembros').doc(uid).get();
     if (!snap.exists) throw errorHttp(404, 'No encontramos a esa persona');
     const m = snap.data() || {};
-    const [progresoSnap, certSnap, refSnap, retosSnap, nombresCursos] = await Promise.all([
+    const [progresoSnap, certSnap, refSnap, retosSnap, nombresCursos, histSnap] = await Promise.all([
       db.collection('miembros').doc(uid).collection('progresoCursos').get().catch(() => ({ docs: [] })),
       db.collection('certificados').where('uid', '==', uid).limit(50).get().catch(() => ({ docs: [] })),
       db.collection('referidos').where('anfitrionUid', '==', uid).limit(100).get().catch(() => ({ docs: [] })),
       db.collection('retosUsuario').doc(uid).get().catch(() => ({ exists: false })),
-      cursos()
+      cursos(),
+      db.collection('retosHistorial').where('uid', '==', uid).limit(300).get().catch(() => ({ docs: [] }))
     ]);
     const progreso = progresoSnap.docs.map(d => {
       const p = d.data() || {};
@@ -225,7 +262,16 @@ function montarRutasAdmin(app, deps) {
       ok: true,
       miembro: panel.fichaMiembro(uid, m, tieneAcceso),
       progreso, certificados: certs, referidos,
-      retos: { xp: Number.isFinite(r.xp) ? r.xp : 0, superados: Number.isFinite(r.superados) ? r.superados : 0 }
+      retos: {
+        xp: Number.isFinite(r.xp) ? r.xp : 0, superados: Number.isFinite(r.superados) ? r.superados : 0,
+        historialTotal: histSnap.docs.length,
+        historial: histSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) })).map(d => ({
+          id: d.id, tipo: d.tipo === 'camino' ? 'camino' : 'practica', retoId: String(d.retoId || '').slice(0, 40),
+          indice: Number.isInteger(d.indice) ? d.indice : null, perfecto: d.perfecto === true, xp: Number.isFinite(d.xp) ? d.xp : 0,
+          puntaje: Number.isFinite(d.puntaje) ? d.puntaje : null, total: Number.isFinite(d.total) ? d.total : null,
+          en: panel.aIso(d.fecha)
+        })).sort((x, y) => String(y.en || '').localeCompare(String(x.en || ''))).slice(0, 40)
+      }
     });
   }));
 
@@ -632,6 +678,11 @@ function montarRutasAdmin(app, deps) {
   montarRutasAdminExtra(app, deps, {
     conAdmin, uidDe, anotarAccion, cache, conCache, miembros, certificados, cursosCompletos, leerColeccion, refrescar,
     tieneAcceso, nombreDe, analizadorJson
+  });
+
+  // ── Tercera parte: historial de retos, foro (borrar y publicar como Zoorigen) y directorio completo ──
+  montarRutasAdminComunidad(app, deps, {
+    conAdmin, anotarAccion, cache, conCache, miembros, leerColeccion, refrescar, tieneAcceso, nombreDe, analizadorJson
   });
 
   return { limpiarCache: () => cache.clear() };

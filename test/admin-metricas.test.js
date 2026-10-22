@@ -89,9 +89,10 @@ test('construirMetricas: altas, conversión de prueba a miembro, retención por 
   assert.ok(r.cohortes.length >= 1);
   assert.ok(r.cohortes.every(c => c.registrados >= c.conPlanAlgunaVez));
   assert.deepEqual(r.visitas, { activo: false, total: 0, porDia: [], porPagina: [] });
-  // embudo: se registraron > eligieron prueba > vieron clases > tuvieron membresía > terminaron un curso
-  assert.deepEqual(r.embudo.rango.etapas.map(e => e.valor), [3, 2, 2, 1, 1]);
-  assert.deepEqual(r.embudo.total.etapas.map(e => e.valor), [4, 3, 2, 1, 1]);
+  // embudo de cuatro pasos: cuenta nueva > eligió su prueba > empezó un curso > terminó un curso
+  assert.deepEqual(r.embudo.rango.etapas.map(e => e.valor), [3, 2, 2, 1]);
+  assert.deepEqual(r.embudo.total.etapas.map(e => e.valor), [4, 3, 2, 1]);
+  assert.equal(typeof r.embudo.rango.pagaronDespues, 'number');
   assert.equal(r.embudo.rango.pagaronSinPrueba, 0);
   assert.ok(r.embudo.nota.length > 20);
   // planes de quienes tienen acceso, ingresos y periodo anterior

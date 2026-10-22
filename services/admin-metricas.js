@@ -72,7 +72,9 @@ function contarEnRango(fechas, desde, hasta) {
 
 const tituloDe = (cursos, id) => (cursos instanceof Map ? cursos.get(id) : null) || String(id).slice(0, 80);
 
-function topCursos(mapaConteo, cursos, limite = 8) {
+const sumaMapa = mapa => [...mapa.values()].reduce((t, n) => t + n, 0);
+
+function topCursos(mapaConteo, cursos, limite = 200) {
   return [...mapaConteo].map(([cursoId, n]) => ({ cursoId, curso: tituloDe(cursos, cursoId), n }))
     .sort((a, b) => b.n - a.n || a.curso.localeCompare(b.curso, 'es')).slice(0, limite);
 }
@@ -233,17 +235,18 @@ function construirMetricas({ miembros = [], certificados = [], retos = [], prueb
     const e1 = grupo;
     const e2 = e1.filter(v => eligio.has(v.id));
     const e3 = e2.filter(v => vioClases.has(v.id));
-    const e4 = e3.filter(huboPlan);
-    const e5 = e4.filter(v => terminoCurso.has(v.id));
+    const e4 = e3.filter(v => terminoCurso.has(v.id));
     return {
       personas: e1.length,
+      // Cuatro pasos, cada uno solo con quien llegó a los anteriores: cuenta nueva > eligió su prueba > empezó un curso > terminó un curso
       etapas: [
-        { clave: 'registro', etiqueta: 'Se registraron', valor: e1.length },
-        { clave: 'prueba', etiqueta: 'Eligieron su prueba gratuita', valor: e2.length },
-        { clave: 'clases', etiqueta: 'Vieron al menos una clase', valor: e3.length },
-        { clave: 'pago', etiqueta: 'Tuvieron membresía de pago', valor: e4.length },
-        { clave: 'curso', etiqueta: 'Terminaron un curso', valor: e5.length }
+        { clave: 'registro', etiqueta: 'Cuenta nueva', valor: e1.length },
+        { clave: 'prueba', etiqueta: 'Eligió su prueba gratuita', valor: e2.length },
+        { clave: 'clases', etiqueta: 'Empezó un curso', valor: e3.length },
+        { clave: 'curso', etiqueta: 'Terminó un curso', valor: e4.length }
       ],
+      // Dato aparte (no es un paso): de quienes empezaron un curso, cuántos ya tuvieron membresía de pago
+      pagaronDespues: e3.filter(huboPlan).length,
       pagaronSinPrueba: e1.filter(v => huboPlan(v) && !eligio.has(v.id)).length
     };
   };
@@ -251,7 +254,7 @@ function construirMetricas({ miembros = [], certificados = [], retos = [], prueb
   const embudo = {
     rango: construirEmbudo(personas.filter(enRangoV)),
     total: construirEmbudo(personas),
-    nota: 'Cada paso cuenta solo a quien llegó a los anteriores. Quien pagó sin pasar por la prueba gratuita (por ejemplo, cuentas de antes) no entra en el embudo.'
+    nota: 'Cada paso cuenta solo a quien llegó a los anteriores. Quien pagó sin pasar por la prueba gratuita (por ejemplo, cuentas de antes) no entra en el embudo. Empezar un curso es haber visto al menos una clase.'
   };
 
   // Actividad por día de la semana y hora (hora de México): altas, pruebas, certificados, pagos y retos jugados del periodo
@@ -305,7 +308,9 @@ function construirMetricas({ miembros = [], certificados = [], retos = [], prueb
     series: { altas: altas.serie, pruebas: pruebasSerie.serie, certificados: certsSerie.serie, pagos: pagosSerie.serie, ingresos: ingresosSerie },
     cuentas, cohortes, conversion, embudo, actividad,
     cursos: {
-      masElegidos: topCursos(elegidos, cursos), masCompletados: topCursos(completados, cursos), masEmpezados: topCursos(empezados, cursos)
+      masElegidos: topCursos(elegidos, cursos), masCompletados: topCursos(completados, cursos), masEmpezados: topCursos(empezados, cursos),
+      // Suma de cada ranking: el sitio calcula con ella el porcentaje de cada barra
+      totales: { elegidos: sumaMapa(elegidos), completados: sumaMapa(completados), empezados: sumaMapa(empezados) }
     },
     retos: {
       personas: retos.length, conActividad, retosSuperados: superados, xpTotal,

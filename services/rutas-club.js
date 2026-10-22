@@ -557,8 +557,11 @@ function montarRutasClub(app, deps) {
   });
 
   // Lee, aplica y guarda el estado de retos dentro de una transacción (dos solicitudes a la vez no se pisan)
-  async function guardarRetos(uid, aplicar) {
+  // historial (opcional): función (antes, resultado) que devuelve el evento a anotar en retosHistorial o null. Se escribe en la
+  // MISMA transacción que el XP, así que nunca hay XP sin su renglón de historial (colección solo del servidor, solo se agrega).
+  async function guardarRetos(uid, aplicar, historial) {
     const ref = db.collection('retosUsuario').doc(uid);
+    const idHistorial = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
     let salida;
     await db.runTransaction(async tx => {
       const snap = await tx.get(ref);
@@ -566,6 +569,12 @@ function montarRutasClub(app, deps) {
       const r = aplicar(antes);
       salida = { antes, ...r };
       if (r.guardar !== false) tx.set(ref, { ...r.estado, uid, actualizadoEn: FieldValue.serverTimestamp() });
+      const evento = historial && r.estado.superados > antes.superados ? historial(antes, r) : null;
+      if (evento) {
+        tx.set(db.collection('retosHistorial').doc(idHistorial), {
+          uid, ...evento, fecha: FieldValue.serverTimestamp(), dia: retos.fechaMexico(new Date())
+        });
+      }
     });
     return salida;
   }
@@ -608,7 +617,10 @@ function montarRutasClub(app, deps) {
       const ctx = await leerContexto(decoded.uid);
       if (!ctx.membresia) throw sinMembresia('Los retos son parte de la membresía. Activa tu suscripción para resolverlos');
 
-      const r = await guardarRetos(decoded.uid, antes => retos.aplicarResultado(antes, datos));
+      const r = await guardarRetos(decoded.uid, antes => retos.aplicarResultado(antes, datos), (antes, res) => ({
+        tipo: 'practica', retoId: datos.retoId, indice: null, puntaje: datos.puntaje, total: datos.total,
+        perfecto: datos.puntaje === datos.total, xp: res.xpGanado
+      }));
       const { ev } = await calcularResumen(ctx, { estadoRetos: r.estado });
       return res.json({
         ok: true, aprobado: r.aprobado, xpGanado: r.xpGanado, xp: ev.xp.total, nivel: ev.nivel,
@@ -638,7 +650,10 @@ function montarRutasClub(app, deps) {
       const r = await guardarRetos(decoded.uid, antes => {
         const o = retos.aplicarCaminoResultado(antes, datos);
         return { ...o, guardar: o.aceptado };
-      });
+      }, (antes, res) => ({
+        tipo: 'camino', retoId: datos.modo, indice: datos.indice, puntaje: datos.puntaje, total: datos.total,
+        perfecto: datos.puntaje === datos.total, xp: res.xpGanado
+      }));
       const salida = { ok: true, aceptado: r.aceptado, aprobado: r.aprobado, xpGanado: r.xpGanado, camino: r.estado.camino, caminoHechos: r.estado.caminoHechos };
       // Con 15 retos del camino superados se abre el primer curso de la fila (la verificación es siempre del servidor)
       salida.primerCurso = await primerCursoDe(ctx, r.estado);

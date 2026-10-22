@@ -174,7 +174,7 @@ test('GET /api/admin/miembros: lista mínima (sin teléfono ni ids de pago)', as
   assert.equal(ana.estado, 'activo');
   assert.equal(ana.conAcceso, true);
   assert.equal(ana.correo, 'ana@example.com');
-  assert.deepEqual(Object.keys(ana).sort(), ['conAcceso', 'correo', 'esAdmin', 'esRegalo', 'estado', 'nombre', 'origen', 'planTipo', 'registro', 'stripeActiva', 'uid', 'ultimoPago', 'vence']);
+  assert.deepEqual(Object.keys(ana).sort(), ['conAcceso', 'correo', 'esAdmin', 'esRegalo', 'estado', 'nombre', 'origen', 'planTipo', 'registro', 'registroOrigen', 'stripeActiva', 'uid', 'ultimoPago', 'vence']);
   assert.equal(JSON.stringify(r.body).includes('5555'), false);
   assert.equal(r.body.miembros.find(m => m.uid === 'cata').estado, 'vencido');
 });
