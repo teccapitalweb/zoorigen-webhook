@@ -3,12 +3,13 @@
 // ══ RUTAS: créditos (regalo manual del administrador y canje por materiales) ══
 // Administrador (verificado en el servidor, límite de peticiones y bitácora adminAcciones):
 //   GET  /api/admin/creditos/miembros    todas las cuentas, de la más reciente a la más antigua, con saldo y último regalo
-//   POST /api/admin/creditos/regalar     { uid, clave } regala 100 (cantidad FIJA); la clave evita regalar dos veces por un doble clic
-//   GET  /api/admin/creditos/historial   cada regalo: persona, fecha, quién lo regaló, Pendiente de canjear / Canjeado + material
+//   POST /api/admin/creditos/regalar     { uid, cantidad, clave } regala esa cantidad (entero de 1 a 1,000; el panel ofrece 100, 200, 300, 400
+//                                        u otra); la clave evita regalar dos veces por un doble clic; tope de 1,000 créditos por cuenta y día
+//   GET  /api/admin/creditos/historial   cada regalo: persona, cantidad, fecha, quién lo regaló, Pendiente / Canjeados 1 de 3 / Canjeado + materiales
 //   GET  /api/admin/creditos/metricas    regalados, canjeados, pendientes y cuántos canjes tuvo cada material (para la gráfica)
 // Persona con sesión:
 //   GET  /api/creditos/estado            saldo, aviso de felicitación pendiente y materiales canjeables (costo 100)
-//   POST /api/creditos/canjear           { materialId } descuenta 100 y desbloquea ESE material para esta cuenta, para siempre
+//   POST /api/creditos/canjear           { materialId } descuenta 100 (costo fijo del servidor) y desbloquea ESE material para esta cuenta, para siempre
 //   POST /api/creditos/aviso-visto       marca la felicitación como vista (vive en el servidor, no en el navegador)
 // Las reglas del servicio están en services/creditos.js. El acceso a los materiales canjeados lo valida rutas-materiales.js.
 
@@ -148,7 +149,7 @@ function montarRutasAdminCreditos(app, deps, a) {
         ultimoRegalo: creditos.iso(c.ultimoRegaloEn), avisoPendiente: Number(c.avisoPendiente) > 0
       };
     });
-    return res.json({ ok: true, generado: new Date().toISOString(), total: filas.length, truncado, regalo: creditos.REGALO, costo: creditos.COSTO_MATERIAL, miembros: filas });
+    return res.json({ ok: true, generado: new Date().toISOString(), total: filas.length, truncado, regalo: creditos.REGALO, maxRegalo: creditos.MAX_REGALO, topeDia: creditos.TOPE_CREDITOS_POR_DIA, costo: creditos.COSTO_MATERIAL, miembros: filas });
   }));
 
   app.post('/api/admin/creditos/regalar', analizadorJson, conAdmin('No se pudieron regalar los créditos', 'creditos-regalar', async (req, res, decoded) => {
@@ -159,6 +160,8 @@ function montarRutasAdminCreditos(app, deps, a) {
     if (!m.exists) throw errorHttp(404, 'No encontramos a esa persona');
     const datos = m.data() || {};
     if (datos.role === 'admin') throw errorHttp(409, 'Las cuentas de administración no reciben créditos');
+    // La cantidad la elige la administración: entero de 1 a 1,000 (nunca texto, decimales ni negativos)
+    if (!creditos.cantidadValida(cuerpo.cantidad)) throw Object.assign(errorHttp(400, `Escribe cuántos créditos regalar: un número entero de 1 a ${creditos.MAX_REGALO}`), { codigo: 'cantidad-invalida' });
     // Solo cuentas con el correo confirmado (así un regalo nunca queda en una cuenta falsa o ajena)
     let verificado = false;
     try { const u = await auth.getUser(uid); verificado = u.emailVerified === true; } catch (e) {
@@ -167,11 +170,11 @@ function montarRutasAdminCreditos(app, deps, a) {
     }
     if (!verificado) throw Object.assign(errorHttp(409, 'Esa cuenta todavía no confirmó su correo. Cuando lo confirme podrás regalarle créditos'), { codigo: 'correo-no-verificado' });
     try {
-      const r = await creditos.regalar(db, admin, { uid, adminUid: decoded.uid, adminCorreo: decoded.email, clave: cuerpo.clave });
+      const r = await creditos.regalar(db, admin, { uid, adminUid: decoded.uid, adminCorreo: decoded.email, clave: cuerpo.clave, cantidad: cuerpo.cantidad });
       if (!r.repetido) {
-        await anotarAccion(decoded, 'creditos-regalar', uid, `Regaló ${creditos.REGALO} créditos a ${panel.limpiarTexto(datos.name || datos.displayName || 'una persona', 60)}`, { cantidad: creditos.REGALO });
+        await anotarAccion(decoded, 'creditos-regalar', uid, `Regaló ${r.cantidad} créditos a ${panel.limpiarTexto(datos.name || datos.displayName || 'una persona', 60)}`, { cantidad: r.cantidad });
       }
-      return res.json({ ok: true, saldo: r.saldo, cantidad: creditos.REGALO, repetido: r.repetido });
+      return res.json({ ok: true, saldo: r.saldo, cantidad: r.cantidad, materiales: Math.floor(r.cantidad / creditos.COSTO_MATERIAL), repetido: r.repetido });
     } catch (e) {
       if (e instanceof creditos.ErrorCreditos) throw Object.assign(errorHttp(e.status, e.message), { codigo: e.codigo });
       throw e;
@@ -190,13 +193,14 @@ function montarRutasAdminCreditos(app, deps, a) {
       return { ...r, nombre: p.nombre || 'Cuenta eliminada', correo: p.correo || '', adminCorreo: r.adminCorreo };
     });
     void adminsNombre;
-    const totales = { todos: regalos.length, pendientes: regalos.filter(r => r.estado === 'pendiente').length, canjeados: regalos.filter(r => r.estado === 'canjeado').length };
-    if (filtro === 'pendientes') regalos = regalos.filter(r => r.estado === 'pendiente');
+    const totales = { todos: regalos.length, pendientes: regalos.filter(r => r.estado !== 'canjeado').length, canjeados: regalos.filter(r => r.estado === 'canjeado').length };
+    if (filtro === 'pendientes') regalos = regalos.filter(r => r.estado !== 'canjeado');
     else if (filtro === 'canjeados') regalos = regalos.filter(r => r.estado === 'canjeado');
-    if (q) regalos = regalos.filter(r => sinAcentos(`${r.nombre} ${r.correo} ${r.canje ? r.canje.titulo : ''}`).includes(q));
+    if (q) regalos = regalos.filter(r => sinAcentos(`${r.nombre} ${r.correo} ${r.canjes.map(c => c.titulo).join(' ')}`).includes(q));
     const total = regalos.length;
     const filas = regalos.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA).map(r => ({
-      id: r.id, uid: r.uid, nombre: r.nombre, correo: r.correo, cantidad: r.cantidad, en: r.en, regaladoPor: r.adminCorreo, estado: r.estado, canje: r.canje
+      id: r.id, uid: r.uid, nombre: r.nombre, correo: r.correo, cantidad: r.cantidad, en: r.en, regaladoPor: r.adminCorreo, estado: r.estado, canje: r.canje,
+      materialesTotal: r.materialesTotal, materialesCanjeados: r.materialesCanjeados, usados: r.usados, sobrante: r.sobrante, canjes: r.canjes
     }));
     return res.json({ ok: true, generado: new Date().toISOString(), truncado, total, totales, pagina, porPagina: POR_PAGINA, hayMas: pagina * POR_PAGINA < total, regalos: filas });
   }));

@@ -1,6 +1,6 @@
 'use strict';
 
-// Créditos: regalo manual del administrador (100 fijos), canje por UN material sin curso y acceso a lo canjeado.
+// Créditos: regalo manual del administrador (100, 200, 300, 400 u otra cantidad entera de 1 a 1,000), canje por UN material sin curso (100 cada uno) y acceso a lo canjeado.
 // Ejecutar: node --test test/creditos.test.js
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -48,7 +48,7 @@ function servidor({ seed = {}, usuarios = {} } = {}) {
 
 let n = 0;
 const op = () => 'operacion-' + String(++n).padStart(6, '0');
-const regalar = (app, uid, clave = op(), t = 'token-admin') => request(app).post('/api/admin/creditos/regalar').set(auth(t)).send({ uid, clave });
+const regalar = (app, uid, clave = op(), t = 'token-admin', cantidad = 100) => request(app).post('/api/admin/creditos/regalar').set(auth(t)).send({ uid, clave, cantidad });
 const estado = (app, t = 'token-ana') => request(app).get('/api/creditos/estado').set(auth(t));
 const canjear = (app, materialId, t = 'token-ana') => request(app).post('/api/creditos/canjear').set(auth(t)).send({ materialId });
 const archivo = (app, id, t) => request(app).get(`/api/materiales/${id}/archivo`).set(auth(t));
@@ -56,11 +56,18 @@ const movimientos = db => [...db._data.keys()].filter(k => k.startsWith('credito
 
 /* ───────────────────────── Reglas puras ───────────────────────── */
 
-test('constantes: se regalan 100, cada material cuesta 100, sin caducidad y con tope diario', () => {
+test('constantes: se propone regalar 100 (máximo 1,000), cada material cuesta 100, sin caducidad y con tope diario de créditos', () => {
   assert.equal(creditos.REGALO, 100);
+  assert.equal(creditos.MAX_REGALO, 1000);
   assert.equal(creditos.COSTO_MATERIAL, 100);
   assert.equal(creditos.CADUCIDAD_DIAS, null);
-  assert.ok(creditos.TOPE_REGALOS_POR_DIA >= 1);
+  assert.equal(creditos.TOPE_CREDITOS_POR_DIA, 1000);
+  assert.equal(creditos.TOPE_REGALOS_POR_DIA, undefined, 'el tope ya no cuenta regalos: cuenta créditos');
+});
+
+test('cantidadValida: solo enteros de 1 a 1,000 y en forma de número', () => {
+  for (const ok of [1, 50, 100, 200, 250, 300, 400, 999, 1000]) assert.equal(creditos.cantidadValida(ok), true, String(ok));
+  for (const mal of [0, -1, -100, 1.5, 99.99, 1001, 5000, NaN, Infinity, '100', '300', ' 300', '3e2', null, undefined, true, [], {}, [300]]) assert.equal(creditos.cantidadValida(mal), false, JSON.stringify(mal));
 });
 
 test('catalogoCanjeable: libros y materiales sin curso; fuera lo ligado a un curso y lo de Drive con la liga mal escrita', () => {
@@ -77,7 +84,7 @@ test('analizarClave: solo libro:, pdf: y drive: con ids seguros', () => {
   for (const malo of ['guia-1', 'curso:abc', 'pdf:', 'pdf:../x', 'pdf:a b', 'pdf:' + 'a'.repeat(90), null, 5, {}]) assert.equal(creditos.analizarClave(malo), null, String(malo));
 });
 
-test('historialDeRegalos: el regalo n se empareja con el canje n de la misma persona y salen del más reciente al más antiguo', () => {
+test('historialDeRegalos: los canjes se emparejan por créditos, del regalo más antiguo al más nuevo; salen del más reciente al más antiguo', () => {
   const mov = [
     { id: 'r1', tipo: 'regalo', uid: 'a', cantidad: 100, enMs: 1000, en: new Date(1000), adminCorreo: 'x@y.z' },
     { id: 'r2', tipo: 'regalo', uid: 'a', cantidad: 100, enMs: 3000, en: new Date(3000) },
@@ -87,6 +94,43 @@ test('historialDeRegalos: el regalo n se empareja con el canje n de la misma per
   const h = creditos.historialDeRegalos(mov);
   assert.deepEqual(h.map(x => [x.id, x.estado]), [['r2', 'pendiente'], ['r3', 'pendiente'], ['r1', 'canjeado']]);
   assert.equal(h[2].canje.titulo, 'M1');
+});
+
+test('historialDeRegalos: un regalo de 300 pasa de Pendiente a "Canjeados 1 de 3", "2 de 3" y Canjeado con sus materiales', () => {
+  const regalo = { id: 'r', tipo: 'regalo', uid: 'a', cantidad: 300, enMs: 1000, en: new Date(1000) };
+  const canje = (n, titulo) => ({ id: 'c' + n, tipo: 'canje', uid: 'a', cantidad: 100, enMs: 1000 + n * 10, en: new Date(1000 + n * 10), materialId: 'pdf:m' + n, materialTitulo: titulo });
+  const de = movs => creditos.historialDeRegalos(movs)[0];
+  let h = de([regalo]);
+  assert.deepEqual([h.estado, h.materialesCanjeados, h.materialesTotal, h.cantidad, h.canjes.length], ['pendiente', 0, 3, 300, 0]);
+  h = de([regalo, canje(1, 'Uno')]);
+  assert.deepEqual([h.estado, h.materialesCanjeados, h.materialesTotal, h.usados], ['parcial', 1, 3, 100]);
+  h = de([regalo, canje(1, 'Uno'), canje(2, 'Dos')]);
+  assert.deepEqual([h.estado, h.materialesCanjeados], ['parcial', 2]);
+  h = de([regalo, canje(1, 'Uno'), canje(2, 'Dos'), canje(3, 'Tres')]);
+  assert.deepEqual([h.estado, h.materialesCanjeados, h.materialesTotal], ['canjeado', 3, 3]);
+  assert.deepEqual(h.canjes.map(c => c.titulo), ['Uno', 'Dos', 'Tres']);
+  assert.equal(h.canje.titulo, 'Tres', 'canje = el último');
+});
+
+test('historialDeRegalos: primero en entrar, primero en salir entre varios regalos de la misma persona; un canje puede repartirse entre dos', () => {
+  const g = (id, cantidad, ms) => ({ id, tipo: 'regalo', uid: 'a', cantidad, enMs: ms, en: new Date(ms) });
+  const c = (id, ms, titulo) => ({ id, tipo: 'canje', uid: 'a', cantidad: 100, enMs: ms, en: new Date(ms), materialId: 'pdf:' + id, materialTitulo: titulo });
+  const h = creditos.historialDeRegalos([g('g1', 200, 100), g('g2', 300, 200), c('c1', 300, 'A'), c('c2', 310, 'B'), c('c3', 320, 'C')]);
+  const por = Object.fromEntries(h.map(x => [x.id, x]));
+  assert.equal(por.g1.estado, 'canjeado'); assert.deepEqual(por.g1.canjes.map(x => x.titulo), ['A', 'B']);
+  assert.equal(por.g2.estado, 'parcial'); assert.deepEqual(por.g2.canjes.map(x => x.titulo), ['C']);
+  assert.deepEqual([por.g2.materialesCanjeados, por.g2.materialesTotal], [1, 3]);
+  // 250 + 50: el sobrante de un regalo se completa con el siguiente
+  const h2 = creditos.historialDeRegalos([g('a1', 250, 100), g('a2', 50, 200), c('d1', 300, 'X'), c('d2', 310, 'Y'), c('d3', 320, 'Z')]);
+  const p2 = Object.fromEntries(h2.map(x => [x.id, x]));
+  assert.equal(p2.a1.estado, 'canjeado'); assert.deepEqual([p2.a1.materialesCanjeados, p2.a1.materialesTotal, p2.a1.sobrante], [2, 2, 50]);
+  assert.deepEqual(p2.a1.canjes.map(x => x.titulo), ['X', 'Y', 'Z'], 'el tercer canje usa 50 de este regalo y 50 del siguiente');
+  assert.equal(p2.a2.estado, 'canjeado'); assert.deepEqual(p2.a2.canjes.map(x => x.titulo), ['Z']);
+  // un regalo de menos de 100 solo se gasta junto con otro: mientras tanto queda Pendiente
+  const h3 = creditos.historialDeRegalos([g('p1', 40, 100)]);
+  assert.deepEqual([h3[0].estado, h3[0].materialesTotal, h3[0].sobrante], ['pendiente', 0, 40]);
+  // regalos viejos sin cantidad cuentan como 100
+  assert.equal(creditos.historialDeRegalos([{ id: 'v', tipo: 'regalo', uid: 'a', enMs: 1, en: new Date(1) }])[0].cantidad, 100);
 });
 
 test('metricas: regalados, canjeados, pendientes y canjes por material (de más a menos)', () => {
@@ -101,15 +145,39 @@ test('metricas: regalados, canjeados, pendientes y canjes por material (de más 
 
 /* ───────────────────────── Regalar ───────────────────────── */
 
-test('regalar: solo administración (401 sin sesión, 403 a una persona); no se puede elegir la cantidad', async () => {
+test('regalar: solo administración (401 sin sesión, 403 a una persona) y siempre con una cantidad entera de 1 a 1,000', async () => {
   const { app, db } = servidor();
-  assert.equal((await request(app).post('/api/admin/creditos/regalar').send({ uid: 'ana', clave: op() })).status, 401);
+  assert.equal((await request(app).post('/api/admin/creditos/regalar').send({ uid: 'ana', clave: op(), cantidad: 100 })).status, 401);
   assert.equal((await regalar(app, 'ana', op(), 'token-ana')).status, 403);
+  assert.equal((await regalar(app, 'ana', op(), 'token-ana', 1000)).status, 403, 'una persona no se regala créditos a sí misma');
   assert.equal(db.value('creditosCuentas/ana'), undefined);
-  const r = await request(app).post('/api/admin/creditos/regalar').set(auth('token-admin')).send({ uid: 'ana', clave: op(), cantidad: 5000 });
-  assert.equal(r.status, 200);
-  assert.equal(r.body.saldo, 100, 'siempre 100');
-  assert.equal(r.body.cantidad, 100);
+  const mal = async cantidad => request(app).post('/api/admin/creditos/regalar').set(auth('token-admin')).send({ uid: 'ana', clave: op(), cantidad });
+  for (const c of [0, -100, 1.5, 1001, 5000, '300', '1e2', null, true, [100], {}]) {
+    const r = await mal(c);
+    assert.equal(r.status, 400, JSON.stringify(c));
+    assert.equal(r.body.codigo, 'cantidad-invalida', JSON.stringify(c));
+  }
+  assert.equal((await request(app).post('/api/admin/creditos/regalar').set(auth('token-admin')).send({ uid: 'ana', clave: op() })).status, 400, 'sin cantidad no se regala nada');
+  assert.equal(db.value('creditosCuentas/ana'), undefined, 'ninguna cantidad mala deja rastro');
+  assert.equal(movimientos(db).length, 0);
+});
+
+test('regalar: acepta 100, 200, 300, 400, 250 y 1000 y suma exactamente esa cantidad', async () => {
+  const { app, db } = servidor();
+  let esperado = 0;
+  for (const c of [100, 200, 300, 250]) {
+    const r = await regalar(app, 'otra', op(), 'token-admin', c);
+    esperado += c;
+    assert.equal(r.status, 200, String(c));
+    assert.equal(r.body.cantidad, c); assert.equal(r.body.saldo, esperado);
+    assert.equal(r.body.materiales, Math.floor(c / 100));
+  }
+  assert.equal(db.value('creditosCuentas/otra').saldo, 850);
+  assert.equal((await regalar(app, 'sinplan', op(), 'token-admin', 400)).body.saldo, 400);
+  const mil = await regalar(app, 'ana', op(), 'token-admin', 1000);
+  assert.equal(mil.status, 200); assert.equal(db.value('creditosCuentas/ana').saldo, 1000);
+  const movs = movimientos(db).filter(m => m.uid === 'otra').map(m => m.cantidad).sort((a, b) => a - b);
+  assert.deepEqual(movs, [100, 200, 250, 300]);
 });
 
 test('regalar: suma 100 a una cuenta con o sin membresía, anota el movimiento, la bitácora y deja el aviso pendiente', async () => {
@@ -137,14 +205,46 @@ test('regalar: la misma operación repetida (doble clic) no regala dos veces; ot
   assert.equal((await regalar(app, 'ana', op())).body.saldo, 200, 'otro regalo, otra operación');
 });
 
-test('regalar: tope de regalos por cuenta y por día', async () => {
+test('regalar: la misma operación repetida con otra cantidad tampoco regala dos veces (gana la primera)', async () => {
   const { app, db } = servidor();
-  for (let i = 0; i < creditos.TOPE_REGALOS_POR_DIA; i++) assert.equal((await regalar(app, 'ana')).status, 200);
-  const r = await regalar(app, 'ana');
+  const clave = op();
+  assert.equal((await regalar(app, 'ana', clave, 'token-admin', 300)).body.saldo, 300);
+  const otra = await regalar(app, 'ana', clave, 'token-admin', 1000);
+  assert.equal(otra.status, 200); assert.equal(otra.body.repetido, true); assert.equal(otra.body.cantidad, 300);
+  assert.equal(db.value('creditosCuentas/ana').saldo, 300);
+});
+
+test('regalar: tope de 1,000 créditos por cuenta y por día (no de regalos): 600 + 400 pasan y uno más no', async () => {
+  const { app, db } = servidor();
+  assert.equal((await regalar(app, 'ana', op(), 'token-admin', 600)).status, 200);
+  assert.equal((await regalar(app, 'ana', op(), 'token-admin', 400)).status, 200);
+  const r = await regalar(app, 'ana', op(), 'token-admin', 1);
   assert.equal(r.status, 429);
   assert.equal(r.body.codigo, 'tope-diario');
-  assert.equal(db.value('creditosCuentas/ana').saldo, creditos.TOPE_REGALOS_POR_DIA * 100);
-  assert.equal((await regalar(app, 'otra')).status, 200, 'el tope es por cuenta');
+  assert.match(r.body.error, /1000 créditos|1,000 créditos|tope/);
+  assert.equal(db.value('creditosCuentas/ana').saldo, 1000);
+  assert.equal(movimientos(db).filter(m => m.uid === 'ana').length, 2, 'lo rechazado no deja movimiento');
+  assert.equal((await regalar(app, 'otra', op(), 'token-admin', 1000)).status, 200, 'el tope es por cuenta');
+  // muchos regalos chicos también suman hacia el tope
+  for (let i = 0; i < 10; i++) assert.equal((await regalar(app, 'sinplan', op(), 'token-admin', 100)).status, 200);
+  assert.equal((await regalar(app, 'sinplan', op(), 'token-admin', 100)).status, 429);
+});
+
+test('regalar: un regalo que pasaría el tope se rechaza completo y el mensaje dice cuánto queda por regalar hoy', async () => {
+  const { app, db } = servidor();
+  assert.equal((await regalar(app, 'ana', op(), 'token-admin', 800)).status, 200);
+  const r = await regalar(app, 'ana', op(), 'token-admin', 300);
+  assert.equal(r.status, 429);
+  assert.match(r.body.error, /hasta 200/);
+  assert.equal(db.value('creditosCuentas/ana').saldo, 800);
+  assert.equal((await regalar(app, 'ana', op(), 'token-admin', 200)).status, 200);
+});
+
+test('regalar: cuentas anteriores (solo guardaban cuántos regalos) siguen contando hacia el tope', async () => {
+  const hoy = creditos.diaMexico(Date.now());
+  const { app } = servidor({ seed: { 'creditosCuentas/ana': { uid: 'ana', saldo: 300, regalados: 300, canjeados: 0, avisoPendiente: 0, regalosHoy: { dia: hoy, n: 3 } } } });
+  assert.equal((await regalar(app, 'ana', op(), 'token-admin', 700)).status, 200, '3 regalos de 100 + 700 = 1,000');
+  assert.equal((await regalar(app, 'ana', op(), 'token-admin', 1)).status, 429);
 });
 
 test('regalar: rechaza cuenta sin correo confirmado, cuenta inexistente, administradores, id raro y clave faltante', async () => {
@@ -156,7 +256,7 @@ test('regalar: rechaza cuenta sin correo confirmado, cuenta inexistente, adminis
   assert.equal((await regalar(app, 'admin')).status, 409);
   assert.equal((await regalar(app, '../x')).status, 400);
   assert.equal((await regalar(app, 'ana', 'corta')).status, 400);
-  assert.equal((await request(app).post('/api/admin/creditos/regalar').set(auth('token-admin')).send({ uid: 'ana' })).status, 400);
+  assert.equal((await request(app).post('/api/admin/creditos/regalar').set(auth('token-admin')).send({ uid: 'ana', cantidad: 100 })).status, 400);
   assert.equal(movimientos(db).length, 0);
 });
 
@@ -328,6 +428,9 @@ test('admin: miembros con saldo, de la cuenta más reciente a la más antigua, s
   assert.equal(otra.saldo, 100); assert.ok(otra.ultimoRegalo); assert.equal(otra.correo, 'otra@example.com');
   assert.equal(r.body.miembros.find(m => m.uid === 'ana').saldo, 0);
   assert.equal(r.body.regalo, 100);
+  assert.equal(r.body.maxRegalo, 1000);
+  assert.equal(r.body.topeDia, 1000);
+  assert.equal(r.body.costo, 100);
 });
 
 test('admin: historial de regalos con Pendiente / Canjeado, el material y la fecha de canje; filtros, búsqueda y paginación', async () => {
@@ -369,4 +472,98 @@ test('el libro de movimientos es append-only: ningún camino del servidor edita 
   assert.ok(usos.length >= 3);
   assert.doesNotMatch(t, /movRef\.(update|delete)|tx\.(update|delete)\(/);
   assert.doesNotMatch(t, /creditosMovimientos[^\n]*\.(delete|update)\(/);
+});
+
+/* ───────────────────────── Cantidades distintas de 100 ───────────────────────── */
+
+test('regalar 300 y canjear tres materiales, uno por uno: saldo 300, 200, 100, 0; el cuarto da 402 y nada cambia', async () => {
+  const { app, db } = servidor();
+  assert.equal((await regalar(app, 'sinplan', op(), 'token-admin', 300)).body.saldo, 300);
+  const e = await estado(app, 'token-sinplan');
+  assert.equal(e.body.saldo, 300); assert.equal(e.body.avisoPendiente, 300); assert.equal(e.body.costo, 100);
+  const r1 = await canjear(app, 'pdf:plantilla-5', 'token-sinplan'); assert.equal(r1.status, 200); assert.equal(r1.body.saldo, 200);
+  const r2 = await canjear(app, 'pdf:presentacion-30', 'token-sinplan'); assert.equal(r2.status, 200); assert.equal(r2.body.saldo, 100);
+  const r3 = await canjear(app, 'pdf:guia-miembros', 'token-sinplan'); assert.equal(r3.status, 200); assert.equal(r3.body.saldo, 0);
+  assert.equal((await archivo(app, 'plantilla-5', 'token-sinplan')).status, 200);
+  assert.equal((await archivo(app, 'presentacion-30', 'token-sinplan')).status, 200);
+  assert.equal((await archivo(app, 'guia-miembros', 'token-sinplan')).status, 200);
+  const sin = await canjear(app, 'libro:libro-a', 'token-sinplan');
+  assert.equal(sin.status, 402);
+  assert.equal(db.value('creditosCuentas/sinplan').saldo, 0);
+  assert.equal(movimientos(db).filter(m => m.tipo === 'canje').length, 3);
+  // el historial lo cuenta: un regalo de 300 con sus 3 materiales
+  const h = await request(app).get('/api/admin/creditos/historial').set(auth('token-admin'));
+  const fila = h.body.regalos.find(x => x.uid === 'sinplan');
+  assert.deepEqual([fila.cantidad, fila.estado, fila.materialesCanjeados, fila.materialesTotal], [300, 'canjeado', 3, 3]);
+  assert.equal(fila.canjes.length, 3);
+});
+
+test('canjear: el costo lo fija el servidor; el navegador no puede mandar otro costo, otra cantidad ni otro saldo', async () => {
+  const { app, db } = servidor();
+  await regalar(app, 'sinplan', op(), 'token-admin', 300);
+  const r = await request(app).post('/api/creditos/canjear').set(auth('token-sinplan')).send({ materialId: 'pdf:plantilla-5', costo: 1, cantidad: 1, precio: 0, saldo: 99999, uid: 'ana' });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.saldo, 200, 'se descontaron exactamente 100');
+  assert.equal(db.value('creditosCuentas/sinplan').saldo, 200);
+  assert.equal(db.value('creditosCuentas/ana'), undefined);
+  const canje = movimientos(db).find(m => m.tipo === 'canje');
+  assert.equal(canje.cantidad, 100);
+});
+
+test('canjear: con menos de 100 créditos no se puede (402), aunque se haya regalado 1, 50 o 99', async () => {
+  const { app, db } = servidor();
+  for (const c of [1, 50, 99]) {
+    const { app: a2, db: d2 } = servidor();
+    assert.equal((await regalar(a2, 'sinplan', op(), 'token-admin', c)).status, 200);
+    const r = await canjear(a2, 'pdf:plantilla-5', 'token-sinplan');
+    assert.equal(r.status, 402, String(c));
+    assert.equal(d2.value('creditosCuentas/sinplan').saldo, c);
+  }
+  // 50 + 50 sí alcanzan juntos
+  await regalar(app, 'sinplan', op(), 'token-admin', 50); await regalar(app, 'sinplan', op(), 'token-admin', 50);
+  assert.equal((await canjear(app, 'pdf:plantilla-5', 'token-sinplan')).status, 200);
+  assert.equal(db.value('creditosCuentas/sinplan').saldo, 0);
+});
+
+test('regalar 250: alcanza para 2 materiales y sobran 50 de saldo', async () => {
+  const { app } = servidor();
+  await regalar(app, 'sinplan', op(), 'token-admin', 250);
+  assert.equal((await canjear(app, 'pdf:plantilla-5', 'token-sinplan')).body.saldo, 150);
+  assert.equal((await canjear(app, 'pdf:guia-miembros', 'token-sinplan')).body.saldo, 50);
+  assert.equal((await canjear(app, 'pdf:presentacion-30', 'token-sinplan')).status, 402);
+  assert.equal((await estado(app, 'token-sinplan')).body.saldo, 50);
+  const h = (await request(app).get('/api/admin/creditos/historial').set(auth('token-admin'))).body.regalos[0];
+  assert.deepEqual([h.estado, h.materialesCanjeados, h.materialesTotal, h.sobrante], ['canjeado', 2, 2, 50]);
+});
+
+test('aviso: varios regalos antes de verlo suman en una sola felicitación; se ve una vez y no cambia el saldo', async () => {
+  const { app } = servidor();
+  await regalar(app, 'sinplan', op(), 'token-admin', 200); await regalar(app, 'sinplan', op(), 'token-admin', 100);
+  assert.equal((await estado(app, 'token-sinplan')).body.avisoPendiente, 300);
+  await request(app).post('/api/creditos/aviso-visto').set(auth('token-sinplan')).send({});
+  const e = await estado(app, 'token-sinplan');
+  assert.equal(e.body.avisoPendiente, 0); assert.equal(e.body.saldo, 300);
+});
+
+test('admin: la lista de miembros muestra el saldo exacto y el historial filtra Pendientes (incluye los parciales) y Canjeados', async () => {
+  const { app } = servidor();
+  await regalar(app, 'sinplan', op(), 'token-admin', 300); await regalar(app, 'otra', op(), 'token-admin', 100);
+  await canjear(app, 'pdf:plantilla-5', 'token-sinplan'); await canjear(app, 'pdf:plantilla-5', 'token-otra');
+  const m = await request(app).get('/api/admin/creditos/miembros').set(auth('token-admin'));
+  assert.equal(m.body.miembros.find(x => x.uid === 'sinplan').saldo, 200);
+  assert.equal(m.body.miembros.find(x => x.uid === 'otra').saldo, 0);
+  const pend = await request(app).get('/api/admin/creditos/historial?estado=pendientes').set(auth('token-admin'));
+  assert.equal(pend.body.total, 1); assert.equal(pend.body.regalos[0].estado, 'parcial');
+  assert.equal((await request(app).get('/api/admin/creditos/historial?estado=canjeados').set(auth('token-admin'))).body.total, 1);
+  assert.deepEqual((await request(app).get('/api/admin/creditos/historial').set(auth('token-admin'))).body.totales, { todos: 2, pendientes: 1, canjeados: 1 });
+  const met = await request(app).get('/api/admin/creditos/metricas').set(auth('token-admin'));
+  assert.equal(met.body.regalados, 400); assert.equal(met.body.canjeados, 200); assert.equal(met.body.pendientes, 200);
+});
+
+test('la bitácora del administrador anota la cantidad real regalada', async () => {
+  const { app, db } = servidor();
+  await regalar(app, 'ana', op(), 'token-admin', 400);
+  const acciones = [...db._data.keys()].filter(k => k.startsWith('adminAcciones/')).map(k => db.value(k)).filter(a => a.accion === 'creditos-regalar');
+  assert.equal(acciones.length, 1);
+  assert.match(acciones[0].resumen, /Regaló 400 créditos a/);
 });

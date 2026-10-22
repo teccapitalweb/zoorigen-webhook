@@ -1,8 +1,9 @@
 'use strict';
 
 // ══ CRÉDITOS (regalo manual del administrador y canje por materiales) ══
-// El administrador regala créditos desde su panel (siempre 100 por regalo). Con 100 créditos la persona canjea UN material del
-// apartado «PDFs y materiales» que no pertenezca a ningún curso (cada material cuesta 100). Todo lo escribe SOLO el servidor:
+// El administrador regala créditos desde su panel: la cantidad es un entero de 1 a MAX_REGALO (100 por omisión en el panel; también 200,
+// 300, 400 u otra cantidad). Con 100 créditos la persona canjea UN material del apartado «PDFs y materiales» que no pertenezca a
+// ningún curso (cada material cuesta 100, fijo en el servidor). Todo lo escribe SOLO el servidor:
 //   creditosCuentas/{uid}           saldo, totales y el aviso de felicitación pendiente (cuenta de la persona)
 //   creditosMovimientos/{id}        libro de movimientos APPEND-ONLY: tipo regalo | canje (nunca se edita ni se borra)
 //   creditosDesbloqueos/{uid__clave} el desbloqueo permanente de UN material para ESA cuenta
@@ -11,10 +12,11 @@
 
 const crypto = require('crypto');
 
-const REGALO = 100;                 // créditos por regalo (cantidad FIJA)
-const COSTO_MATERIAL = 100;         // lo que cuesta cada material
+const REGALO = 100;                 // cantidad que propone el panel (la persona administradora puede cambiarla)
+const MAX_REGALO = 1000;            // máximo por regalo (entero de 1 a este número)
+const COSTO_MATERIAL = 100;         // lo que cuesta cada material (lo fija el servidor: el navegador no puede cambiarlo)
 const CADUCIDAD_DIAS = null;        // null = sin caducidad. Si algún día se quiere, aquí se parametriza (días desde el regalo)
-const TOPE_REGALOS_POR_DIA = 3;     // por cuenta y por día (hora de México): evita errores y regalos repetidos por equivocación
+const TOPE_CREDITOS_POR_DIA = 1000; // créditos por cuenta y por día (hora de México): evita errores y regalos repetidos por equivocación
 const TOPE_MOVIMIENTOS = 5000;      // lectura máxima del libro para el panel
 
 const COL_CUENTAS = 'creditosCuentas';
@@ -102,11 +104,18 @@ async function leerDesbloqueos(db, uid) {
   return new Set(snap.docs.map(d => (d.data() || {}).clave).filter(c => typeof c === 'string'));
 }
 
+/* Cantidad de un regalo: un ENTERO de 1 a MAX_REGALO (número, no texto; sin decimales, negativos ni notación rara) */
+function cantidadValida(valor) {
+  return typeof valor === 'number' && Number.isInteger(valor) && valor >= 1 && valor <= MAX_REGALO;
+}
+
 /* ───────────────────────── Regalar (administrador) ─────────────────────────
    Transacción: lee el movimiento de esta operación (si ya existe, es un doble clic: devuelve lo mismo sin regalar otra vez), revisa el
-   tope diario y suma el saldo. El libro de movimientos es append-only: el regalo es un documento nuevo y nunca se modifica. */
-async function regalar(db, admin, { uid, adminUid, adminCorreo = '', clave, ahora = Date.now() }) {
+   tope diario de créditos de la cuenta y suma el saldo. El libro de movimientos es append-only: el regalo es un documento nuevo y
+   nunca se modifica. */
+async function regalar(db, admin, { uid, adminUid, adminCorreo = '', clave, cantidad, ahora = Date.now() }) {
   if (!UID_VALIDO.test(String(uid || ''))) throw new ErrorCreditos(400, 'El identificador no es válido');
+  if (!cantidadValida(cantidad)) throw new ErrorCreditos(400, `La cantidad debe ser un número entero de 1 a ${MAX_REGALO}`, 'cantidad-invalida');
   if (!CLAVE_OPERACION.test(String(clave || ''))) throw new ErrorCreditos(400, 'Falta la clave de la operación (se genera al abrir la confirmación)');
   const cuentaRef = db.collection(COL_CUENTAS).doc(uid);
   const movRef = db.collection(COL_MOVIMIENTOS).doc('regalo_' + hash(uid + '|' + clave));
@@ -115,22 +124,26 @@ async function regalar(db, admin, { uid, adminUid, adminCorreo = '', clave, ahor
   return db.runTransaction(async tx => {
     const [mov, cuenta] = await Promise.all([tx.get(movRef), tx.get(cuentaRef)]);
     const previo = cuenta.exists ? (cuenta.data() || {}) : {};
-    if (mov.exists) return { repetido: true, saldo: Number.isInteger(previo.saldo) ? previo.saldo : 0, movimientoId: movRef.id };
-    const dia = previo.regalosHoy && previo.regalosHoy.dia === hoy ? Number(previo.regalosHoy.n) || 0 : 0;
-    if (dia >= TOPE_REGALOS_POR_DIA) {
-      throw new ErrorCreditos(429, `Esta persona ya recibió ${TOPE_REGALOS_POR_DIA} regalos hoy. Es el tope por día para evitar errores; inténtalo mañana`, 'tope-diario');
+    if (mov.exists) return { repetido: true, saldo: Number.isInteger(previo.saldo) ? previo.saldo : 0, cantidad: Number((mov.data() || {}).cantidad) || cantidad, movimientoId: movRef.id };
+    const hoyRegalos = previo.regalosHoy && previo.regalosHoy.dia === hoy ? previo.regalosHoy : null;
+    const regalosDia = hoyRegalos ? Number(hoyRegalos.n) || 0 : 0;
+    // Cuentas anteriores a este cambio solo guardaban cuántos regalos (de 100): se convierten a créditos
+    const creditosDia = hoyRegalos ? (Number.isInteger(hoyRegalos.creditos) ? hoyRegalos.creditos : regalosDia * REGALO) : 0;
+    if (creditosDia + cantidad > TOPE_CREDITOS_POR_DIA) {
+      const quedan = Math.max(0, TOPE_CREDITOS_POR_DIA - creditosDia);
+      throw new ErrorCreditos(429, `Esta persona ya recibió ${creditosDia} créditos hoy y el tope por día es de ${TOPE_CREDITOS_POR_DIA} (para evitar errores). ${quedan ? `Hoy todavía puedes regalarle hasta ${quedan}.` : 'Inténtalo mañana.'}`, 'tope-diario');
     }
-    const saldo = (Number.isInteger(previo.saldo) && previo.saldo > 0 ? previo.saldo : 0) + REGALO;
+    const saldo = (Number.isInteger(previo.saldo) && previo.saldo > 0 ? previo.saldo : 0) + cantidad;
     tx.set(cuentaRef, {
-      uid, saldo, regalados: (Number(previo.regalados) || 0) + REGALO, canjeados: Number(previo.canjeados) || 0,
-      avisoPendiente: (Number.isInteger(previo.avisoPendiente) && previo.avisoPendiente > 0 ? previo.avisoPendiente : 0) + REGALO,
-      ultimoRegaloEn: FieldValue.serverTimestamp(), ultimoRegaloPor: adminUid, regalosHoy: { dia: hoy, n: dia + 1 }, actualizado: FieldValue.serverTimestamp()
+      uid, saldo, regalados: (Number(previo.regalados) || 0) + cantidad, canjeados: Number(previo.canjeados) || 0,
+      avisoPendiente: (Number.isInteger(previo.avisoPendiente) && previo.avisoPendiente > 0 ? previo.avisoPendiente : 0) + cantidad,
+      ultimoRegaloEn: FieldValue.serverTimestamp(), ultimoRegaloPor: adminUid, regalosHoy: { dia: hoy, n: regalosDia + 1, creditos: creditosDia + cantidad }, actualizado: FieldValue.serverTimestamp()
     });
     tx.set(movRef, {
-      tipo: 'regalo', uid, cantidad: REGALO, adminUid, adminCorreo: String(adminCorreo || '').toLowerCase().slice(0, 160),
+      tipo: 'regalo', uid, cantidad, adminUid, adminCorreo: String(adminCorreo || '').toLowerCase().slice(0, 160),
       en: FieldValue.serverTimestamp(), operacion: hash(clave), caduca: CADUCIDAD_DIAS ? new Date(ahora + CADUCIDAD_DIAS * 86400000) : null
     });
-    return { repetido: false, saldo, movimientoId: movRef.id };
+    return { repetido: false, saldo, cantidad, movimientoId: movRef.id };
   });
 }
 
@@ -181,8 +194,11 @@ async function leerMovimientos(db) {
   return { movimientos: lista, truncado: snap.docs.length > TOPE_MOVIMIENTOS };
 }
 
-// Empareja, por persona, el regalo n con el canje n (por fecha): 100 créditos = 1 material, así cada regalo queda «Canjeado» cuando
-// se usa un canje, del más antiguo al más nuevo. Devuelve los regalos de más reciente a más antiguo.
+// Empareja, por persona y POR CRÉDITOS, los canjes con los regalos: del más antiguo al más nuevo (primero en entrar, primero en salir).
+// Cada canje gasta COSTO_MATERIAL de los regalos más viejos que aún tengan saldo; un canje puede repartirse entre dos regalos.
+// Por regalo: estado 'pendiente' (nada usado), 'parcial' (algo usado) o 'canjeado' (todo usado, o todos sus materiales canjeados),
+// cuántos materiales alcanzaban (materialesTotal) y cuántos se canjearon (materialesCanjeados), el sobrante que no completa un
+// material y la lista de materiales canjeados con su fecha. Devuelve los regalos de más reciente a más antiguo.
 function historialDeRegalos(movimientos) {
   const porUid = new Map();
   for (const m of movimientos) {
@@ -193,18 +209,36 @@ function historialDeRegalos(movimientos) {
   }
   const salida = [];
   for (const [uid, g] of porUid) {
-    g.regalos.sort((a, b) => a.enMs - b.enMs);
-    g.canjes.sort((a, b) => a.enMs - b.enMs);
-    g.regalos.forEach((r, i) => {
-      const c = g.canjes[i] || null;
-      salida.push({
-        id: r.id, uid, cantidad: r.cantidad, en: iso(r.en), enMs: r.enMs, adminUid: r.adminUid || '', adminCorreo: r.adminCorreo || '',
-        estado: c ? 'canjeado' : 'pendiente',
-        canje: c ? { materialId: c.materialId, titulo: c.materialTitulo || '', tipo: c.materialTipo || '', en: iso(c.en) } : null
-      });
+    g.regalos.sort((x, y) => x.enMs - y.enMs);
+    g.canjes.sort((x, y) => x.enMs - y.enMs);
+    const filas = g.regalos.map(r => {
+      const cantidad = Number.isInteger(Number(r.cantidad)) && Number(r.cantidad) > 0 ? Number(r.cantidad) : REGALO;
+      return { r, cantidad, restante: cantidad, canjes: [] };
     });
+    for (const c of g.canjes) {
+      let falta = Number(c.cantidad) > 0 ? Number(c.cantidad) : COSTO_MATERIAL;
+      for (const f of filas) {
+        if (falta <= 0) break;
+        if (f.restante <= 0) continue;
+        const toma = Math.min(f.restante, falta);
+        f.restante -= toma; falta -= toma;
+        f.canjes.push({ materialId: c.materialId, titulo: c.materialTitulo || '', tipo: c.materialTipo || '', en: iso(c.en) });
+      }
+    }
+    for (const f of filas) {
+      const usados = f.cantidad - f.restante;
+      const materialesTotal = Math.floor(f.cantidad / COSTO_MATERIAL);
+      const materialesCanjeados = Math.min(materialesTotal, Math.floor(usados / COSTO_MATERIAL));
+      const completo = usados >= f.cantidad || (materialesTotal > 0 && materialesCanjeados >= materialesTotal);
+      const estado = usados === 0 ? 'pendiente' : (completo ? 'canjeado' : 'parcial');
+      salida.push({
+        id: f.r.id, uid, cantidad: f.cantidad, en: iso(f.r.en), enMs: f.r.enMs, adminUid: f.r.adminUid || '', adminCorreo: f.r.adminCorreo || '',
+        estado, materialesTotal, materialesCanjeados, usados, sobrante: f.cantidad % COSTO_MATERIAL,
+        canjes: f.canjes, canje: f.canjes.length ? f.canjes[f.canjes.length - 1] : null
+      });
+    }
   }
-  salida.sort((a, b) => b.enMs - a.enMs);
+  salida.sort((x, y) => y.enMs - x.enMs);
   return salida;
 }
 
@@ -226,7 +260,7 @@ function metricas(movimientos) {
 }
 
 module.exports = {
-  REGALO, COSTO_MATERIAL, CADUCIDAD_DIAS, TOPE_REGALOS_POR_DIA, TOPE_MOVIMIENTOS, COL_CUENTAS, COL_MOVIMIENTOS, COL_DESBLOQUEOS, TIPOS,
+  REGALO, MAX_REGALO, COSTO_MATERIAL, CADUCIDAD_DIAS, TOPE_CREDITOS_POR_DIA, TOPE_MOVIMIENTOS, cantidadValida, COL_CUENTAS, COL_MOVIMIENTOS, COL_DESBLOQUEOS, TIPOS,
   ErrorCreditos, claveMaterial, analizarClave, docDesbloqueo, catalogoCanjeable, estadoConCredito,
   leerCuenta, leerDesbloqueos, regalar, canjear, marcarAvisoVisto, leerMovimientos, historialDeRegalos, metricas, diaMexico, iso
 };
