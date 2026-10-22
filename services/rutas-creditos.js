@@ -8,8 +8,10 @@
 //   GET  /api/admin/creditos/historial   cada regalo: persona, cantidad, fecha, quién lo regaló, Pendiente / Canjeados 1 de 3 / Canjeado + materiales
 //   GET  /api/admin/creditos/metricas    regalados, canjeados, pendientes y cuántos canjes tuvo cada material (para la gráfica)
 // Persona con sesión:
-//   GET  /api/creditos/estado            saldo, aviso de felicitación pendiente y materiales canjeables (costo 100)
-//   POST /api/creditos/canjear           { materialId } descuenta 100 (costo fijo del servidor) y desbloquea ESE material para esta cuenta, para siempre
+//   GET  /api/creditos/estado            saldo, aviso de felicitación pendiente y materiales canjeables (costo 100). Por libro: canjeable (true/false) y
+//                                        motivo (ya-accesible, ya-canjeo-libro, saldo-insuficiente); de la cuenta: librosCanjeadosConCreditos (0 o 1) y libroCanjeadoId
+//   POST /api/creditos/canjear           { materialId } descuenta 100 (costo fijo del servidor) y desbloquea ESE material para esta cuenta, para siempre.
+//                                        Solo UN libro por cuenta en toda su vida (409 «ya-canjeo-libro» sin cobrar); los demás materiales no tienen límite
 //   POST /api/creditos/aviso-visto       marca la felicitación como vista (vive en el servidor, no en el navegador)
 // Las reglas del servicio están en services/creditos.js. El acceso a los materiales canjeados lo valida rutas-materiales.js.
 
@@ -91,12 +93,25 @@ function montarRutasCreditos(app, deps) {
   app.get('/api/creditos/estado', conSesion('No se pudieron cargar tus créditos', 'estado', limites.estado, ESTADO_POR_MINUTO, async (req, res, decoded) => {
     const [cuenta, estado] = await Promise.all([creditos.leerCuenta(db, decoded.uid), estadoDeAcceso(decoded.uid)]);
     const lista = await materialesDe(decoded.uid, estado);
+    // Regla de los libros: a lo más UNO con créditos en toda la vida de la cuenta. Los que abre por retos o membresía no cuentan.
+    const claveLibro = cuenta.libroCanjeado || ((lista.find(m => m.tipo === 'libro' && m.estado === 'canjeado') || {}).clave || '');
+    const motivoDeLibro = m => {
+      if (m.estado === 'canjeado') return { canjeable: false, motivo: 'ya-canjeado' };
+      if (m.estado === 'otra-via') return { canjeable: false, motivo: 'ya-accesible' };
+      if (claveLibro) return { canjeable: false, motivo: 'ya-canjeo-libro' };
+      if (cuenta.saldo < creditos.COSTO_MATERIAL) return { canjeable: false, motivo: 'saldo-insuficiente' };
+      return { canjeable: true, motivo: null };
+    };
+    const libros = lista.filter(m => m.tipo === 'libro').map(m => ({ clave: m.clave, id: m.id, titulo: m.titulo, desbloqueado: m.estado === 'canjeado', ...motivoDeLibro(m) }));
+    const porClaveLibro = new Map(libros.map(l => [l.clave, l]));
     return res.json({
       ok: true, saldo: cuenta.saldo, costo: creditos.COSTO_MATERIAL, avisoPendiente: cuenta.avisoPendiente, regalo: creditos.REGALO,
+      librosCanjeadosConCreditos: claveLibro ? 1 : 0, libroCanjeadoId: claveLibro ? claveLibro.slice('libro:'.length) : null, maxLibrosPorCreditos: creditos.MAX_LIBROS_POR_CREDITOS, libros,
       // Lo que ya abre por membresía o retos no se ofrece para canjear
       materiales: lista.filter(m => m.estado !== 'otra-via').map(m => ({
         clave: m.clave, tipo: m.tipo, id: m.id, titulo: m.titulo, area: m.area, descripcion: m.descripcion, paginas: m.paginas, formato: m.formato,
-        costo: creditos.COSTO_MATERIAL, desbloqueado: m.estado === 'canjeado'
+        costo: creditos.COSTO_MATERIAL, desbloqueado: m.estado === 'canjeado',
+        ...(m.tipo === 'libro' ? { canjeable: porClaveLibro.get(m.clave).canjeable, motivo: porClaveLibro.get(m.clave).motivo } : {})
       }))
     });
   }));

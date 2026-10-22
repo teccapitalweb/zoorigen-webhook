@@ -1,6 +1,8 @@
 'use strict';
 
 // ══ CRÉDITOS (regalo manual del administrador y canje por materiales) ══
+// Regla de los LIBROS: cada cuenta puede canjear con créditos A LO MÁS UN libro en toda su vida (lo escoge entre todos los del catálogo).
+// Los libros que abre por retos o por membresía no cuentan. Los demás materiales no tienen límite de cantidad.
 // El administrador regala créditos desde su panel: la cantidad es un entero de 1 a MAX_REGALO (100 por omisión en el panel; también 200,
 // 300, 400 u otra cantidad). Con 100 créditos la persona canjea UN material del apartado «PDFs y materiales» que no pertenezca a
 // ningún curso (cada material cuesta 100, fijo en el servidor). Todo lo escribe SOLO el servidor:
@@ -27,6 +29,7 @@ const UID_VALIDO = /^[A-Za-z0-9_-]{1,128}$/;
 const CLAVE_OPERACION = /^[A-Za-z0-9_-]{8,64}$/;
 const ID_PARTE = /^[A-Za-z0-9_-]{1,80}$/;
 const TIPOS = Object.freeze(['libro', 'pdf', 'drive']);
+const MAX_LIBROS_POR_CREDITOS = 1;   // libros que una cuenta puede canjear con créditos en toda su vida
 
 class ErrorCreditos extends Error {
   constructor(status, mensaje, codigo) { super(mensaje); this.status = status; this.codigo = codigo; }
@@ -93,8 +96,17 @@ async function leerCuenta(db, uid) {
     saldo: Number.isInteger(d.saldo) && d.saldo > 0 ? d.saldo : 0,
     regalados: Number(d.regalados) || 0, canjeados: Number(d.canjeados) || 0,
     avisoPendiente: Number.isInteger(d.avisoPendiente) && d.avisoPendiente > 0 ? d.avisoPendiente : 0,
-    ultimoRegaloEn: iso(d.ultimoRegaloEn)
+    ultimoRegaloEn: iso(d.ultimoRegaloEn),
+    libroCanjeado: typeof d.libroCanjeado === 'string' && /^libro:/.test(d.libroCanjeado) ? d.libroCanjeado : ''
   };
+}
+
+// El libro que esta cuenta canjeó con créditos (clave «libro:id») o ''. Mira el dato de la cuenta y, para cuentas anteriores a esta regla,
+// los desbloqueos por créditos (creditosDesbloqueos), que son la fuente de verdad.
+function libroCanjeadoDe(cuenta, desbloqueos) {
+  if (cuenta && cuenta.libroCanjeado) return cuenta.libroCanjeado;
+  if (desbloqueos instanceof Set) { for (const c of desbloqueos) if (typeof c === 'string' && c.startsWith('libro:')) return c; }
+  return '';
 }
 
 // Claves («libro:id», «pdf:id», «drive:id») que esta cuenta ya canjeó
@@ -137,6 +149,7 @@ async function regalar(db, admin, { uid, adminUid, adminCorreo = '', clave, cant
     tx.set(cuentaRef, {
       uid, saldo, regalados: (Number(previo.regalados) || 0) + cantidad, canjeados: Number(previo.canjeados) || 0,
       avisoPendiente: (Number.isInteger(previo.avisoPendiente) && previo.avisoPendiente > 0 ? previo.avisoPendiente : 0) + cantidad,
+      ...(previo.libroCanjeado ? { libroCanjeado: previo.libroCanjeado } : {}),
       ultimoRegaloEn: FieldValue.serverTimestamp(), ultimoRegaloPor: adminUid, regalosHoy: { dia: hoy, n: regalosDia + 1, creditos: creditosDia + cantidad }, actualizado: FieldValue.serverTimestamp()
     });
     tx.set(movRef, {
@@ -149,10 +162,14 @@ async function regalar(db, admin, { uid, adminUid, adminCorreo = '', clave, cant
 
 /* ───────────────────────── Canjear (la persona) ─────────────────────────
    Transacción: saldo >= costo, el material aún no es suyo; descuenta, crea el desbloqueo permanente y anota el movimiento.
-   Dos canjes a la vez del mismo material o con un solo saldo: solo uno gana (el otro recibe 409 o 402). */
+   Dos canjes a la vez del mismo material o con un solo saldo: solo uno gana (el otro recibe 409 o 402).
+   LIBROS: una cuenta canjea con créditos a lo más UN libro en toda su vida. Dentro de la misma transacción, si ya tiene uno canjeado se rechaza
+   con 409 «ya-canjeo-libro» sin cobrar; dos canjes de libros distintos a la vez: solo uno gana (se guarda en la cuenta el libro canjeado). */
 async function canjear(db, admin, { uid, material, ahora = Date.now() }) {
   const parsed = analizarClave(material && material.clave);
   if (!parsed) throw new ErrorCreditos(404, 'Ese material no se puede canjear', 'no-canjeable');
+  // Cuentas anteriores a la regla: su libro canjeado solo consta en los desbloqueos
+  const previos = parsed.tipo === 'libro' ? await leerDesbloqueos(db, uid) : null;
   const cuentaRef = db.collection(COL_CUENTAS).doc(uid);
   const desbRef = db.collection(COL_DESBLOQUEOS).doc(docDesbloqueo(uid, parsed.clave));
   const movRef = db.collection(COL_MOVIMIENTOS).doc('canje_' + hash(uid + '|' + parsed.clave));
@@ -161,9 +178,13 @@ async function canjear(db, admin, { uid, material, ahora = Date.now() }) {
     const [cuenta, desb] = await Promise.all([tx.get(cuentaRef), tx.get(desbRef)]);
     if (desb.exists) throw new ErrorCreditos(409, 'Ya canjeaste este material', 'ya-desbloqueado');
     const previo = cuenta.exists ? (cuenta.data() || {}) : {};
+    if (parsed.tipo === 'libro') {
+      const yaTiene = libroCanjeadoDe({ libroCanjeado: typeof previo.libroCanjeado === 'string' ? previo.libroCanjeado : '' }, previos);
+      if (yaTiene) throw new ErrorCreditos(409, 'Solo puedes canjear UN libro con créditos y ya canjeaste el tuyo. Los demás libros se abren con tus retos', 'ya-canjeo-libro');
+    }
     const saldo = Number.isInteger(previo.saldo) && previo.saldo > 0 ? previo.saldo : 0;
     if (saldo < COSTO_MATERIAL) throw new ErrorCreditos(402, `Te faltan créditos: este material cuesta ${COSTO_MATERIAL} y tienes ${saldo}`, 'saldo-insuficiente');
-    tx.set(cuentaRef, { ...previo, uid, saldo: saldo - COSTO_MATERIAL, canjeados: (Number(previo.canjeados) || 0) + COSTO_MATERIAL, actualizado: FieldValue.serverTimestamp() });
+    tx.set(cuentaRef, { ...previo, uid, saldo: saldo - COSTO_MATERIAL, canjeados: (Number(previo.canjeados) || 0) + COSTO_MATERIAL, ...(parsed.tipo === 'libro' ? { libroCanjeado: parsed.clave } : {}), actualizado: FieldValue.serverTimestamp() });
     tx.set(desbRef, { uid, clave: parsed.clave, tipo: parsed.tipo, materialId: parsed.id, titulo: String(material.titulo || '').slice(0, 140), en: FieldValue.serverTimestamp() });
     tx.set(movRef, {
       tipo: 'canje', uid, cantidad: COSTO_MATERIAL, materialId: parsed.clave, materialTipo: parsed.tipo, materialTitulo: String(material.titulo || '').slice(0, 140),
@@ -222,7 +243,7 @@ function historialDeRegalos(movimientos) {
         if (f.restante <= 0) continue;
         const toma = Math.min(f.restante, falta);
         f.restante -= toma; falta -= toma;
-        f.canjes.push({ materialId: c.materialId, titulo: c.materialTitulo || '', tipo: c.materialTipo || '', en: iso(c.en) });
+        f.canjes.push({ materialId: c.materialId, titulo: c.materialTitulo || '', tipo: c.materialTipo || '', esLibro: c.materialTipo === 'libro' || /^libro:/.test(String(c.materialId || '')), en: iso(c.en) });
       }
     }
     for (const f of filas) {
@@ -260,7 +281,7 @@ function metricas(movimientos) {
 }
 
 module.exports = {
-  REGALO, MAX_REGALO, COSTO_MATERIAL, CADUCIDAD_DIAS, TOPE_CREDITOS_POR_DIA, TOPE_MOVIMIENTOS, cantidadValida, COL_CUENTAS, COL_MOVIMIENTOS, COL_DESBLOQUEOS, TIPOS,
+  REGALO, MAX_REGALO, MAX_LIBROS_POR_CREDITOS, libroCanjeadoDe, COSTO_MATERIAL, CADUCIDAD_DIAS, TOPE_CREDITOS_POR_DIA, TOPE_MOVIMIENTOS, cantidadValida, COL_CUENTAS, COL_MOVIMIENTOS, COL_DESBLOQUEOS, TIPOS,
   ErrorCreditos, claveMaterial, analizarClave, docDesbloqueo, catalogoCanjeable, estadoConCredito,
   leerCuenta, leerDesbloqueos, regalar, canjear, marcarAvisoVisto, leerMovimientos, historialDeRegalos, metricas, diaMexico, iso
 };
