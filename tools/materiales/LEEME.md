@@ -43,6 +43,6 @@ node generar-office.js            # escribe en data/materiales/, valida y actual
 `generador-office/escalera.js` es la fuente única: cada material nuevo pide 3 retos más que el anterior (3, 6, 9 ... 60), de lo más
 básico (carteles, hojas de observación y registros) a lo más completo (plan de manejo de UMA y UMA/PIMVS/zoológicos). Los retos son
 los retos superados de la cuenta (los mismos que abren los libros 5, 15 y 30), solo para miembros con membresía vigente; los
-créditos (100 = 1 material) son otra vía independiente. Hoy se pueden superar 77 retos distintos (32 quiz + 21 detective + 24 ordena),
-así que el último umbral (60) queda por debajo del 90 % del total. `node generar-office.js` aplica la escalera al catálogo; si cambia el
+créditos (100 = 1 material) son otra vía independiente. Hoy se pueden superar 86 retos distintos (32 quiz + 30 detective + 24 ordena),
+así que el último umbral (60) queda por debajo del 90 % del total (77). `node generar-office.js` aplica la escalera al catálogo; si cambia el
 total de retos, ajusta `TOTAL_RETOS_ALCANZABLES` y los umbrales (la prueba `test/materiales-escalera.test.js` lo vigila).
