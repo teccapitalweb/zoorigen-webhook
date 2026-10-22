@@ -71,7 +71,10 @@ function plantillaVerificacion({ nombre, enlace }) {
 
 // Envía un correo con Resend. Devuelve true/false; nunca lanza (el llamador decide qué hacer si falla).
 // adjuntos (opcional): [{ filename, content }] con content en base64 (formato de la API de Resend).
-async function enviarConResend({ para, asunto, html, texto, adjuntos }, { apiKey, from, fetchImpl } = {}) {
+// Opcionales para correos masivos: headers (p. ej. List-Unsubscribe y List-Unsubscribe-Post), tags [{ name, value }], replyTo y
+// idempotencyKey (Resend ignora un segundo envío con la misma clave durante 24 h: así un reintento nunca duplica el correo).
+// Si Resend responde error o límite (429), devuelve { ok: false, status, esperarSegundos } para que quien llama NO marque nada como enviado.
+async function enviarConResend({ para, asunto, html, texto, adjuntos, headers, tags, replyTo, idempotencyKey }, { apiKey, from, fetchImpl } = {}) {
   const llave = apiKey !== undefined ? apiKey : (process.env.RESEND_API_KEY || '').trim();
   const remitente = from !== undefined ? from : (process.env.MAIL_FROM || '').trim();
   if (!llave || !remitente) return { ok: false, motivo: 'sin-configurar' };
@@ -80,17 +83,22 @@ async function enviarConResend({ para, asunto, html, texto, adjuntos }, { apiKey
   try {
     const r = await f('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + llave, 'Content-Type': 'application/json' },
+      headers: { Authorization: 'Bearer ' + llave, 'Content-Type': 'application/json', ...(idempotencyKey ? { 'Idempotency-Key': String(idempotencyKey).slice(0, 250) } : {}) },
       body: JSON.stringify({
         from: remitente, to: [para], subject: asunto, html, text: texto,
-        ...(Array.isArray(adjuntos) && adjuntos.length ? { attachments: adjuntos } : {})
+        ...(Array.isArray(adjuntos) && adjuntos.length ? { attachments: adjuntos } : {}),
+        ...(headers && typeof headers === 'object' && Object.keys(headers).length ? { headers } : {}),
+        ...(Array.isArray(tags) && tags.length ? { tags } : {}),
+        ...(replyTo ? { reply_to: replyTo } : {})
       })
     });
     if (!r.ok) {
       let cuerpo = '';
       try { cuerpo = String(await r.text()).slice(0, 160); } catch (e) { /* sin cuerpo */ }
       console.error('[Correo] Resend respondió', r.status, cuerpo);
-      return { ok: false, motivo: 'rechazado', status: r.status };
+      let esperar = 0;
+      try { esperar = Number(r.headers && typeof r.headers.get === 'function' ? r.headers.get('retry-after') : 0) || 0; } catch (e) { esperar = 0; }
+      return { ok: false, motivo: r.status === 429 ? 'limite' : 'rechazado', status: r.status, ...(esperar ? { esperarSegundos: esperar } : {}) };
     }
     return { ok: true };
   } catch (err) {

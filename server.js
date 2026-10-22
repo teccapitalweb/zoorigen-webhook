@@ -20,6 +20,10 @@ const { montarRutasMateriales } = require('./services/rutas-materiales');
 const { montarRutasCreditos } = require('./services/rutas-creditos');
 const { montarRutasRegistro } = require('./services/rutas-registro');
 const { montarRutasAuth } = require('./services/rutas-auth');
+const { montarRutasRecordatorios } = require('./services/rutas-recordatorios');
+const recordatoriosReglas = require('./services/recordatorios-pago');
+const { crearServicio: crearServicioRecordatorios } = require('./services/recordatorios-servicio');
+const correoZoorigen = require('./services/correo');
 const { montarRutasCertificados } = require('./services/rutas-certificados');
 const { montarRutasPublico } = require('./services/rutas-publico');
 const { montarRutasAdmin } = require('./services/rutas-admin');
@@ -398,6 +402,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         });
         if (!resultado.planActivo) throw new Error(`La suscripción ${subscriptionId} no quedó activa (${subscription.status})`);
         console.log(`🎉 Plan ${planType} activado para ${firebaseUID}`);
+        await cerrarSerieDeRecordatorios(session, firebaseUID);   // nunca lanza: la membresía ya quedó activa
         break;
       }
 
@@ -520,6 +525,22 @@ app.post('/create-checkout-session', express.json(), async (req, res) => {
       },
     };
 
+    // Recordatorios de pago: si la persona tiene un cupón vigente (el MISMO código de su correo) y elige el plan mensual, se aplica solo.
+    // Stripe no permite discounts junto con allow_promotion_codes: en ese caso se quita el campo para escribir códigos. Sin cupón, todo como siempre.
+    let cuponAplicado = null;
+    if (planType === 'mensual') {
+      try { cuponAplicado = await recordatoriosPago.cuponParaCheckout(firebaseUID, miembroDoc.exists ? miembroDoc.data() : null); }
+      catch (error) { console.warn('[Recordatorios] No se pudo revisar el cupón de la cuenta; se cobra sin él:', error && error.message); }
+    }
+    const configSinCupon = cuponAplicado ? { ...sessionConfig, metadata: { ...sessionConfig.metadata }, subscription_data: sessionConfig.subscription_data } : null;
+    if (cuponAplicado) {
+      sessionConfig.discounts = [{ promotion_code: cuponAplicado.promoId }];
+      delete sessionConfig.allow_promotion_codes;
+      sessionConfig.metadata.recordatorioPromoId = cuponAplicado.promoId;
+      sessionConfig.metadata.recordatorioCodigo = cuponAplicado.codigo;
+      sessionConfig.metadata.recordatorioPaso = String(cuponAplicado.paso);
+    }
+
     if (embedded) {
       // Embedded Checkout — formulario dentro de la página
       sessionConfig.ui_mode = 'embedded';
@@ -530,7 +551,17 @@ app.post('/create-checkout-session', express.json(), async (req, res) => {
       sessionConfig.cancel_url = 'https://www.zoorigen.com/pages/club-suscripcion.html?cancelado=true';
     }
 
-    const session = await stripe.checkout.sessions.create(sessionConfig, { apiVersion: '2025-04-30.basil' });
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create(sessionConfig, { apiVersion: '2025-04-30.basil' });
+    } catch (errorCupon) {
+      // Si Stripe rechaza el cupón (por ejemplo, venció justo ahora), la persona paga como siempre: nunca se le bloquea el pago
+      if (!cuponAplicado) throw errorCupon;
+      console.warn('[Recordatorios] Stripe rechazó el cupón; se crea el pago sin él:', errorCupon && errorCupon.message);
+      const normal = { ...sessionConfig, allow_promotion_codes: true, metadata: configSinCupon.metadata };
+      delete normal.discounts; delete normal.metadata.recordatorioPromoId; delete normal.metadata.recordatorioCodigo; delete normal.metadata.recordatorioPaso;
+      session = await stripe.checkout.sessions.create(normal, { apiVersion: '2025-04-30.basil' });
+    }
 
     if (embedded) {
       res.json({ clientSecret: session.client_secret });
@@ -656,6 +687,65 @@ function errorHttp(status, mensaje) {
 }
 
 // Mismo cálculo de siempre: acceso vigente en `miembros` o en el documento legado `usuarios`.
+// ── Recordatorios de pago por correo (services/recordatorios-*.js) ──
+// El estado vive en recordatoriosPago/{uid} (solo del servidor). No exige variables nuevas en Railway: la baja se firma con una clave
+// derivada de CERTIFICATE_SIGNING_KEY y el correo sale con RESEND_API_KEY y MAIL_FROM, que ya existen. Arranca APAGADO (config/recordatorios).
+const API_PUBLICA = String(process.env.API_PUBLICA_URL || 'https://zoorigen-webhook-production.up.railway.app').trim().replace(/\/+$/, '');
+const claveBajaRecordatorios = recordatoriosReglas.claveDeBaja(CERTIFICATE_SIGNING_KEY);
+let precioMesCache = { ms: 0, valor: 0 };
+async function leerPrecioMesMXN() {
+  if (precioMesCache.valor && Date.now() - precioMesCache.ms < 10 * 60 * 1000) return precioMesCache.valor;
+  try {
+    const precio = await stripe.prices.retrieve(STRIPE_PRICES.mensual);
+    const valor = Number(precio && precio.unit_amount) / 100;
+    if (Number.isFinite(valor) && valor > 0) { precioMesCache = { ms: Date.now(), valor }; return valor; }
+  } catch (error) { /* se usa el precio de lista */ }
+  return precioMesCache.valor || recordatoriosReglas.CONFIG.precioMesMXN;
+}
+const recordatoriosPago = crearServicioRecordatorios({
+  db, auth, stripe,
+  enviarCorreo: args => correoZoorigen.enviarConResend(args),
+  correoConfigurado: () => Boolean((process.env.RESEND_API_KEY || '').trim() && (process.env.MAIL_FROM || '').trim()),
+  tieneAcceso: miembro => tieneAccesoVigente(miembro),
+  correosAdmin: () => [...correosAdministrador()],
+  claveBaja: claveBajaRecordatorios,
+  urls: {
+    compra: 'https://www.zoorigen.com/pages/club-suscripcion.html',
+    baja: (uid, firma) => API_PUBLICA + '/baja-recordatorios?u=' + encodeURIComponent(uid) + '&t=' + encodeURIComponent(firma)
+  },
+  leerPrecioMes: leerPrecioMesMXN, idPrecioMensual: () => STRIPE_PRICES.mensual
+});
+
+// Tras un pago confirmado: la persona deja de ser elegible y, si pagó con un código de estos recordatorios, queda como convertida (con su paso).
+// Solo cuenta códigos con metadata marca=zoorigen y que no sean de prueba; los de otras marcas se ignoran. Nunca lanza.
+async function cerrarSerieDeRecordatorios(session, uid) {
+  try {
+    let promoId = String(session.metadata?.recordatorioPromoId || '');
+    let codigo = String(session.metadata?.recordatorioCodigo || '');
+    let pasoCupon = Number(session.metadata?.recordatorioPaso) || 0;
+    let marca = promoId ? 'zoorigen' : '';
+    let prueba = false;
+    const descuento = Number(session.total_details?.amount_discount) || 0;
+    if (descuento <= 0) { promoId = ''; codigo = ''; pasoCupon = 0; marca = ''; }
+    else if (!promoId) {
+      // Se escribió un código a mano: se mira cuál fue y de qué marca es
+      const completa = await stripe.checkout.sessions.retrieve(session.id, { expand: ['total_details.breakdown'] });
+      const d = ((completa.total_details && completa.total_details.breakdown && completa.total_details.breakdown.discounts) || [])[0];
+      const pid = d && d.discount && d.discount.promotion_code;
+      const id = typeof pid === 'string' ? pid : (pid && pid.id) || '';
+      if (id) {
+        const promo = await stripe.promotionCodes.retrieve(id);
+        promoId = id; codigo = promo.code || ''; marca = (promo.metadata && promo.metadata.marca) || ''; prueba = Boolean(promo.metadata && promo.metadata.prueba === 'si');
+        pasoCupon = Number(promo.metadata && promo.metadata.paso) || 0;
+      }
+    }
+    const r = await recordatoriosPago.registrarPago({ uid, promoId, codigo, pasoCupon, marca, prueba });
+    if (r && r.cerrada) console.log('📧 Recordatorios: serie cerrada para', uid, r.conCupon ? '(convertida con cupón, paso ' + r.paso + ')' : '(pagó sin cupón)');
+  } catch (error) {
+    console.error('[Recordatorios] No se pudo cerrar la serie de', uid, '·', error && error.message);
+  }
+}
+
 function tienePlanVigente(miembroDoc, usuarioDoc) {
   return Boolean((miembroDoc.exists && tieneAccesoVigente(miembroDoc.data())) ||
     (usuarioDoc.exists && tieneAccesoVigente(usuarioDoc.data())));
@@ -1107,6 +1197,8 @@ montarRutasCreditos(app, { db, admin, autenticarFirebase, errorHttp, club, catal
 // Datos por persona en registrosUma/{uid}/... (solo del servidor); solo con membresía vigente o administrador.
 montarRutasRegistro(app, { db, autenticarFirebase, errorHttp, club });
 montarRutasAuth(app, { auth, autenticarFirebase, errorHttp, panelUrl: process.env.PANEL_URL || 'https://www.zoorigen.com' });
+// ── Recordatorios de pago: baja firmada, cupón de la persona y preferencia (services/rutas-recordatorios.js) ──
+montarRutasRecordatorios(app, { db, autenticarFirebase, errorHttp, recordatorios: recordatoriosPago, claveBaja: claveBajaRecordatorios, express });
 // ── Progreso de cursos, quizzes y certificados firmados por el servidor (services/rutas-certificados.js) ──
 // El avance (miembros/{uid}/progresoCursos/{cursoId}) y certificados/{folio} los escribe solo este servidor.
 // Sin CERTIFICATE_SIGNING_KEY arranca igual: el progreso funciona y los certificados responden 503.
@@ -1134,7 +1226,7 @@ montarRutasNoticias(app, {
 // ── Panel de administración: resumen, miembros, comunidad, referidos, retos y estado (services/rutas-admin.js) ──
 // Todas las rutas /api/admin/* de este archivo exigen administrador verificado en el servidor (ADMIN_EMAILS o marca en Firestore).
 montarRutasAdmin(app, {
-  express, db, admin, auth, autenticarAdmin, errorHttp, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador, bitacoraServidor,
+  express, db, admin, auth, autenticarAdmin, errorHttp, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador, bitacoraServidor, recordatorios: recordatoriosPago,
   precios: { stripe, STRIPE_PRICES },
   // Ensayo e importación del avance anterior de los miembros (GET/POST /api/admin/progreso-legado): las mismas reglas que la
   // importación automática (services/rutas-certificados.js)
@@ -1157,6 +1249,16 @@ if (require.main === module) {
     // Tarea diaria (noticias y dato curioso). Se apaga con NOTICIAS_TAREA=off; las pruebas importan `app` y nunca llegan aquí.
     // Bitácora persistente: arranque (normal o inesperado), latido, errores agrupados. Nunca bloquea ni rompe al servidor.
     bitacoraServidor.iniciar().catch(error => console.warn('Bitácora del servidor no iniciada:', error && error.message));
+    // Recordatorios de pago: cada 20 minutos revisa a quién le toca. Solo envía si el administrador lo ACTIVÓ (ARRANCA APAGADO), dentro de
+    // 8:00-22:00 hora de México y con el bloqueo por arrendamiento (dos instancias nunca envían a la vez). Se apaga con RECORDATORIOS_TAREA=off.
+    if ((process.env.RECORDATORIOS_TAREA || '').trim().toLowerCase() !== 'off') {
+      const corrida = () => recordatoriosPago.procesar()
+        .then(r => { if (r && (r.enviados || r.fallos)) console.log('📧 Recordatorios de pago · enviados:', r.enviados, '· fallos:', r.fallos, '· vencidas:', r.vencidas); })
+        .catch(error => console.error('Recordatorios de pago (corrida) error:', error && error.message));
+      setTimeout(corrida, 90 * 1000).unref();
+      setInterval(corrida, recordatoriosReglas.CONFIG.intervaloCronMs).unref();
+      console.log('📧 Recordatorios de pago: revisión cada 20 minutos (envía solo si el panel los activó)');
+    }
     const tarea = iniciarProgramador(db);
     console.log(tarea.activo ? '📰 Tarea diaria de noticias: activa (13:00 UTC y al arrancar)' : '📰 Tarea diaria de noticias: apagada');
   });
@@ -1165,6 +1267,8 @@ if (require.main === module) {
 module.exports = app;
 // Para pruebas y para el panel: la bitácora persistente del servidor.
 app.bitacoraServidor = bitacoraServidor;
+// Para pruebas y para el demo: el servicio de recordatorios de pago.
+app.recordatoriosPago = recordatoriosPago;
 // Para pruebas: acceso al índice de videos y sus constantes (no altera el export de `app`).
 app.videosFirestore = {
   obtenerIndiceVideos,

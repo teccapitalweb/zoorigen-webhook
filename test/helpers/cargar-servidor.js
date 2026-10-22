@@ -32,9 +32,10 @@ function suscripcion({ id, uid, precio = PRICE_MENSUAL, status = 'active', termi
  *  - usuariosAuth: { uid: { emailVerified, creationTime } } lo que responden auth.getUser / auth.getUsers
  *    (el objeto se devuelve y se puede cambiar durante la prueba, p. ej. para "confirmar el correo")
  *  - suscripciones: lista de objetos creados con suscripcion()
+ *  - precios: true para que la Stripe simulada responda prices.retrieve (recordatorios de pago)
  *  - env: variables de entorno extra (p. ej. BUNNY_TOKEN_AUTH_KEY, CERTIFICATE_SIGNING_KEY)
  */
-function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {}, usuariosAuth = {} } = {}) {
+function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {}, usuariosAuth = {}, precios = false } = {}) {
   const guardado = {};
   const entorno = {
     STRIPE_SECRET_KEY: 'sk_test_falsa',
@@ -56,7 +57,7 @@ function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {}, 
 
   const db = new FakeFirestore(seed);
   const mapaSuscripciones = new Map(suscripciones.map(s => [s.id, { ...s }]));
-  const registro = { sesionesCreadas: [], actualizaciones: [] };
+  const registro = { sesionesCreadas: [], actualizaciones: [], cupones: new Map(), codigos: new Map(), sesionesLeibles: new Map() };
 
   const firestore = () => db;
   firestore.FieldValue = { serverTimestamp: () => ts(Date.now()) };
@@ -126,10 +127,31 @@ function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {}, 
         return JSON.parse(Buffer.from(body).toString('utf8'));
       }
     },
-    checkout: { sessions: { create: async config => {
-      registro.sesionesCreadas.push(config);
-      return { id: 'cs_test', url: 'https://checkout.stripe.test/pay', client_secret: 'cs_secret_test' };
-    } } },
+    checkout: { sessions: {
+      create: async config => {
+        if (registro.rechazarCupones && config.discounts) throw Object.assign(new Error('That promotion code has expired'), { code: 'promotion_code_expired' });
+        registro.sesionesCreadas.push(config);
+        return { id: 'cs_test', url: 'https://checkout.stripe.test/pay', client_secret: 'cs_secret_test' };
+      },
+      // Para el webhook: registro.sesionesLeibles.set('cs_1', { total_details: {...} })
+      retrieve: async id => registro.sesionesLeibles.get(id) || { id, total_details: { amount_discount: 0, breakdown: { discounts: [] } } }
+    } },
+    // Recordatorios de pago: precio mensual, cupones base y códigos promocionales (en memoria)
+    // Solo con precios: true (recordatorios de pago); sin él, Stripe «no responde» y el panel muestra el precio de lista, como siempre
+    prices: { retrieve: async id => { if (!precios) throw new Error('Stripe sin conexión (prueba)'); return { id, unit_amount: 19900, currency: 'mxn', product: 'prod_mensual' }; } },
+    coupons: {
+      retrieve: async id => { if (!registro.cupones.has(id)) throw noExiste(id); return { ...registro.cupones.get(id) }; },
+      create: async datos => { registro.cupones.set(datos.id, { ...datos }); return { ...datos }; }
+    },
+    promotionCodes: {
+      create: async datos => {
+        if ([...registro.codigos.values()].some(c => c.code === datos.code)) throw new Error('Promotion code already exists');
+        const promo = { id: 'promo_' + (registro.codigos.size + 1), active: true, times_redeemed: 0, ...datos };
+        registro.codigos.set(promo.id, promo);
+        return { ...promo };
+      },
+      retrieve: async id => { if (!registro.codigos.has(id)) throw noExiste(id); return { ...registro.codigos.get(id) }; }
+    },
     subscriptions: {
       retrieve: async id => {
         if (!mapaSuscripciones.has(id)) throw noExiste(id);
