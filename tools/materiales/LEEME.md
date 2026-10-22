@@ -37,3 +37,12 @@ node generar-office.js            # escribe en data/materiales/, valida y actual
   `output/imagegen/`); `portadas.js` genera las ilustraciones PNG de respaldo. Van en `assets/img/materiales/` del sitio.
 - Tipos nuevos del catálogo: `excel` (.xlsx) y `powerpoint` (.pptx); el servidor los entrega como adjunto, con su Content-Type,
   solo a quien cumple la regla (membresía, retos o créditos).
+
+### Escalera de retos de los 20 materiales nuevos
+
+`generador-office/escalera.js` es la fuente única: cada material nuevo pide 3 retos más que el anterior (3, 6, 9 ... 60), de lo más
+básico (carteles, hojas de observación y registros) a lo más completo (plan de manejo de UMA y UMA/PIMVS/zoológicos). Los retos son
+los retos superados de la cuenta (los mismos que abren los libros 5, 15 y 30), solo para miembros con membresía vigente; los
+créditos (100 = 1 material) son otra vía independiente. Hoy se pueden superar 77 retos distintos (32 quiz + 21 detective + 24 ordena),
+así que el último umbral (60) queda por debajo del 90 % del total. `node generar-office.js` aplica la escalera al catálogo; si cambia el
+total de retos, ajusta `TOTAL_RETOS_ALCANZABLES` y los umbrales (la prueba `test/materiales-escalera.test.js` lo vigila).

@@ -18,6 +18,7 @@ const { aPptx } = require('./pptx');
 const { htmlDocumento, htmlCarteles } = require('./pdf');
 const { aPDF } = require('./chrome');
 const { validar } = require('./validar-xlsx');
+const { ESCALERA } = require('./escalera');
 
 const SALIDA = path.resolve(process.argv[2] || path.join(__dirname, '..', '..', '..', 'data', 'materiales'));
 const CONTENIDO = path.resolve(__dirname, '..', 'contenido');
@@ -149,6 +150,12 @@ async function main() {
         if (notas < diapos) problemas.push(`${e.archivo}: solo ${notas} diapositivas con notas del orador de ${diapos}`);
       }
     } else if (fs.readFileSync(ruta).slice(0, 5).toString('latin1') !== '%PDF-') problemas.push(`${e.archivo}: no es un PDF`);
+  }
+
+  // 4b) La ESCALERA de retos (escalera.js) reemplaza cualquier umbral provisional: todos los nuevos se abren por retos (solo miembros)
+  for (const e of entradas) {
+    if (!ESCALERA[e.id]) throw new Error('Falta ' + e.id + ' en la escalera de retos');
+    e.acceso = 'retos'; e.requiereRetos = ESCALERA[e.id];
   }
 
   // 5) Catálogo y lista de revisión
