@@ -1,0 +1,641 @@
+[
+  {
+    "id": "inventario-botiquin-caducidad",
+    "titulo": "Inventario de botiquín con alerta de caducidad",
+    "tipo": "excel",
+    "archivo": "inventario-botiquin-caducidad.xlsx",
+    "bytes": 29029,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "3 hojas, 409 fórmulas, 1000 listas, 1 gráficas",
+    "paraQuien": "Médicos veterinarios, cuidadores y personal de UMA, zoológicos y centros",
+    "acceso": "miembros",
+    "requiereRetos": 0,
+    "nivelRevision": "bajo",
+    "revisar": [
+      "médico veterinario"
+    ],
+    "revision": [
+      {
+        "afirmacion": "Solo organiza existencias y fechas de caducidad que tú capturas; no recomienda productos, dosis ni usos clínicos.",
+        "fuente": "Criterio editorial",
+        "confianza": "alto"
+      }
+    ]
+  },
+  {
+    "id": "libro-entradas-salidas-insumos",
+    "titulo": "Libro de entradas y salidas de insumos",
+    "tipo": "excel",
+    "archivo": "libro-entradas-salidas-insumos.xlsx",
+    "bytes": 58195,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "3 hojas, 1900 fórmulas, 2700 listas, 0 gráficas",
+    "paraQuien": "Administradores y responsables de UMA, zoológicos, centros y clínicas",
+    "acceso": "miembros",
+    "requiereRetos": 0,
+    "nivelRevision": "bajo",
+    "revisar": [],
+    "revision": [
+      {
+        "afirmacion": "Se aclara dentro del libro que no es un formato contable, fiscal ni oficial.",
+        "fuente": "Criterio editorial",
+        "confianza": "alto"
+      }
+    ]
+  },
+  {
+    "id": "peso-curva-crecimiento",
+    "titulo": "Registro de peso y curva de crecimiento por ejemplar",
+    "tipo": "excel",
+    "archivo": "peso-curva-crecimiento.xlsx",
+    "bytes": 66915,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "4 hojas, 3200 fórmulas, 1742 listas, 1 gráficas",
+    "paraQuien": "Cuidadores, biólogos y médicos veterinarios",
+    "acceso": "miembros",
+    "requiereRetos": 0,
+    "nivelRevision": "bajo",
+    "revisar": [
+      "biólogo"
+    ],
+    "revision": [
+      {
+        "afirmacion": "No incluye pesos ideales ni rangos de referencia por especie; solo calcula con los pesos que se capturan.",
+        "fuente": "Omisión deliberada",
+        "confianza": "alto"
+      }
+    ]
+  },
+  {
+    "id": "calendario-preventivo-protocolo",
+    "titulo": "Calendario de vacunación y desparasitación con tu protocolo",
+    "tipo": "excel",
+    "archivo": "calendario-preventivo-protocolo.xlsx",
+    "bytes": 72109,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "4 hojas, 2600 fórmulas, 1200 listas, 0 gráficas",
+    "paraQuien": "Médicos veterinarios y responsables de la salud de colecciones o planteles",
+    "acceso": "retos",
+    "requiereRetos": 4,
+    "nivelRevision": "medio",
+    "revisar": [
+      "médico veterinario"
+    ],
+    "revision": [
+      {
+        "afirmacion": "El libro no propone vacunas, productos, dosis ni intervalos: la persona escribe su protocolo definido por su médico veterinario.",
+        "fuente": "Omisión deliberada",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "Conviene que un médico veterinario confirme que la redacción de las instrucciones no sugiere un esquema.",
+        "fuente": "Criterio editorial; requiere revisión de un médico veterinario",
+        "confianza": "medio"
+      }
+    ]
+  },
+  {
+    "id": "registro-ingresos-bajas-traslados",
+    "titulo": "Registro de ingresos, bajas y traslados de ejemplares",
+    "tipo": "excel",
+    "archivo": "registro-ingresos-bajas-traslados.xlsx",
+    "bytes": 58635,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "4 hojas, 2016 fórmulas, 2700 listas, 1 gráficas",
+    "paraQuien": "Responsables de UMA, PIMVS, zoológicos y centros",
+    "acceso": "retos",
+    "requiereRetos": 6,
+    "nivelRevision": "medio",
+    "revisar": [
+      "abogado"
+    ],
+    "revision": [
+      {
+        "afirmacion": "Se aclara que es un registro interno de apoyo y que los avisos, informes e inventarios oficiales se hacen en los formatos y plazos de la autoridad.",
+        "fuente": "Criterio editorial; requiere revisión de un abogado",
+        "confianza": "medio"
+      }
+    ]
+  },
+  {
+    "id": "presupuesto-anual-uma-zoologico",
+    "titulo": "Presupuesto anual de una UMA o zoológico",
+    "tipo": "excel",
+    "archivo": "presupuesto-anual-uma-zoologico.xlsx",
+    "bytes": 29254,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "4 hojas, 378 fórmulas, 2600 listas, 2 gráficas",
+    "paraQuien": "Administradores, responsables de UMA, zoológicos y centros, y consultores",
+    "acceso": "retos",
+    "requiereRetos": 10,
+    "nivelRevision": "bajo",
+    "revisar": [],
+    "revision": [
+      {
+        "afirmacion": "Todas las cifras son ejemplos ficticios marcados como EJEMPLO; no representan costos reales.",
+        "fuente": "Criterio editorial",
+        "confianza": "alto"
+      }
+    ]
+  },
+  {
+    "id": "bitacora-enriquecimiento-semanal",
+    "titulo": "Bitácora de enriquecimiento ambiental semanal",
+    "tipo": "excel",
+    "archivo": "bitacora-enriquecimiento-semanal.xlsx",
+    "bytes": 30549,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "4 hojas, 297 fórmulas, 2500 listas, 2 gráficas",
+    "paraQuien": "Cuidadores, biólogos y personal de bienestar",
+    "acceso": "miembros",
+    "requiereRetos": 0,
+    "nivelRevision": "bajo",
+    "revisar": [
+      "biólogo"
+    ],
+    "revision": [
+      {
+        "afirmacion": "Los tipos de enriquecimiento son categorías generales; la elección y seguridad de cada actividad depende de la especie y del criterio profesional.",
+        "fuente": "Criterio editorial",
+        "confianza": "alto"
+      }
+    ]
+  },
+  {
+    "id": "control-alimentacion-recintos",
+    "titulo": "Control de alimentación por recinto",
+    "tipo": "excel",
+    "archivo": "control-alimentacion-recintos.xlsx",
+    "bytes": 81738,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "5 hojas, 3320 fórmulas, 4250 listas, 1 gráficas",
+    "paraQuien": "Cuidadores, nutriólogos y responsables de zoológicos, UMA y centros",
+    "acceso": "miembros",
+    "requiereRetos": 0,
+    "nivelRevision": "bajo",
+    "revisar": [
+      "médico veterinario"
+    ],
+    "revision": [
+      {
+        "afirmacion": "No incluye dietas ni cantidades recomendadas por especie; solo calcula con lo que se captura.",
+        "fuente": "Omisión deliberada",
+        "confianza": "alto"
+      }
+    ]
+  },
+  {
+    "id": "ppt-bioseguridad-recintos",
+    "titulo": "Bioseguridad y limpieza en recintos de fauna",
+    "tipo": "powerpoint",
+    "archivo": "ppt-bioseguridad-recintos.pptx",
+    "bytes": 471807,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "16 diapositivas con notas",
+    "paraQuien": "Personal de UMA, PIMVS, zoológicos y centros; médicos veterinarios y biólogos",
+    "acceso": "retos",
+    "requiereRetos": 5,
+    "nivelRevision": "medio",
+    "revisar": [
+      "médico veterinario"
+    ],
+    "revision": [
+      {
+        "afirmacion": "Medidas de bioseguridad: acciones para minimizar el riesgo de introducción, transmisión o difusión de enfermedades o plagas.",
+        "fuente": "Ley Federal de Sanidad Animal, art. 4 (definiciones)",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "Cuando proceda la cuarentena de fauna silvestre, se mantiene a los ejemplares en condiciones adecuadas a sus necesidades.",
+        "fuente": "Ley General de Vida Silvestre, art. 33",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "La desinfección se aplica después de una limpieza a fondo.",
+        "fuente": "Glosario del Código Sanitario para los Animales Terrestres de la WOAH",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "Los residuos biológico-infecciosos de atención veterinaria se rigen por la NOM-087-SEMARNAT-SSA1-2002 (vigente).",
+        "fuente": "Catálogo Mexicano de Normas (PLATIICA)",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "Elementos de un programa (acceso, ropa y calzado exclusivos, cuarentena, control de plagas) adaptados a nivel de principios.",
+        "fuente": "MSD Veterinary Manual (animales de producción); criterio editorial de Zoorigen",
+        "confianza": "medio"
+      },
+      {
+        "afirmacion": "Flujo de trabajo de áreas más sanas a áreas de mayor riesgo, auditoría interna y renovación del programa al menos una vez al año son buenas prácticas generales de Zoorigen, no una norma.",
+        "fuente": "Criterio editorial",
+        "confianza": "medio"
+      },
+      {
+        "afirmacion": "No mezclar productos de limpieza entre sí es una regla de seguridad general.",
+        "fuente": "Conocimiento general de seguridad; sin cifras ni productos",
+        "confianza": "medio"
+      }
+    ]
+  },
+  {
+    "id": "ppt-enriquecimiento-ambiental",
+    "titulo": "Enriquecimiento ambiental: tipos, planeación y evaluación",
+    "tipo": "powerpoint",
+    "archivo": "ppt-enriquecimiento-ambiental.pptx",
+    "bytes": 460084,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "16 diapositivas con notas",
+    "paraQuien": "Cuidadores, biólogos, médicos veterinarios y personal de zoológicos, UMA y centros",
+    "acceso": "retos",
+    "requiereRetos": 8,
+    "nivelRevision": "medio",
+    "revisar": [
+      "biólogo",
+      "médico veterinario"
+    ],
+    "revision": [
+      {
+        "afirmacion": "Los cinco dominios del modelo 2020 son nutrición, ambiente físico, salud, interacciones conductuales y estado mental; los dominios 1 a 4 aportan evidencia para el dominio 5.",
+        "fuente": "Mellor et al. 2020, Animals 10(10):1870",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "Los estados afectivos positivos se favorecen con ambientes espaciosos, ricos en estímulos y seguros, con oportunidades de explorar y buscar alimento.",
+        "fuente": "Mellor 2016, Animals 6(3):21",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "La LGVS define trato digno y respetuoso y obliga a medidas para evitar o disminuir tensión, sufrimiento, traumatismo y dolor en fauna silvestre.",
+        "fuente": "Ley General de Vida Silvestre, arts. 3 y 29",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "Los cinco tipos de enriquecimiento (físico, sensorial, alimentario, cognitivo y social) y las señales de alerta generales son clasificaciones de uso común, redactadas sin cifras.",
+        "fuente": "Conocimiento general del campo; no se contrastó con una fuente específica",
+        "confianza": "medio"
+      },
+      {
+        "afirmacion": "Las ideas por grupo de fauna son ilustrativas y no provienen de una fuente por especie.",
+        "fuente": "Criterio editorial de Zoorigen",
+        "confianza": "medio"
+      },
+      {
+        "afirmacion": "La seguridad de un material o actividad depende de la especie: debe confirmarla el equipo técnico.",
+        "fuente": "Criterio editorial",
+        "confianza": "medio"
+      }
+    ]
+  },
+  {
+    "id": "ppt-fototrampeo-muestreo",
+    "titulo": "Fototrampeo: diseño de un muestreo y manejo de datos",
+    "tipo": "powerpoint",
+    "archivo": "ppt-fototrampeo-muestreo.pptx",
+    "bytes": 458662,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "16 diapositivas con notas",
+    "paraQuien": "Biólogos, consultores ambientales, personal de UMA y áreas naturales",
+    "acceso": "retos",
+    "requiereRetos": 12,
+    "nivelRevision": "medio",
+    "revisar": [
+      "biólogo"
+    ],
+    "revision": [
+      {
+        "afirmacion": "Esfuerzo de muestreo = cámaras × días de funcionamiento; tasa de registro por 100 cámaras-día como índice de abundancia relativa.",
+        "fuente": "Conceptos estándar del muestreo con cámaras trampa; ejemplo solo aritmético",
+        "confianza": "medio"
+      },
+      {
+        "afirmacion": "Los eventos independientes se definen con un criterio de tiempo que debe elegirse y reportarse; no se da un valor.",
+        "fuente": "Práctica común en la literatura; sin cifra",
+        "confianza": "medio"
+      },
+      {
+        "afirmacion": "La distancia entre cámaras, el número de cámaras y la duración no se especifican: dependen de la pregunta y de la especie.",
+        "fuente": "Omisión deliberada",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "Las autorizaciones y el trato de información sobre especies en riesgo y personas dependen de la normatividad vigente y de cada caso; se redacta de forma general.",
+        "fuente": "Criterio editorial; remite a la norma y a la autoridad",
+        "confianza": "medio"
+      }
+    ]
+  },
+  {
+    "id": "ppt-uma-pimvs-zoologicos",
+    "titulo": "UMA, PIMVS y zoológicos: cuál es cuál y qué documentos suelen requerirse",
+    "tipo": "powerpoint",
+    "archivo": "ppt-uma-pimvs-zoologicos.pptx",
+    "bytes": 453448,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "16 diapositivas con notas",
+    "paraQuien": "Responsables de UMA, PIMVS y zoológicos, consultores y estudiantes",
+    "acceso": "retos",
+    "requiereRetos": 15,
+    "nivelRevision": "medio",
+    "revisar": [
+      "abogado",
+      "médico veterinario"
+    ],
+    "revision": [
+      {
+        "afirmacion": "UMA: predio o instalación registrado que opera con plan de manejo aprobado y seguimiento permanente de hábitat y poblaciones.",
+        "fuente": "Ley General de Vida Silvestre, arts. 3 y 39; Reglamento de la LGVS",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "Plan de manejo: documento técnico operativo de una UMA, sujeto a aprobación de la Secretaría, que describe y programa actividades y establece metas e indicadores de éxito.",
+        "fuente": "Ley General de Vida Silvestre",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "PIMVS: predios o instalaciones que manejan vida silvestre en forma confinada fuera de su hábitat natural (criaderos intensivos, viveros, jardines botánicos o similares). Las diapositivas desarrollan la sigla SUMA como Sistema de Unidades de Manejo para la Conservación de la Vida Silvestre: verificar la denominación literal en la Ley y el Reglamento vigentes.",
+        "fuente": "Reglamento de la LGVS, art. 2 (fracciones XV Bis y XX); verificar denominación de SUMA",
+        "confianza": "medio"
+      },
+      {
+        "afirmacion": "La legal procedencia se demuestra con la marca o con nota de remisión o factura; el traslado de ejemplares vivos requiere autorización de SEMARNAT; los inventarios indican nombre común y científico, descripción, sexo y marca.",
+        "fuente": "LGVS arts. 51 y 52; Reglamento arts. 53 y 55 fr. II",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "La LGVS remite a CITES para la importación y exportación de especies incluidas.",
+        "fuente": "Ley General de Vida Silvestre, art. 55",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "No se afirma cómo se clasifica o se registra un zoológico: no se verificó una definición normativa específica. Se remite a la autoridad y al asesor legal.",
+        "fuente": "Omisión deliberada",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "La lista de documentos no es exhaustiva y las obligaciones concretas dependen del registro y de la autorización de cada instalación y de la versión vigente de la norma.",
+        "fuente": "Criterio editorial; requiere revisión de un abogado",
+        "confianza": "medio"
+      }
+    ]
+  },
+  {
+    "id": "ppt-observacion-conductual-etogramas",
+    "titulo": "Observación conductual y etogramas",
+    "tipo": "powerpoint",
+    "archivo": "ppt-observacion-conductual-etogramas.pptx",
+    "bytes": 393223,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "14 diapositivas con notas",
+    "paraQuien": "Biólogos, cuidadores, estudiantes y personal de bienestar",
+    "acceso": "retos",
+    "requiereRetos": 25,
+    "nivelRevision": "medio",
+    "revisar": [
+      "biólogo"
+    ],
+    "revision": [
+      {
+        "afirmacion": "Los métodos de muestreo ad libitum, focal, de barrido y de todas las ocurrencias están descritos en Altmann (1974).",
+        "fuente": "Altmann J. (1974), Behaviour 49(3-4):227-267 (verificar la cita en la fuente original)",
+        "confianza": "medio"
+      },
+      {
+        "afirmacion": "El ejemplo de etograma es genérico e ilustrativo, no es el etograma de una especie.",
+        "fuente": "Criterio editorial",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "Las recomendaciones sobre sesgos, horarios y acuerdo entre observadores son buenas prácticas generales.",
+        "fuente": "Criterio editorial",
+        "confianza": "medio"
+      }
+    ]
+  },
+  {
+    "id": "cuarentena-recepcion-ejemplares",
+    "titulo": "Protocolo de cuarentena y recepción de ejemplares",
+    "tipo": "checklist",
+    "archivo": "cuarentena-recepcion-ejemplares.pdf",
+    "bytes": 217545,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "6 páginas",
+    "paraQuien": "Personal de UMA, PIMVS, zoológicos y centros; médicos veterinarios",
+    "acceso": "miembros",
+    "requiereRetos": 0,
+    "nivelRevision": "medio",
+    "revisar": [
+      "médico veterinario"
+    ],
+    "revision": [
+      {
+        "afirmacion": "Cuando proceda la cuarentena de fauna silvestre, se adoptan medidas para mantener a los ejemplares en condiciones adecuadas a sus necesidades.",
+        "fuente": "Ley General de Vida Silvestre, art. 33",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "La lista de pasos, la bitácora y los criterios de organización son redacción propia de Zoorigen, sin duración ni criterios clínicos.",
+        "fuente": "Criterio editorial",
+        "confianza": "medio"
+      },
+      {
+        "afirmacion": "No se incluyen duraciones de cuarentena, pruebas diagnósticas ni tratamientos: los define el médico veterinario responsable.",
+        "fuente": "Omisión deliberada",
+        "confianza": "alto"
+      }
+    ]
+  },
+  {
+    "id": "formato-necropsia-mortalidad",
+    "titulo": "Formato de necropsia y registro de mortalidad",
+    "tipo": "plantilla",
+    "archivo": "formato-necropsia-mortalidad.pdf",
+    "bytes": 216312,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "6 páginas",
+    "paraQuien": "Médicos veterinarios, responsables de UMA, zoológicos y centros",
+    "acceso": "miembros",
+    "requiereRetos": 0,
+    "nivelRevision": "medio",
+    "revisar": [
+      "médico veterinario"
+    ],
+    "revision": [
+      {
+        "afirmacion": "Los residuos de atención veterinaria clasificados como biológico-infecciosos se rigen por la NOM-087-SEMARNAT-SSA1-2002 (vigente).",
+        "fuente": "Catálogo Mexicano de Normas (PLATIICA)",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "Los campos del formato y la lista de documentación son criterio de organización de Zoorigen; la necropsia y su interpretación corresponden al médico veterinario.",
+        "fuente": "Criterio editorial",
+        "confianza": "medio"
+      },
+      {
+        "afirmacion": "No se mencionan procedimientos de necropsia, causas de muerte ni criterios de eutanasia.",
+        "fuente": "Omisión deliberada",
+        "confianza": "alto"
+      }
+    ]
+  },
+  {
+    "id": "plantilla-plan-manejo-uma",
+    "titulo": "Plantilla de Plan de manejo de una UMA",
+    "tipo": "plantilla",
+    "archivo": "plantilla-plan-manejo-uma.pdf",
+    "bytes": 241183,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "8 páginas",
+    "paraQuien": "Responsables técnicos de UMA, consultores y estudiantes",
+    "acceso": "retos",
+    "requiereRetos": 6,
+    "nivelRevision": "medio",
+    "revisar": [
+      "abogado",
+      "biólogo"
+    ],
+    "revision": [
+      {
+        "afirmacion": "Plan de manejo: documento técnico operativo de una UMA, sujeto a aprobación de la Secretaría, que describe y programa actividades y establece metas e indicadores de éxito. UMA: opera con seguimiento permanente de hábitat y poblaciones.",
+        "fuente": "Ley General de Vida Silvestre (arts. 3 y 39)",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "Los doce apartados y la lista de anexos son una propuesta de organización de Zoorigen: no se afirma que sean los exigidos por la autoridad.",
+        "fuente": "Criterio editorial; requiere revisión de un abogado y de un biólogo con experiencia en UMA",
+        "confianza": "medio"
+      },
+      {
+        "afirmacion": "No se citan formatos ni requisitos oficiales que no se verificaron; se remite a los términos de referencia vigentes de la autoridad.",
+        "fuente": "Omisión deliberada",
+        "confianza": "alto"
+      }
+    ]
+  },
+  {
+    "id": "etograma-hoja-observacion",
+    "titulo": "Etograma y hoja de observación conductual",
+    "tipo": "plantilla",
+    "archivo": "etograma-hoja-observacion.pdf",
+    "bytes": 234582,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "7 páginas",
+    "paraQuien": "Biólogos, cuidadores, estudiantes y personal de bienestar",
+    "acceso": "miembros",
+    "requiereRetos": 0,
+    "nivelRevision": "medio",
+    "revisar": [
+      "biólogo"
+    ],
+    "revision": [
+      {
+        "afirmacion": "Los métodos de muestreo focal, de barrido y de conteo de eventos corresponden a los descritos en Altmann (1974).",
+        "fuente": "Altmann J. (1974), Behaviour 49(3-4):227-267 (verificar la cita en la fuente original)",
+        "confianza": "medio"
+      },
+      {
+        "afirmacion": "Las recomendaciones de práctica y los formatos son criterio de Zoorigen.",
+        "fuente": "Criterio editorial",
+        "confianza": "medio"
+      }
+    ]
+  },
+  {
+    "id": "carteles-visitantes-senales",
+    "titulo": "Carteles imprimibles para visitantes y señales de zona",
+    "tipo": "infografia",
+    "archivo": "carteles-visitantes-senales.pdf",
+    "bytes": 186016,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "6 páginas",
+    "paraQuien": "Zoológicos, UMA con visitantes, centros educativos y de rescate",
+    "acceso": "miembros",
+    "requiereRetos": 0,
+    "nivelRevision": "bajo",
+    "revisar": [],
+    "revision": [
+      {
+        "afirmacion": "Los carteles contienen mensajes generales de convivencia y seguridad sin afirmaciones técnicas ni normativas; cada instalación debe ajustar el texto a su reglamento.",
+        "fuente": "Criterio editorial",
+        "confianza": "alto"
+      }
+    ]
+  },
+  {
+    "id": "checklist-auditoria-bienestar",
+    "titulo": "Checklist de auditoría interna de bienestar animal",
+    "tipo": "checklist",
+    "archivo": "checklist-auditoria-bienestar.pdf",
+    "bytes": 273128,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "7 páginas",
+    "paraQuien": "Personal de UMA, zoológicos y centros; biólogos y médicos veterinarios",
+    "acceso": "retos",
+    "requiereRetos": 8,
+    "nivelRevision": "medio",
+    "revisar": [
+      "médico veterinario",
+      "biólogo"
+    ],
+    "revision": [
+      {
+        "afirmacion": "Los cinco dominios del modelo 2020 son nutrición, ambiente físico, salud, interacciones conductuales y estado mental; la evaluación debe basarse en evidencia observada en el animal y un factor de riesgo por sí solo no prueba un problema.",
+        "fuente": "Mellor et al. 2020, Animals 10(10):1870",
+        "confianza": "alto"
+      },
+      {
+        "afirmacion": "Las preguntas de la lista son criterio de organización de Zoorigen por dominio; no son una norma ni una certificación.",
+        "fuente": "Criterio editorial; requiere revisión de un médico veterinario o biólogo de bienestar",
+        "confianza": "medio"
+      }
+    ]
+  },
+  {
+    "id": "guia-rotulado-trazabilidad-muestras",
+    "titulo": "Guía de rotulado y trazabilidad de muestras",
+    "tipo": "guia",
+    "archivo": "guia-rotulado-trazabilidad-muestras.pdf",
+    "bytes": 232984,
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "contenido": "5 páginas",
+    "paraQuien": "Biólogos, médicos veterinarios, técnicos de campo y personal de laboratorio",
+    "acceso": "miembros",
+    "requiereRetos": 0,
+    "nivelRevision": "medio",
+    "revisar": [
+      "biólogo",
+      "médico veterinario"
+    ],
+    "revision": [
+      {
+        "afirmacion": "Los datos de la etiqueta, el registro maestro y la cadena de custodia son criterio de organización general; no sustituyen los requisitos de un laboratorio o de una norma específica.",
+        "fuente": "Criterio editorial; requiere revisión de un biólogo o veterinario con experiencia en muestras",
+        "confianza": "medio"
+      },
+      {
+        "afirmacion": "No se incluyen técnicas de toma, conservación, fijación ni transporte.",
+        "fuente": "Omisión deliberada",
+        "confianza": "alto"
+      }
+    ]
+  }
+]

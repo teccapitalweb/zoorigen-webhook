@@ -338,5 +338,325 @@
         "url": "https://www.gob.mx/cms/uploads/attachment/file/859834/Manual_de_BPP_en_la_Producci_n_de_Miel_2019.pdf"
       }
     ]
+  },
+  {
+    "id": "inventario-botiquin-caducidad",
+    "titulo": "Inventario de botiquín con alerta de caducidad",
+    "tipo": "excel",
+    "area": "Sanidad y manejo de fauna silvestre",
+    "descripcion": "Libro de Excel para llevar el inventario de insumos de botiquín, con colores que avisan qué caduca pronto o ya caducó y una gráfica de existencias. Sin dosis ni indicaciones.",
+    "archivo": "inventario-botiquin-caducidad.xlsx",
+    "paginas": 3,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22"
+  },
+  {
+    "id": "libro-entradas-salidas-insumos",
+    "titulo": "Libro de entradas y salidas de insumos",
+    "tipo": "excel",
+    "area": "Administración de la unidad",
+    "descripcion": "Libro de Excel con entradas, salidas y saldo automático por insumo. Es un control interno de apoyo: no es un formato contable, fiscal ni oficial.",
+    "archivo": "libro-entradas-salidas-insumos.xlsx",
+    "paginas": 3,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22"
+  },
+  {
+    "id": "peso-curva-crecimiento",
+    "titulo": "Registro de peso y curva de crecimiento por ejemplar",
+    "tipo": "excel",
+    "area": "Bienestar animal",
+    "descripcion": "Libro de Excel para anotar pesajes por ejemplar, ver la ganancia entre pesajes y dibujar su curva de crecimiento. No trae pesos de referencia por especie.",
+    "archivo": "peso-curva-crecimiento.xlsx",
+    "paginas": 4,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22"
+  },
+  {
+    "id": "calendario-preventivo-protocolo",
+    "titulo": "Calendario de vacunación y desparasitación con tu protocolo",
+    "tipo": "excel",
+    "area": "Sanidad y manejo de fauna silvestre",
+    "descripcion": "Libro de Excel donde escribes TU protocolo (nombre, intervalo y primera fecha) y calcula próximas fechas y vencimientos con alertas de color. No incluye productos, dosis ni esquemas.",
+    "archivo": "calendario-preventivo-protocolo.xlsx",
+    "paginas": 4,
+    "acceso": "retos",
+    "requiereRetos": 4,
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22"
+  },
+  {
+    "id": "registro-ingresos-bajas-traslados",
+    "titulo": "Registro de ingresos, bajas y traslados de ejemplares",
+    "tipo": "excel",
+    "area": "Registro y trazabilidad de fauna silvestre",
+    "descripcion": "Libro de Excel para llevar un registro interno de movimientos de ejemplares y ver un resumen anual por especie. No sustituye el inventario ni los avisos oficiales.",
+    "archivo": "registro-ingresos-bajas-traslados.xlsx",
+    "paginas": 4,
+    "acceso": "retos",
+    "requiereRetos": 6,
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22"
+  },
+  {
+    "id": "presupuesto-anual-uma-zoologico",
+    "titulo": "Presupuesto anual de una UMA o zoológico",
+    "tipo": "excel",
+    "area": "Administración de la unidad",
+    "descripcion": "Libro de Excel con presupuesto por categoría y mes, comparación contra el gasto real, totales y gráficas. Las cifras de ejemplo son inventadas y se borran.",
+    "archivo": "presupuesto-anual-uma-zoologico.xlsx",
+    "paginas": 4,
+    "acceso": "retos",
+    "requiereRetos": 10,
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22"
+  },
+  {
+    "id": "bitacora-enriquecimiento-semanal",
+    "titulo": "Bitácora de enriquecimiento ambiental semanal",
+    "tipo": "excel",
+    "area": "Bienestar animal",
+    "descripcion": "Libro de Excel para programar y registrar actividades de enriquecimiento por recinto, con resumen semanal y respuesta observada.",
+    "archivo": "bitacora-enriquecimiento-semanal.xlsx",
+    "paginas": 4,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22"
+  },
+  {
+    "id": "control-alimentacion-recintos",
+    "titulo": "Control de alimentación por recinto",
+    "tipo": "excel",
+    "area": "Bienestar animal",
+    "descripcion": "Libro de Excel para anotar alimento ofrecido y sobrante por recinto, con consumo, porcentaje y costo. No incluye dietas ni cantidades recomendadas.",
+    "archivo": "control-alimentacion-recintos.xlsx",
+    "paginas": 5,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22"
+  },
+  {
+    "id": "ppt-bioseguridad-recintos",
+    "titulo": "Bioseguridad y limpieza en recintos de fauna",
+    "tipo": "powerpoint",
+    "area": "Sanidad y manejo de fauna silvestre",
+    "descripcion": "Presentación de 16 diapositivas con los principios generales de bioseguridad y limpieza en recintos: acceso, flujo de trabajo, limpieza antes de desinfección, cuarentena, residuos, plagas y registros. Sin productos ni diluciones.",
+    "archivo": "ppt-bioseguridad-recintos.pptx",
+    "paginas": 16,
+    "acceso": "retos",
+    "requiereRetos": 5,
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "fuentes": [
+      {
+        "nombre": "Ley General de Vida Silvestre, Cámara de Diputados (texto vigente)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+      },
+      {
+        "nombre": "Ley Federal de Sanidad Animal, Cámara de Diputados (texto vigente)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFSA.pdf"
+      }
+    ]
+  },
+  {
+    "id": "ppt-enriquecimiento-ambiental",
+    "titulo": "Enriquecimiento ambiental: tipos, planeación y evaluación",
+    "tipo": "powerpoint",
+    "area": "Bienestar animal",
+    "descripcion": "Presentación de 16 diapositivas sobre enriquecimiento ambiental: cómo se relaciona con los cinco dominios del bienestar, los cinco tipos, cómo planearlo, hacerlo con seguridad y evaluarlo.",
+    "archivo": "ppt-enriquecimiento-ambiental.pptx",
+    "paginas": 16,
+    "acceso": "retos",
+    "requiereRetos": 8,
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "fuentes": [
+      {
+        "nombre": "Ley General de Vida Silvestre, Cámara de Diputados (texto vigente)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+      }
+    ]
+  },
+  {
+    "id": "ppt-fototrampeo-muestreo",
+    "titulo": "Fototrampeo: diseño de un muestreo y manejo de datos",
+    "tipo": "powerpoint",
+    "area": "Monitoreo e investigación",
+    "descripcion": "Presentación de 16 diapositivas con los conceptos para diseñar un muestreo con cámaras trampa y organizar sus datos: pregunta, sitios, esfuerzo, metadatos, eventos independientes, índices simples y buenas prácticas. Sin marcas.",
+    "archivo": "ppt-fototrampeo-muestreo.pptx",
+    "paginas": 16,
+    "acceso": "retos",
+    "requiereRetos": 12,
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22"
+  },
+  {
+    "id": "ppt-uma-pimvs-zoologicos",
+    "titulo": "UMA, PIMVS y zoológicos: cuál es cuál y qué documentos suelen requerirse",
+    "tipo": "powerpoint",
+    "area": "Normatividad de vida silvestre",
+    "descripcion": "Presentación de 16 diapositivas para distinguir UMA, PIMVS y zoológicos, con definiciones tomadas de la normatividad y una guía para ordenar los documentos de legal procedencia, traslado e inventario. Redacción general y fuentes oficiales.",
+    "archivo": "ppt-uma-pimvs-zoologicos.pptx",
+    "paginas": 16,
+    "acceso": "retos",
+    "requiereRetos": 15,
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "fuentes": [
+      {
+        "nombre": "Ley General de Vida Silvestre, Cámara de Diputados (texto vigente)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+      }
+    ]
+  },
+  {
+    "id": "ppt-observacion-conductual-etogramas",
+    "titulo": "Observación conductual y etogramas",
+    "tipo": "powerpoint",
+    "area": "Comportamiento animal",
+    "descripcion": "Presentación de 14 diapositivas para aprender a observar conducta: qué es un etograma, cómo definir conductas, métodos de muestreo, cómo registrar, cómo evitar sesgos y cómo resumir los datos.",
+    "archivo": "ppt-observacion-conductual-etogramas.pptx",
+    "paginas": 14,
+    "acceso": "retos",
+    "requiereRetos": 25,
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22"
+  },
+  {
+    "id": "cuarentena-recepcion-ejemplares",
+    "titulo": "Protocolo de cuarentena y recepción de ejemplares",
+    "tipo": "checklist",
+    "area": "Sanidad y manejo de fauna silvestre",
+    "descripcion": "Lista de verificación para antes, durante y después de recibir un ejemplar, más el formato de registro de recepción y la bitácora diaria de cuarentena. Solo organización: sin tratamientos.",
+    "archivo": "cuarentena-recepcion-ejemplares.pdf",
+    "paginas": 6,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "fuentes": [
+      {
+        "nombre": "Ley General de Vida Silvestre, Cámara de Diputados (texto vigente)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+      },
+      {
+        "nombre": "Ley Federal de Sanidad Animal, Cámara de Diputados (texto vigente)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFSA.pdf"
+      }
+    ]
+  },
+  {
+    "id": "formato-necropsia-mortalidad",
+    "titulo": "Formato de necropsia y registro de mortalidad",
+    "tipo": "plantilla",
+    "area": "Registro y trazabilidad de fauna silvestre",
+    "descripcion": "Formato imprimible con los campos de un registro de necropsia, la lista de documentación a reunir y la tabla anual de mortalidad. Sin interpretación clínica: la hace el médico veterinario.",
+    "archivo": "formato-necropsia-mortalidad.pdf",
+    "paginas": 6,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "fuentes": [
+      {
+        "nombre": "Ley General de Vida Silvestre, Cámara de Diputados (texto vigente)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+      }
+    ]
+  },
+  {
+    "id": "plantilla-plan-manejo-uma",
+    "titulo": "Plantilla de Plan de manejo de una UMA",
+    "tipo": "plantilla",
+    "area": "Normatividad de vida silvestre",
+    "descripcion": "Plantilla para ordenar la información de un plan de manejo de UMA: índice propuesto, guía de llenado por apartado y listas de anexos. No sustituye los términos de referencia oficiales de la autoridad.",
+    "archivo": "plantilla-plan-manejo-uma.pdf",
+    "paginas": 8,
+    "acceso": "retos",
+    "requiereRetos": 6,
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "fuentes": [
+      {
+        "nombre": "Ley General de Vida Silvestre, Cámara de Diputados (texto vigente)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+      }
+    ]
+  },
+  {
+    "id": "etograma-hoja-observacion",
+    "titulo": "Etograma y hoja de observación conductual",
+    "tipo": "plantilla",
+    "area": "Comportamiento animal",
+    "descripcion": "Instrucciones, etograma en blanco y tres hojas de registro (muestreo focal, de barrido y conteo de eventos) para observar conducta con método.",
+    "archivo": "etograma-hoja-observacion.pdf",
+    "paginas": 7,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22"
+  },
+  {
+    "id": "carteles-visitantes-senales",
+    "titulo": "Carteles imprimibles para visitantes y señales de zona",
+    "tipo": "infografia",
+    "area": "Visitantes y señalización",
+    "descripcion": "Seis carteles A4 para imprimir: normas para visitantes, no alimentar, zona solo para personal, lavado de manos, mantener la distancia y cuidado del lugar. Mensajes generales con espacio para tu información.",
+    "archivo": "carteles-visitantes-senales.pdf",
+    "paginas": 6,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22"
+  },
+  {
+    "id": "checklist-auditoria-bienestar",
+    "titulo": "Checklist de auditoría interna de bienestar animal",
+    "tipo": "checklist",
+    "area": "Bienestar animal",
+    "descripcion": "Lista de verificación para una auditoría interna de bienestar, ordenada por los cinco dominios: qué revisar en el recinto, en los registros y en lo que se observa en los animales, y un plan de mejora.",
+    "archivo": "checklist-auditoria-bienestar.pdf",
+    "paginas": 7,
+    "acceso": "retos",
+    "requiereRetos": 8,
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22",
+    "fuentes": [
+      {
+        "nombre": "Ley General de Vida Silvestre, Cámara de Diputados (texto vigente)",
+        "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LGVS.pdf"
+      }
+    ]
+  },
+  {
+    "id": "guia-rotulado-trazabilidad-muestras",
+    "titulo": "Guía de rotulado y trazabilidad de muestras",
+    "tipo": "guia",
+    "area": "Registro y trazabilidad de fauna silvestre",
+    "descripcion": "Guía para rotular y dar seguimiento a muestras: qué datos lleva una etiqueta, cómo llevar un registro maestro y una cadena de custodia, con formatos para imprimir. Sin técnicas de toma ni conservación.",
+    "archivo": "guia-rotulado-trazabilidad-muestras.pdf",
+    "paginas": 5,
+    "acceso": "miembros",
+    "licencia": "Original Zoorigen",
+    "version": "1.0",
+    "fecha": "2026-10-22"
   }
 ]

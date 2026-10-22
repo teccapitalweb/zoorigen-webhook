@@ -162,8 +162,8 @@ function montarRutasMateriales(app, deps) {
     });
   }));
 
-  // GET /api/materiales/:id/archivo — el PDF solo si se puede abrir. El navegador lo pide con fetch + Bearer y
-  // lo muestra con una URL de blob. El archivo sale ÚNICAMENTE del catálogo validado.
+  // GET /api/materiales/:id/archivo — el archivo (PDF, Excel o PowerPoint) solo si se puede abrir. El navegador lo pide con fetch + Bearer
+  // y lo muestra (PDF) o lo guarda (Excel, PowerPoint) con una URL de blob. El archivo sale ÚNICAMENTE del catálogo validado.
   app.get('/api/materiales/:id/archivo', conEstado('No se pudo abrir el material', 'archivo', limites.descargas, DESCARGAS_POR_MINUTO, async (req, res, decoded, estado) => {
     const material = materiales.buscarMaterial(catalogoMateriales.materiales, req.params.id);
     if (!material) throw noExiste('Ese material no existe');
@@ -175,9 +175,11 @@ function montarRutasMateriales(app, deps) {
     } catch (_) {
       throw noExiste('El archivo de este material no está disponible por ahora');
     }
+    // PDF: se muestra en la página (inline). Excel y PowerPoint: siempre se descargan (attachment) con su tipo correcto.
+    const formato = materiales.FORMATOS[materiales.formatoDe(material.tipo)];
     res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `inline; filename="${material.id}.pdf"`,
+      'Content-Type': formato.contentType,
+      'Content-Disposition': `${formato.abreEnLinea ? 'inline' : 'attachment'}; filename="${material.id}.${formato.extension}"`,
       'Content-Length': String(contenido.length),
       'Cache-Control': 'private, no-store',
       'X-Content-Type-Options': 'nosniff'

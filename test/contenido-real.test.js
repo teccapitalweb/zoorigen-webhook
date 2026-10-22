@@ -26,14 +26,15 @@ test('el catálogo real de materiales carga sin errores; los PDF existen y son P
   const r = materiales.cargarMateriales(path.join(RAIZ, 'materiales'));
   assert.deepEqual(r.errores, []);
   const lista = r.materiales || r.catalogo || r;
-  assert.equal(lista.length, 9);
+  assert.equal(lista.length, 29, '9 materiales de siempre y 20 nuevos (8 Excel, 5 PowerPoint y 7 PDF)');
   const porId = Object.fromEntries(lista.map(m => [m.id, m]));
   assert.deepEqual(['intro-nom-059', 'bienestar-cinco-dominios', 'polinizadores-abejas'].map(id => porId[id].requiereRetos), [3, 10, 20]);
   for (const id of ['checklist-bioseguridad', 'ficha-registro-ejemplar', 'fauna-herida', 'calendario-colmenas', 'glosario-vida-silvestre', 'marco-normativo-uno']) assert.equal(porId[id].acceso, 'miembros', id);
   for (const m of lista) {
     const archivo = path.join(RAIZ, 'materiales', m.archivo);
     const inicio = fs.readFileSync(archivo).subarray(0, 5).toString('latin1');
-    assert.equal(inicio, '%PDF-', m.id + ' no es un PDF');
+    if (materiales.formatoDe(m.tipo) === 'pdf') assert.equal(inicio, '%PDF-', m.id + ' no es un PDF');
+    else assert.equal(inicio.slice(0, 2), 'PK', m.id + ' no es un documento de Office');
     assert.ok(m.paginas >= 1, m.id + ' sin páginas');
     assert.equal(m.licencia, 'Original Zoorigen');
   }

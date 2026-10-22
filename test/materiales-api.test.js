@@ -55,11 +55,11 @@ test('GET /api/materiales: forma de la respuesta con membresía y 4 / 5 retos', 
     ok: true, membresia: true, superados: 4,
     materiales: [
       { id: 'guia-miembros', titulo: 'Material guia-miembros', tipo: 'guia', area: 'Pruebas', descripcion: 'Descripción de guia-miembros.', paginas: 1,
-        acceso: 'miembros', requiereRetos: 0, licencia: 'Uso interno de pruebas', desbloqueado: true, faltan: 0, soloMiembros: false },
+        acceso: 'miembros', requiereRetos: 0, licencia: 'Uso interno de pruebas', desbloqueado: true, faltan: 0, soloMiembros: false, formato: 'pdf', tamanoKb: 1 },
       { id: 'plantilla-5', titulo: 'Material plantilla-5', tipo: 'plantilla', area: 'Pruebas', descripcion: 'Descripción de plantilla-5.', paginas: 1,
-        acceso: 'retos', requiereRetos: 5, licencia: 'Uso interno de pruebas', desbloqueado: false, faltan: 1, soloMiembros: false },
+        acceso: 'retos', requiereRetos: 5, licencia: 'Uso interno de pruebas', desbloqueado: false, faltan: 1, soloMiembros: false, formato: 'pdf', tamanoKb: 1 },
       { id: 'checklist-30', titulo: 'Material checklist-30', tipo: 'checklist', area: 'Pruebas', descripcion: 'Descripción de checklist-30.', paginas: 1,
-        acceso: 'retos', requiereRetos: 30, licencia: 'Uso interno de pruebas', desbloqueado: false, faltan: 26, soloMiembros: false }
+        acceso: 'retos', requiereRetos: 30, licencia: 'Uso interno de pruebas', desbloqueado: false, faltan: 26, soloMiembros: false, formato: 'pdf', tamanoKb: 1 }
     ]
   });
   const { app: app5 } = servidor({ seed: retosDe('ana', 5) });

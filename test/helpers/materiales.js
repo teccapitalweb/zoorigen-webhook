@@ -6,6 +6,8 @@ const os = require('os');
 const path = require('path');
 
 const PDF_PRUEBA = path.join(__dirname, '..', 'fixtures', 'materiales', 'guia-prueba.pdf');
+// Documento de Office minimo para las pruebas: lo unico que el servidor revisa es la firma ZIP (bytes 50 4B 03 04), asi que basta con esto
+const OFFICE_PRUEBA = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.alloc(96, 7)]);
 const LIBRO_PRUEBA = path.join(__dirname, '..', 'fixtures', 'libros', 'libro-prueba.json');
 
 const carpetaTemporal = prefijo => fs.mkdtempSync(path.join(os.tmpdir(), `zoo-${prefijo}-`));
@@ -28,13 +30,14 @@ function carpetaLibros(libros) {
   return dir;
 }
 
-// Crea una carpeta de materiales: entradas = lista de entradas del catálogo; cada archivo declarado se crea con el PDF de prueba
+// Crea una carpeta de materiales: entradas = lista de entradas del catálogo; cada archivo declarado se crea con el PDF de prueba (o con un Office mínimo si es .xlsx o .pptx)
 function carpetaMateriales(entradas, { crearArchivos = true } = {}) {
   const dir = carpetaTemporal('mats');
   fs.writeFileSync(path.join(dir, 'catalogo.json'), JSON.stringify(entradas));
   if (crearArchivos) {
     for (const e of entradas) {
       if (e && typeof e.archivo === 'string' && /^[a-z0-9-]+\.pdf$/.test(e.archivo)) fs.copyFileSync(PDF_PRUEBA, path.join(dir, e.archivo));
+      else if (e && typeof e.archivo === 'string' && /^[a-z0-9-]+\.(xlsx|pptx)$/.test(e.archivo)) fs.writeFileSync(path.join(dir, e.archivo), OFFICE_PRUEBA);
     }
   }
   return dir;
@@ -42,9 +45,9 @@ function carpetaMateriales(entradas, { crearArchivos = true } = {}) {
 
 function materialValido(id, acceso = 'miembros', requiereRetos, extra = {}) {
   return {
-    id, titulo: `Material ${id}`, tipo: 'guia', area: 'Pruebas', descripcion: `Descripción de ${id}.`, archivo: `${id}.pdf`,
+    id, titulo: `Material ${id}`, tipo: 'guia', area: 'Pruebas', descripcion: `Descripción de ${id}.`, archivo: `${id}.${{ excel: 'xlsx', powerpoint: 'pptx' }[extra.tipo] || 'pdf'}`,
     paginas: 1, acceso, ...(acceso === 'retos' ? { requiereRetos } : {}), licencia: 'Uso interno de pruebas', ...extra
   };
 }
 
-module.exports = { PDF_PRUEBA, LIBRO_PRUEBA, carpetaTemporal, libroValido, carpetaLibros, carpetaMateriales, materialValido };
+module.exports = { PDF_PRUEBA, OFFICE_PRUEBA, LIBRO_PRUEBA, carpetaTemporal, libroValido, carpetaLibros, carpetaMateriales, materialValido };

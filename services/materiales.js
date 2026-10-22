@@ -1,9 +1,10 @@
 'use strict';
 
-// ══ MATERIALES (PDF) ══
-// Catálogo: data/materiales/catalogo.json (lista). Archivos: data/materiales/<archivo>.pdf. Se leen UNA vez al arrancar.
-// El único camino al disco es el catálogo VALIDADO: el archivo debe llamarse como <algo>.pdf (sin carpetas ni ".."),
-// existir dentro de la carpeta de materiales (también tras resolver enlaces simbólicos) y empezar con "%PDF-".
+// ══ MATERIALES (PDF, Excel y PowerPoint) ══
+// Catálogo: data/materiales/catalogo.json (lista). Archivos: data/materiales/<archivo>. Se leen UNA vez al arrancar.
+// El archivo depende del tipo: los de siempre (guia, plantilla, checklist, glosario, infografia, presentacion) son .pdf; "excel" es .xlsx
+// y "powerpoint" es .pptx. El único camino al disco es el catálogo VALIDADO: el nombre no lleva carpetas ni "..", el archivo existe dentro
+// de la carpeta de materiales (también tras resolver enlaces simbólicos) y su firma coincide ("%PDF-" para PDF; ZIP para .xlsx y .pptx).
 // Lo inválido se descarta con aviso en consola y queda en `errores` (nunca con la ruta del disco).
 // Acceso:  'miembros' abre con membresía vigente · 'retos' abre con membresía y retos superados >= requiereRetos
 //          · 'curso' (con "cursoId" y, opcional, "clase") abre con membresía cuando la persona terminó esa clase del curso
@@ -16,12 +17,22 @@ const porCurso = require('./materiales-curso');
 
 const ID_MATERIAL = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ARCHIVO_PDF = /^[a-z0-9]+(?:-[a-z0-9]+)*\.pdf$/;
-const TIPOS = Object.freeze(['guia', 'plantilla', 'checklist', 'glosario', 'infografia', 'presentacion']);
+const ARCHIVO_MATERIAL = /^[a-z0-9]+(?:-[a-z0-9]+)*\.(pdf|xlsx|pptx)$/;
+const TIPOS = Object.freeze(['guia', 'plantilla', 'checklist', 'glosario', 'infografia', 'presentacion', 'excel', 'powerpoint']);
+// Formato del archivo que se entrega según el tipo (con su Content-Type correcto). Los de Office se descargan; el PDF se abre en la página.
+const FORMATOS = Object.freeze({
+  pdf: { extension: 'pdf', contentType: 'application/pdf', etiqueta: 'PDF', abreEnLinea: true },
+  excel: { extension: 'xlsx', contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', etiqueta: 'Excel', abreEnLinea: false },
+  powerpoint: { extension: 'pptx', contentType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', etiqueta: 'PowerPoint', abreEnLinea: false }
+});
+const formatoDe = tipo => (tipo === 'excel' ? 'excel' : tipo === 'powerpoint' ? 'powerpoint' : 'pdf');
+const VERSION_MATERIAL = /^\d{1,3}(?:\.\d{1,3}){0,2}$/;
+const FECHA_MATERIAL = /^\d{4}-\d{2}-\d{2}$/;
 const ACCESOS = Object.freeze(['miembros', 'retos', 'curso']);
 const ETIQUETA = /<[a-z/!?]/i;
 const ID_MAXIMO = 60;
 const BYTES_CATALOGO = 1024 * 1024;
-const BYTES_PDF_MAXIMO = 30 * 1024 * 1024;
+const BYTES_ARCHIVO_MAXIMO = 30 * 1024 * 1024;
 const RETOS_MIN = 1;
 const RETOS_MAX = 200;
 const L = Object.freeze({ titulo: 140, area: 60, descripcion: 400, licencia: 200, fuentes: 40, fuenteNombre: 220 });
@@ -49,8 +60,9 @@ function normalizarMaterial(crudo) {
   if (!id || id.length > ID_MAXIMO || !ID_MATERIAL.test(id)) falla('El "id" solo puede llevar minúsculas, números y guiones');
   if (!TIPOS.includes(crudo.tipo)) falla(`"tipo" debe ser uno de: ${TIPOS.join(', ')}`);
   if (!ACCESOS.includes(crudo.acceso)) falla('"acceso" debe ser "miembros", "retos" o "curso"');
-  if (typeof crudo.archivo !== 'string' || !ARCHIVO_PDF.test(crudo.archivo)) {
-    falla('"archivo" debe ser un nombre como <id>.pdf (sin carpetas, sin "..", en minúsculas)');
+  const extension = FORMATOS[formatoDe(crudo.tipo)].extension;
+  if (typeof crudo.archivo !== 'string' || !ARCHIVO_MATERIAL.test(crudo.archivo) || !crudo.archivo.endsWith('.' + extension)) {
+    falla(`"archivo" debe ser un nombre como <id>.${extension} (sin carpetas, sin "..", en minúsculas) para el tipo "${crudo.tipo}"`);
   }
   if (!Number.isInteger(crudo.paginas) || crudo.paginas < 1 || crudo.paginas > 1000) falla('"paginas" debe ser un entero de 1 a 1000');
 
@@ -79,6 +91,15 @@ function normalizarMaterial(crudo) {
   } else if ((crudo.cursoId !== undefined && crudo.cursoId !== null) || (crudo.clase !== undefined && crudo.clase !== null)) {
     falla('Solo un material de acceso "curso" lleva "cursoId" y "clase"');
   }
+  if (crudo.version !== undefined && crudo.version !== null) {
+    if (typeof crudo.version !== 'string' || !VERSION_MATERIAL.test(crudo.version)) falla('"version" debe verse como 1.0');
+    material.version = crudo.version;
+  }
+  if (crudo.fecha !== undefined && crudo.fecha !== null) {
+    const f = typeof crudo.fecha === 'string' && FECHA_MATERIAL.test(crudo.fecha) ? new Date(crudo.fecha + 'T00:00:00Z') : null;
+    if (!f || Number.isNaN(f.getTime()) || f.toISOString().slice(0, 10) !== crudo.fecha) falla('"fecha" debe ser AAAA-MM-DD');
+    material.fecha = crudo.fecha;
+  }
   if (crudo.fuentes !== undefined) {
     if (!Array.isArray(crudo.fuentes)) falla('"fuentes" debe ser una lista');
     if (crudo.fuentes.length > L.fuentes) falla(`"fuentes" tiene demasiados elementos (máximo ${L.fuentes})`);
@@ -92,24 +113,29 @@ function normalizarMaterial(crudo) {
   return material;
 }
 
-// Comprueba en disco que el archivo existe DENTRO de la carpeta de materiales y es un PDF. Devuelve la ruta real.
-function verificarArchivo(carpeta, archivo) {
+// Comprueba en disco que el archivo existe DENTRO de la carpeta de materiales y que su firma corresponde al tipo
+// (PDF, o ZIP para Excel y PowerPoint). Devuelve la ruta real.
+function verificarArchivo(carpeta, archivo, tipo) {
   const base = fs.realpathSync(carpeta);
   let real;
-  try { real = fs.realpathSync(path.join(base, archivo)); } catch (_) { return falla('No se encontró el archivo PDF'); }
+  try { real = fs.realpathSync(path.join(base, archivo)); } catch (_) { return falla('No se encontró el archivo del material'); }
   const relativa = path.relative(base, real);
   if (!relativa || relativa.startsWith('..') || path.isAbsolute(relativa) || relativa.includes(path.sep)) {
-    falla('El archivo PDF debe estar directamente dentro de la carpeta de materiales');
+    falla('El archivo debe estar directamente dentro de la carpeta de materiales');
   }
   const info = fs.statSync(real);
-  if (!info.isFile()) falla('El PDF no es un archivo normal');
-  if (info.size < 8) falla('El archivo PDF está vacío');
-  if (info.size > BYTES_PDF_MAXIMO) falla('El archivo PDF pesa más de 30 MB');
+  if (!info.isFile()) falla('El material no es un archivo normal');
+  if (info.size < 8) falla('El archivo del material está vacío');
+  if (info.size > BYTES_ARCHIVO_MAXIMO) falla('El archivo del material pesa más de 30 MB');
   const fd = fs.openSync(real, 'r');
   try {
     const cabecera = Buffer.alloc(5);
     fs.readSync(fd, cabecera, 0, 5, 0);
-    if (cabecera.toString('latin1') !== '%PDF-') falla('El archivo no es un PDF válido');
+    if (formatoDe(tipo) === 'pdf') {
+      if (cabecera.toString('latin1') !== '%PDF-') falla('El archivo no es un PDF válido');
+    } else if (cabecera.slice(0, 4).toString('latin1') !== 'PK\u0003\u0004') {
+      falla('El archivo no es un documento de Office válido');
+    }
   } finally { fs.closeSync(fd); }
   return { real, bytes: info.size };
 }
@@ -145,7 +171,7 @@ function cargarMateriales(carpeta, { avisar = true } = {}) {
     try {
       const m = normalizarMaterial(crudo);
       if (vistos.has(m.id)) falla('Ya existe otro material con ese id');
-      const { real, bytes } = verificarArchivo(carpeta, m.archivo);
+      const { real, bytes } = verificarArchivo(carpeta, m.archivo, m.tipo);
       vistos.add(m.id);
       materiales.push({ ...m, ruta: real, bytes });
     } catch (error) {
@@ -171,14 +197,17 @@ function acceso(material, estado) {
   return { desbloqueado, faltan, soloMiembros: !membresia };
 }
 
-// Lo que se lista (sin ruta, sin nombre de archivo, sin tamaño)
+// Lo que se lista (sin ruta ni nombre de archivo). `formato` dice qué se descarga (pdf, excel o powerpoint); `tamanoKb` es el tamaño aproximado en KB (el tamaño exacto no se publica).
 function resumenMaterial(material, estado) {
   const a = acceso(material, estado);
   const resumen = {
     id: material.id, titulo: material.titulo, tipo: material.tipo, area: material.area, descripcion: material.descripcion,
     paginas: material.paginas, acceso: material.acceso, requiereRetos: material.requiereRetos || 0, licencia: material.licencia,
-    desbloqueado: a.desbloqueado, faltan: a.faltan, soloMiembros: a.soloMiembros
+    desbloqueado: a.desbloqueado, faltan: a.faltan, soloMiembros: a.soloMiembros, formato: formatoDe(material.tipo)
   };
+  if (Number.isInteger(material.bytes)) resumen.tamanoKb = Math.max(1, Math.round(material.bytes / 1024));
+  if (material.version) resumen.version = material.version;
+  if (material.fecha) resumen.fecha = material.fecha;
   // Solo los ligados a un curso suman estos campos (el resto conserva la forma de siempre)
   if (material.acceso === 'curso') Object.assign(resumen, porCurso.camposDeCondicion({ cursoId: material.cursoId, clase: material.clase }, { condicion: porCurso.condicionDe(material), cursoTitulo: a.cursoTitulo, pendiente: a.pendiente }));
   return resumen;
@@ -193,6 +222,6 @@ function buscarMaterial(materiales, id) {
 }
 
 module.exports = {
-  ID_MATERIAL, ARCHIVO_PDF, TIPOS, ACCESOS,
+  ID_MATERIAL, ARCHIVO_PDF, ARCHIVO_MATERIAL, TIPOS, ACCESOS, FORMATOS, formatoDe,
   normalizarMaterial, verificarArchivo, cargarMateriales, acceso, resumenMaterial, resumenMateriales, buscarMaterial
 };

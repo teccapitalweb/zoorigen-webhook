@@ -76,7 +76,7 @@ test('cargarMateriales: descarta entradas inválidas, duplicadas o sin archivo; 
   assert.equal(errores.length, 6);
   const texto = JSON.stringify(errores);
   assert.equal(/[\\/]/.test(texto.replace(/\\"/g, '')) , false, 'los errores no llevan rutas del disco');
-  assert.ok(errores.some(e => /No se encontró el archivo PDF/.test(e.error)));
+  assert.ok(errores.some(e => /No se encontró el archivo del material/.test(e.error)));
   assert.ok(errores.some(e => /otro material con ese id/.test(e.error)));
 }));
 
@@ -87,7 +87,7 @@ test('cargarMateriales: un archivo que no es PDF o está vacío se descarta', ca
   const { materiales, errores } = M.cargarMateriales(dir);
   assert.deepEqual(materiales.map(m => m.id), ['bueno']);
   assert.equal(errores.length, 2);
-  assert.ok(errores.every(e => /PDF/.test(e.error)));
+  assert.ok(errores.every(e => /PDF|vacío/.test(e.error)));
 }));
 
 test('cargarMateriales: un enlace simbólico que apunta fuera de la carpeta se descarta', callar(() => {
@@ -145,11 +145,62 @@ test('acceso "retos": justo en el límite, uno antes, admin y sin membresía', (
   for (const superados of [undefined, null, NaN, -1, 4.9, '9']) assert.equal(M.acceso(reto5, { superados, membresia: true }).desbloqueado, false);
 });
 
-test('resumenMaterial no revela archivo, ruta ni tamaño', () => {
+test('resumenMaterial no revela archivo ni ruta (el tamaño sale solo en KB aproximados)', () => {
   const r = M.resumenMaterial({ ...reto5, ruta: '/secreto/r.pdf', bytes: 123 }, miembro(2));
-  assert.deepEqual(Object.keys(r).sort(), ['acceso', 'area', 'desbloqueado', 'descripcion', 'faltan', 'id', 'licencia', 'paginas',
-    'requiereRetos', 'soloMiembros', 'tipo', 'titulo']);
+  assert.deepEqual(Object.keys(r).sort(), ['acceso', 'area', 'desbloqueado', 'descripcion', 'faltan', 'formato', 'id', 'licencia', 'paginas',
+    'requiereRetos', 'soloMiembros', 'tamanoKb', 'tipo', 'titulo']);
+  assert.equal(r.tamanoKb, 1);
+  assert.equal(r.formato, 'pdf');
   assert.equal(JSON.stringify(r).includes('secreto'), false);
   assert.equal(r.faltan, 3);
   assert.equal(M.resumenMaterial(miembros, miembro(0)).requiereRetos, 0);
+});
+
+// ── Excel y PowerPoint ──
+const { OFFICE_PRUEBA } = require('./helpers/materiales');
+
+test('tipos excel y powerpoint: llevan .xlsx y .pptx; la extensión debe coincidir con el tipo', () => {
+  assert.ok(M.TIPOS.includes('excel') && M.TIPOS.includes('powerpoint'));
+  assert.equal(M.normalizarMaterial(materialValido('hoja', 'miembros', 0, { tipo: 'excel' })).archivo, 'hoja.xlsx');
+  assert.equal(M.normalizarMaterial(materialValido('deck', 'retos', 5, { tipo: 'powerpoint' })).archivo, 'deck.pptx');
+  const malo = extra => () => M.normalizarMaterial(materialValido('x', 'miembros', 0, extra));
+  assert.throws(malo({ tipo: 'excel', archivo: 'x.pdf' }), /xlsx/);
+  assert.throws(malo({ tipo: 'powerpoint', archivo: 'x.xlsx' }), /pptx/);
+  assert.throws(malo({ tipo: 'guia', archivo: 'x.xlsx' }), /pdf/);
+  assert.throws(malo({ tipo: 'excel', archivo: 'x.xlsm' }), /archivo/);
+  assert.throws(malo({ tipo: 'excel', archivo: '../x.xlsx' }), /archivo/);
+});
+
+test('version y fecha del material: opcionales, con formato válido', () => {
+  const ok = M.normalizarMaterial(materialValido('v', 'miembros', 0, { version: '1.2', fecha: '2026-10-22' }));
+  assert.equal(ok.version, '1.2');
+  assert.equal(ok.fecha, '2026-10-22');
+  for (const version of ['x', '1.2.3.4', 1, '']) assert.throws(() => M.normalizarMaterial(materialValido('v', 'miembros', 0, { version })), /version/);
+  for (const fecha of ['22/10/2026', '2026-13-01', '2026-02-30', 20261022]) assert.throws(() => M.normalizarMaterial(materialValido('v', 'miembros', 0, { fecha })), /fecha/);
+  assert.equal(M.normalizarMaterial(materialValido('v')).version, undefined);
+});
+
+test('cargarMateriales: Excel y PowerPoint se aceptan por su firma ZIP y un PDF disfrazado se descarta', callar(() => {
+  const dir = carpetaMateriales([materialValido('hoja', 'miembros', 0, { tipo: 'excel' }), materialValido('deck', 'miembros', 0, { tipo: 'powerpoint' }),
+    materialValido('falsa', 'miembros', 0, { tipo: 'excel' }), materialValido('pdf-ok')]);
+  fs.writeFileSync(path.join(dir, 'falsa.xlsx'), '%PDF-1.4 esto no es un xlsx');
+  const { materiales, errores } = M.cargarMateriales(dir);
+  assert.deepEqual(materiales.map(m => m.id), ['hoja', 'deck', 'pdf-ok']);
+  assert.equal(errores.length, 1);
+  assert.match(errores[0].error, /Office/);
+  assert.equal(fs.readFileSync(materiales[0].ruta).equals(OFFICE_PRUEBA), true);
+}));
+
+test('resumenMaterial: formato (pdf, excel, powerpoint), tamaño, versión y fecha', () => {
+  const hoja = M.normalizarMaterial(materialValido('hoja', 'miembros', 0, { tipo: 'excel', version: '1.0', fecha: '2026-10-22' }));
+  const r = M.resumenMaterial({ ...hoja, bytes: 51200, ruta: '/secreto/hoja.xlsx' }, miembro(0));
+  assert.equal(r.formato, 'excel');
+  assert.equal(r.tamanoKb, 50);
+  assert.equal(r.version, '1.0');
+  assert.equal(r.fecha, '2026-10-22');
+  assert.equal(JSON.stringify(r).includes('secreto'), false);
+  assert.equal(M.resumenMaterial(M.normalizarMaterial(materialValido('d', 'miembros', 0, { tipo: 'powerpoint' })), miembro(0)).formato, 'powerpoint');
+  assert.equal(M.formatoDe('checklist'), 'pdf');
+  assert.equal(M.FORMATOS.excel.contentType, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  assert.equal(M.FORMATOS.powerpoint.contentType, 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
 });
