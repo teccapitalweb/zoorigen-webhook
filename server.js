@@ -20,6 +20,7 @@ const { montarRutasMateriales } = require('./services/rutas-materiales');
 const { montarRutasCreditos } = require('./services/rutas-creditos');
 const { montarRutasResenas } = require('./services/rutas-resenas');
 const { montarRutasCupones } = require('./services/rutas-cupones');
+const { crearServicio: crearServicioPagos } = require('./services/pagos');
 const { montarRutasRegistro } = require('./services/rutas-registro');
 const { montarRutasAuth } = require('./services/rutas-auth');
 const { montarRutasRecordatorios } = require('./services/rutas-recordatorios');
@@ -362,6 +363,27 @@ function resolverAvisoSinMiembro(evento, objetos, mensaje) {
   throw error;
 }
 
+// ── Registro de pagos de suscripción (services/pagos.js): cada cobro de Zoorigen queda en pagos/{factura} para el panel ──
+// La cuenta de Stripe se comparte con otras marcas: solo se guardan los cobros de suscripciones de Zoorigen.
+async function esSuscripcionDeZoorigen(subscriptionId, invoice) {
+  if (!subscriptionId) return false;
+  if (await buscarUidPorSubscription(subscriptionId)) return true;
+  if (invoice && clasificarPrecios(preciosDeObjeto(invoice)) === 'zoorigen') return true;
+  try {
+    const sub = await stripe.subscriptions.retrieve(subscriptionId);
+    return Boolean(sub && sub.metadata && sub.metadata.firebaseUID) || clasificarPrecios(preciosDeObjeto(sub)) === 'zoorigen';
+  } catch (_) { return false; }
+}
+function planDeFactura(invoice = {}) {
+  const ids = preciosDeObjeto(invoice);
+  if (ids.includes(STRIPE_PRICES.anual)) return 'anual';
+  if (ids.includes(STRIPE_PRICES.mensual)) return 'mensual';
+  const lineas = invoice.lines && Array.isArray(invoice.lines.data) ? invoice.lines.data : [];
+  const intervalo = lineas[0] && lineas[0].price && lineas[0].price.recurring && lineas[0].price.recurring.interval;
+  return intervalo === 'year' ? 'anual' : intervalo === 'month' ? 'mensual' : 'otro';
+}
+const pagosSvc = crearServicioPagos({ db, stripe, esSuscripcionPropia: esSuscripcionDeZoorigen, planDeFactura, subscriptionIdDe: subscriptionIdDeInvoice });
+
 // ── STRIPE WEBHOOK (necesita body RAW para verificar firma) ──
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   let event;
@@ -411,6 +433,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       // ── RENOVACIÓN AUTOMÁTICA ──
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object;
+        await pagosSvc.registrarSeguro(invoice, 'pagado');   // el pago (primer pago o renovación) queda en pagos/{factura}; nunca lanza
         const subscriptionId = subscriptionIdDeInvoice(invoice);
         if (!subscriptionId || invoice.billing_reason === 'subscription_create') break;
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
@@ -424,6 +447,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       // ── PAGO FALLIDO → suspender hasta que Stripe confirme un cobro ──
       case 'invoice.payment_failed': {
         const invoice = event.data.object;
+        await pagosSvc.registrarSeguro(invoice, 'fallido');   // el cobro rechazado queda anotado; nunca lanza
         const subscriptionId = subscriptionIdDeInvoice(invoice);
         if (!subscriptionId) break;
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
@@ -1234,7 +1258,7 @@ montarRutasNoticias(app, {
 // ── Panel de administración: resumen, miembros, comunidad, referidos, retos y estado (services/rutas-admin.js) ──
 // Todas las rutas /api/admin/* de este archivo exigen administrador verificado en el servidor (ADMIN_EMAILS o marca en Firestore).
 montarRutasAdmin(app, {
-  express, db, admin, auth, autenticarAdmin, errorHttp, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador, bitacoraServidor, recordatorios: recordatoriosPago,
+  express, db, admin, auth, autenticarAdmin, errorHttp, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador, bitacoraServidor, recordatorios: recordatoriosPago, pagos: pagosSvc,
   precios: { stripe, STRIPE_PRICES },
   // Ensayo e importación del avance anterior de los miembros (GET/POST /api/admin/progreso-legado): las mismas reglas que la
   // importación automática (services/rutas-certificados.js)
