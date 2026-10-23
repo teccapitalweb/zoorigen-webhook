@@ -39,12 +39,13 @@ test('niveles: 5 niveles con nombres fijos, umbrales crecientes y tabla única (
 });
 
 test('calibración: Profesional ~25 % y Maestro ~75 % del XP máximo, y Maestro sigue siendo alcanzable (<= 90 %)', () => {
-  assert.ok(Math.abs(PROFESIONAL / MAX.total - 0.25) <= 0.03, `Profesional pide ${(PROFESIONAL / MAX.total * 100).toFixed(1)} % del máximo`);
+  assert.ok(Math.abs(PROFESIONAL / MAX.total - 0.25) <= 0.05, `Profesional pide ${(PROFESIONAL / MAX.total * 100).toFixed(1)} % del máximo`);
   // Al agregar 24 retos al camino (+240 XP de máximo) y luego 30 escenas de Detective (+300 XP) los umbrales NO se movieron a propósito:
-  // subirlos haría bajar de nivel a quien ya lo tiene. Maestro pasó de 74.5 % a 68.2 % del máximo, por eso su tolerancia es 8 puntos.
-  assert.ok(Math.abs(MAESTRO / MAX.total - 0.75) <= 0.08, `Maestro pide ${(MAESTRO / MAX.total * 100).toFixed(1)} % del máximo`);
+  // subirlos haría bajar de nivel a quien ya lo tiene. Con 15 preguntas de quiz y 15 secuencias más (+300 XP), Profesional pide 21.9 % y Maestro 65.6 % del
+  // máximo (antes 25 % y 74.5 %), por eso las tolerancias son de 5 y 10 puntos. Si algún día se quiere devolver la dificultad, se hará con cuidado de no bajar a nadie.
+  assert.ok(Math.abs(MAESTRO / MAX.total - 0.75) <= 0.10, `Maestro pide ${(MAESTRO / MAX.total * 100).toFixed(1)} % del máximo`);
   assert.ok(MAESTRO / MAX.total <= 0.9);
-  assert.ok(MAX.total >= 6000 && MAX.total <= 7500, `máximo ${MAX.total}`);
+  assert.ok(MAX.total >= 6000 && MAX.total <= 8000, `máximo ${MAX.total}`);
 });
 
 test('los logros de cursos no pagan dos veces lo mismo: todos juntos valen menos que el XP por terminar los 15 cursos', () => {

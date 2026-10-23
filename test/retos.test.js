@@ -164,14 +164,14 @@ test('camino: el índice debe existir en el sitio y la lista guardada se limpia'
   assert.deepEqual(sucio.caminoHechos.quiz, [1, 4]);
   assert.deepEqual(sucio.caminoHechos.detective, []);
   assert.equal(sucio.camino.quiz, 2, 'el contador siempre sale de la lista de retos superados');
-  assert.deepEqual(R.TOTALES_CAMINO, { quiz: 32, detective: 60, orden: 24 });
+  assert.deepEqual(R.TOTALES_CAMINO, { quiz: 47, detective: 60, orden: 39 });
 });
 
 test('camino: validación de modo, índice, total y puntaje', () => {
   const ok = { modo: 'orden', indice: 0, puntaje: 3, total: 4 };
   assert.equal(R.validarCaminoResultado(ok), null);
   assert.equal(R.validarCaminoResultado({ ...ok, indice: 17 }), null);
-  for (const malo of [{ modo: 'historia' }, { modo: 'flashcards' }, { modo: 7 }, { indice: -1 }, { indice: 24 }, { indice: 201 }, { indice: '0' }, { indice: 0.5 },
+  for (const malo of [{ modo: 'historia' }, { modo: 'flashcards' }, { modo: 7 }, { indice: -1 }, { indice: 39 }, { indice: 201 }, { indice: '0' }, { indice: 0.5 },
     { total: 0 }, { total: 31 }, { puntaje: 5 }, { puntaje: -1 }, { puntaje: '3' }]) {
     assert.ok(R.validarCaminoResultado({ ...ok, ...malo }), JSON.stringify(malo));
   }
@@ -192,5 +192,5 @@ test('el estado guardado se limpia: valores raros no rompen ni inflan nada', () 
 });
 
 test('el XP máximo de los retos es el techo de práctica más todo el camino perfecto', () => {
-  assert.equal(R.XP_MAXIMO_RETOS, 600 + (32 + 60 + 24) * 10);
+  assert.equal(R.XP_MAXIMO_RETOS, 600 + (47 + 60 + 39) * 10);
 });
