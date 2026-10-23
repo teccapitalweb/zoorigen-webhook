@@ -221,7 +221,7 @@ function montarRutasAdminCreditos(app, deps, a) {
     if (q) regalos = regalos.filter(r => sinAcentos(`${r.nombre} ${r.correo} ${r.canjes.map(c => c.titulo).join(' ')}`).includes(q));
     const total = regalos.length;
     const filas = regalos.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA).map(r => ({
-      id: r.id, uid: r.uid, nombre: r.nombre, correo: r.correo, cantidad: r.cantidad, en: r.en, regaladoPor: r.adminCorreo, estado: r.estado, canje: r.canje,
+      id: r.id, uid: r.uid, nombre: r.nombre, correo: r.correo, cantidad: r.cantidad, en: r.en, regaladoPor: r.adminCorreo, origen: r.origen, cupon: r.cupon, estado: r.estado, canje: r.canje,
       materialesTotal: r.materialesTotal, materialesCanjeados: r.materialesCanjeados, usados: r.usados, sobrante: r.sobrante, canjes: r.canjes
     }));
     return res.json({ ok: true, generado: new Date().toISOString(), truncado, total, totales, pagina, porPagina: POR_PAGINA, hayMas: pagina * POR_PAGINA < total, regalos: filas });

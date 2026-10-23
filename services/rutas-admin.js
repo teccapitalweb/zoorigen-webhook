@@ -33,6 +33,7 @@ const { montarRutasAdminComunidad } = require('./rutas-admin-comunidad');
 const { montarRutasAdminServidor } = require('./rutas-admin-servidor');
 const { montarRutasAdminCreditos } = require('./rutas-creditos');
 const { montarRutasAdminResenas } = require('./rutas-resenas');
+const { montarRutasAdminCupones } = require('./rutas-cupones');
 const { montarRutasAdminRecordatorios } = require('./rutas-recordatorios');
 
 const LECTURAS_POR_MINUTO = 90;
@@ -705,6 +706,7 @@ function montarRutasAdmin(app, deps) {
   // ── Quinta parte: créditos (regalo manual, historial y gráfica de canjes) ──
   montarRutasAdminCreditos(app, deps, { conAdmin, anotarAccion, listaMiembros, refrescar, analizadorJson });
   montarRutasAdminResenas(app, deps, { conAdmin });
+  montarRutasAdminCupones(app, deps, { conAdmin, anotarAccion, analizadorJson });
   if (deps.recordatorios) montarRutasAdminRecordatorios(app, deps, { conAdmin, anotarAccion, analizadorJson });
 
   return { limpiarCache: () => cache.clear() };

@@ -273,6 +273,7 @@ function historialDeRegalos(movimientos) {
       const estado = usados === 0 ? 'pendiente' : (completo ? 'canjeado' : 'parcial');
       salida.push({
         id: f.r.id, uid, cantidad: f.cantidad, en: iso(f.r.en), enMs: f.r.enMs, adminUid: f.r.adminUid || '', adminCorreo: f.r.adminCorreo || '',
+        origen: f.r.origen === 'cupon' ? 'cupon' : 'admin', cupon: f.r.origen === 'cupon' ? String(f.r.cupon || '') : '',
         estado, materialesTotal, materialesCanjeados, usados, sobrante: f.cantidad % COSTO_MATERIAL,
         canjes: f.canjes, canje: f.canjes.length ? f.canjes[f.canjes.length - 1] : null
       });
