@@ -315,3 +315,21 @@ test('si la persona deja de tener membresía el cupón VIP deja de servirle, y a
   db._data.set('miembros/beto', { ...db.value('miembros/beto'), planActivo: false, planStatus: 'canceled', planVence: null });
   assert.equal((await canjear(app, 'SOLOVIP', 'token-beto')).status, 403);
 });
+
+test('un cupón AGOTADO sigue avisándose mientras no venza ni se pause (quien vio la clave en el canal no sabe que se acabó); al escribirla le sale «Lo sentimos»', async () => {
+  const { app, db } = servidor();
+  await crear(app, { clave: 'POCOS1', creditos: 100, maxPersonas: 1, vence: FUTURO() });
+  assert.equal((await canjear(app, 'POCOS1', 'token-ana')).status, 200);
+  const d = await disponible(app, 'token-beto');
+  assert.deepEqual([d.body.hay, d.body.cantidad, d.body.creditos], [true, 1, 100], 'agotado pero vigente: la tarjeta sigue saliendo');
+  assert.ok(!JSON.stringify(d.body).includes('POCOS1'), 'sin la clave');
+  const tarde = await canjear(app, 'POCOS1', 'token-beto');
+  assert.equal(tarde.status, 410); assert.equal(tarde.body.codigo, 'cupon-agotado'); assert.equal(tarde.body.limite, 1);
+  assert.equal((await disponible(app, 'token-ana')).body.hay, false, 'quien ya lo canjeó no vuelve a verlo');
+  await estado(app, 'POCOS1', 'pausado');
+  assert.equal((await disponible(app, 'token-beto')).body.hay, false, 'en pausa: deja de salir');
+  await estado(app, 'POCOS1', 'activo');
+  assert.equal((await disponible(app, 'token-beto')).body.hay, true);
+  db._data.set('creditosCupones/POCOS1', { ...db.value('creditosCupones/POCOS1'), venceMs: Date.now() - 1000 });
+  assert.equal((await disponible(app, 'token-beto')).body.hay, false, 'vencido: deja de salir');
+});

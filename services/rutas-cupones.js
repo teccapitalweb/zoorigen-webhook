@@ -2,7 +2,7 @@
 
 // ══ RUTAS: cupones de créditos ══
 // Persona con sesión (verificada en el servidor; solo cuentas con el correo verificado y que no sean de administración):
-//   GET  /api/creditos/cupon-disponible  ¿hay un cupón que esta persona aún pueda canjear? { hay, cantidad, creditos (el mayor), limitado, ids }.
+//   GET  /api/creditos/cupon-disponible  ¿hay un cupón vigente (activo o agotado, no pausado ni vencido) que esta persona no ha canjeado? { hay, cantidad, creditos (el mayor), limitado, ids }.
 //                                        NUNCA devuelve claves: la tarjeta de aviso solo invita a unirse al canal de WhatsApp
 //   POST /api/creditos/cupon/canjear     { clave } suma los créditos al instante. Una vez por persona y cupón. Errores: 404 «no-valido»
 //                                        (no existe o está pausado), 409 «ya-canjeado», 403 «cupon-no-aplica» (el cupón es solo para miembros VIP o solo para

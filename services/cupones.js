@@ -24,6 +24,7 @@ const TOPE_LISTA = 500;
 const TOPE_CANJES = 5000;
 const CLAVE_VALIDA = /^[A-Z0-9_-]{4,24}$/;
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';   // sin 0, O, 1, I, L para que no se confundan al teclear
+const AVISABLES = Object.freeze(['activo', 'agotado']);   // estados en los que todavía se le avisa a la gente (pausado y vencido, no)
 const AUDIENCIAS = Object.freeze(['todos', 'gratuitos', 'vip']);   // a quién le sirve el cupón
 const INTENTOS_MAX = 5;                        // fallos permitidos por persona...
 const INTENTOS_VENTANA_MS = 15 * 60 * 1000;    // ...en esta ventana; después espera a que pase
@@ -178,7 +179,8 @@ function crearServicio({ db, admin, ahora = () => Date.now(), azar }) {
       .sort((a, b) => String(b.en || '').localeCompare(String(a.en || '')));
   }
 
-  // Lo que ESTA persona aún puede canjear: cuántos cupones activos hay y cuántos créditos da el mayor. Nunca devuelve claves.
+  // A lo que ESTA persona se le avisa: los cupones que siguen vigentes (activos O agotados) y que no ha canjeado, y cuántos créditos da el mayor. Un cupón agotado
+  // sigue avisándose hasta que venza o se pause: quien vio la clave en el canal no sabe que se acabó y, al escribirla, recibe la tarjeta «Lo sentimos». Nunca devuelve claves.
   async function disponiblesPara(uid, { membresia = false } = {}) {
     const [cupones, hechos] = await Promise.all([
       db.collection(COL_CUPONES).limit(TOPE_LISTA).get(),
@@ -186,7 +188,7 @@ function crearServicio({ db, admin, ahora = () => Date.now(), azar }) {
     ]);
     const ya = new Set(hechos.docs.map(d => (d.data() || {}).clave));
     const t = ahora();
-    const lista = cupones.docs.map(d => ({ id: d.id, d: d.data() || {} })).filter(x => estadoDe(x.d, t) === 'activo' && aplicaA(audienciaDe(x.d), membresia) && !ya.has(x.d.clave || x.id));
+    const lista = cupones.docs.map(d => ({ id: d.id, d: d.data() || {} })).filter(x => AVISABLES.includes(estadoDe(x.d, t)) && aplicaA(audienciaDe(x.d), membresia) && !ya.has(x.d.clave || x.id));
     return {
       hay: lista.length > 0, cantidad: lista.length, creditos: lista.reduce((m, x) => Math.max(m, Number(x.d.creditos) || 0), 0),
       limitado: lista.some(x => aMs(x.d.venceMs) !== null || Number.isInteger(x.d.maxPersonas)), ids: lista.map(x => idPublico(x.d.clave || x.id))
