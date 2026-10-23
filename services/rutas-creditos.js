@@ -13,6 +13,7 @@
 //   POST /api/creditos/canjear           { materialId } descuenta 100 (costo fijo del servidor) y desbloquea ESE material para esta cuenta, para siempre.
 //                                        Solo UN libro por cuenta en toda su vida (409 «ya-canjeo-libro» sin cobrar); los demás materiales no tienen límite
 //   POST /api/creditos/aviso-visto       marca la felicitación como vista (vive en el servidor, no en el navegador)
+//   GET  /api/creditos/regalos           ligera: los regalos de ESTA cuenta de los últimos 30 días ({ id, cantidad, en }) para la campana de avisos del Club
 // Las reglas del servicio están en services/creditos.js. El acceso a los materiales canjeados lo valida rutas-materiales.js.
 
 const { permitirSolicitud } = require('./rutas-club');
@@ -134,6 +135,12 @@ function montarRutasCreditos(app, deps) {
       if (e instanceof creditos.ErrorCreditos) throw Object.assign(errorHttp(e.status, e.message), { codigo: e.codigo });
       throw e;
     }
+  }));
+
+  // Ruta ligera para la campana de avisos: solo el libro de movimientos de esta cuenta (no lee catálogos ni accesos). Si falla, la campana sigue sin ese aviso.
+  app.get('/api/creditos/regalos', conSesion('No se pudieron cargar tus avisos de créditos', 'regalos', limites.estado, ESTADO_POR_MINUTO, async (req, res, decoded) => {
+    const regalos = await creditos.leerRegalosRecientes(db, decoded.uid);
+    return res.json({ ok: true, regalos, dias: creditos.DIAS_AVISO_REGALO });
   }));
 
   app.post('/api/creditos/aviso-visto', deps.analizadorJson || ((req, res, next) => next()), conSesion('No se pudo guardar', 'aviso-visto', limites.estado, ESTADO_POR_MINUTO, async (req, res, decoded) => {

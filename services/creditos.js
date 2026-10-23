@@ -207,6 +207,25 @@ async function marcarAvisoVisto(db, admin, uid) {
   });
 }
 
+/* ───────────────────────── Regalos recientes de UNA cuenta (la campana de avisos del Club) ─────────────────────────
+   Lee solo los movimientos de esa cuenta (consulta por uid, sin índice compuesto) y devuelve los regalos de los últimos `dias` días, del más
+   nuevo al más viejo: { id estable del movimiento, cantidad, en (ISO) }. Nada de datos del administrador ni de otras cuentas. */
+const DIAS_AVISO_REGALO = 30;
+const MAX_AVISOS_REGALO = 10;
+async function leerRegalosRecientes(db, uid, { ahora = Date.now(), dias = DIAS_AVISO_REGALO, max = MAX_AVISOS_REGALO } = {}) {
+  if (!UID_VALIDO.test(String(uid || ''))) return [];
+  const snap = await db.collection(COL_MOVIMIENTOS).where('uid', '==', uid).limit(500).get();
+  const desde = ahora - dias * 86400000;
+  return snap.docs
+    .map(d => ({ id: d.id, ...(d.data() || {}) }))
+    .filter(m => m.tipo === 'regalo' && m.uid === uid && Number.isInteger(m.cantidad) && m.cantidad > 0)
+    .map(m => ({ id: m.id, cantidad: m.cantidad, enMs: aMs(m.en) || 0 }))
+    .filter(m => m.enMs >= desde && m.enMs <= ahora + 3600000)
+    .sort((a, b) => b.enMs - a.enMs)
+    .slice(0, max)
+    .map(m => ({ id: m.id, cantidad: m.cantidad, en: new Date(m.enMs).toISOString() }));
+}
+
 /* ───────────────────────── Historial y métricas (panel) ───────────────────────── */
 async function leerMovimientos(db) {
   const snap = await db.collection(COL_MOVIMIENTOS).limit(TOPE_MOVIMIENTOS + 1).get();
@@ -283,5 +302,5 @@ function metricas(movimientos) {
 module.exports = {
   REGALO, MAX_REGALO, MAX_LIBROS_POR_CREDITOS, libroCanjeadoDe, COSTO_MATERIAL, CADUCIDAD_DIAS, TOPE_CREDITOS_POR_DIA, TOPE_MOVIMIENTOS, cantidadValida, COL_CUENTAS, COL_MOVIMIENTOS, COL_DESBLOQUEOS, TIPOS,
   ErrorCreditos, claveMaterial, analizarClave, docDesbloqueo, catalogoCanjeable, estadoConCredito,
-  leerCuenta, leerDesbloqueos, regalar, canjear, marcarAvisoVisto, leerMovimientos, historialDeRegalos, metricas, diaMexico, iso
+  DIAS_AVISO_REGALO, MAX_AVISOS_REGALO, leerRegalosRecientes, leerCuenta, leerDesbloqueos, regalar, canjear, marcarAvisoVisto, leerMovimientos, historialDeRegalos, metricas, diaMexico, iso
 };
