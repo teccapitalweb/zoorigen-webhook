@@ -95,7 +95,7 @@ function validarNuevo({ clave, creditos: cantidad, venceMs, maxPersonas, audienc
     max = maxPersonas;
   }
   const aud = audiencia === undefined || audiencia === null || audiencia === '' ? 'todos' : audiencia;
-  if (!AUDIENCIAS.includes(aud)) throw new ErrorCupon(400, 'Elige para quién es el cupón: todas las cuentas, solo cuentas gratuitas o solo miembros VIP.', 'audiencia-invalida');
+  if (!AUDIENCIAS.includes(aud)) throw new ErrorCupon(400, 'Elige a quién le llega el cupón: miembros no VIP, miembros VIP o ambos.', 'audiencia-invalida');
   return { clave: cl, creditos: cantidad, venceMs: vence, maxPersonas: max, audiencia: aud };
 }
 
@@ -210,7 +210,7 @@ function crearServicio({ db, admin, ahora = () => Date.now(), azar }) {
       if (estado === 'pausado') throw new ErrorCupon(404, 'Esa clave no es válida o ya no está disponible.', 'no-valido');
       const aud = audienciaDe(c);
       if (!aplicaA(aud, membresia)) {
-        throw new ErrorCupon(403, aud === 'vip' ? 'Este cupón es solo para miembros VIP.' : 'Este cupón es solo para cuentas gratuitas.', 'cupon-no-aplica', { audiencia: aud });
+        throw new ErrorCupon(403, aud === 'vip' ? 'Este cupón es solo para miembros VIP.' : 'Este cupón es solo para miembros no VIP (plan gratuito).', 'cupon-no-aplica', { audiencia: aud });
       }
       if (estado === 'vencido') throw new ErrorCupon(410, 'Este cupón ya venció.', 'cupon-vencido');
       if (estado === 'agotado') throw new ErrorCupon(410, `Este cupón ya alcanzó su límite de ${c.maxPersonas} personas.`, 'cupon-agotado', { limite: c.maxPersonas });

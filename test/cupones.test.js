@@ -281,7 +281,7 @@ test('solo para cuentas gratuitas: una con membresía no lo canjea y una sin mem
   const { app, db } = servidorConVip();
   await crear(app, { clave: 'SOLOFREE', creditos: 100, audiencia: 'gratuitos' });
   const vip = await canjear(app, 'SOLOFREE', 'token-beto');
-  assert.equal(vip.status, 403); assert.equal(vip.body.error, 'Este cupón es solo para cuentas gratuitas.');
+  assert.equal(vip.status, 403); assert.equal(vip.body.error, 'Este cupón es solo para miembros no VIP (plan gratuito).');
   assert.equal((db.value('creditosCuentas/beto') || {}).saldo, undefined);
   assert.equal((await canjear(app, 'SOLOFREE', 'token-ana')).status, 200);
 });
