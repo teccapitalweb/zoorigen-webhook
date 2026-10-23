@@ -18,6 +18,7 @@ const { montarRutasNoticias } = require('./services/rutas-noticias');
 const { iniciarProgramador } = require('./services/tarea-diaria');
 const { montarRutasMateriales } = require('./services/rutas-materiales');
 const { montarRutasCreditos } = require('./services/rutas-creditos');
+const { montarRutasResenas } = require('./services/rutas-resenas');
 const { montarRutasRegistro } = require('./services/rutas-registro');
 const { montarRutasAuth } = require('./services/rutas-auth');
 const { montarRutasRecordatorios } = require('./services/rutas-recordatorios');
@@ -1193,6 +1194,9 @@ montarRutasMateriales(app, {
 // ── Créditos: el administrador los regala (100 por regalo) y la persona los canjea por un material sin curso (services/rutas-creditos.js) ──
 // creditosCuentas, creditosMovimientos y creditosDesbloqueos solo los escribe este servidor.
 montarRutasCreditos(app, { db, admin, autenticarFirebase, errorHttp, club, catalogoLibros, catalogoMateriales, analizadorJson: express.json({ limit: '2kb' }) });
+// ── Reseñas de cursos: la persona califica de 1 a 5 estrellas un curso que ya terminó (services/rutas-resenas.js) ──
+// La colección resenas solo la escribe este servidor y solo la lee la administración.
+montarRutasResenas(app, { db, autenticarFirebase, errorHttp, analizadorJson: express.json({ limit: '4kb' }) });
 // ── Libro de registro de ejemplares: inventario, bitácora e informe anual de UMA/PIMVS (services/rutas-registro.js) ──
 // Datos por persona en registrosUma/{uid}/... (solo del servidor); solo con membresía vigente o administrador.
 montarRutasRegistro(app, { db, autenticarFirebase, errorHttp, club });
