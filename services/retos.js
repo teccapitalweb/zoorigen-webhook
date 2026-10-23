@@ -28,7 +28,7 @@ const TOPE_XP_PRACTICA = 600;
 // "granjear" XP repitiendo el mismo reto. Resolver cualquiera exige membresía vigente (lo comprueba la ruta).
 // TOTALES_CAMINO es la cantidad de retos que existe en el sitio: un índice fuera de ese rango no es válido.
 const CAMINO_MODOS = RETOS_BASE;
-const TOTALES_CAMINO = Object.freeze({ quiz: 32, detective: 30, orden: 24 });
+const TOTALES_CAMINO = Object.freeze({ quiz: 32, detective: 60, orden: 24 });
 const XP_CAMINO = 6;
 const XP_CAMINO_PERFECTO = 10;
 const INDICE_MAXIMO = 200;

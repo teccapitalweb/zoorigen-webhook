@@ -72,7 +72,7 @@ test('escalera: lo más básico abre primero y lo legal y más completo al final
 });
 
 test('escalera: TODOS son alcanzables con holgura (el último pide menos del 90 % de los retos que se pueden superar)', () => {
-  // 86 = 32 quiz + 30 detective + 24 ordena (retos distintos del camino); la práctica diaria suma más
+  // 116 = 32 quiz + 60 detective + 24 ordena (retos distintos del camino); la práctica diaria suma más
   const camino = retosServicio.TOTALES_CAMINO;
   assert.equal(camino.quiz + camino.detective + camino.orden, TOTAL_RETOS_ALCANZABLES);
   assert.ok(Math.max(...NUEVOS.map(m => m.requiereRetos)) <= Math.floor(TOTAL_RETOS_ALCANZABLES * 0.9), 'último umbral <= 90 % del total');

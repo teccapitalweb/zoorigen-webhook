@@ -71,8 +71,8 @@ test('balance: ninguna combinación razonable llega a Maestro fácil (más rutas
   // Sin referidos y sin ningún curso, aunque se haga todo lo demás, no se llega a Maestro
   const sinReferidosNiCursos = m.total - m.referidos - m.cursos - suma(l => l.id === 'l21' || l.id === 'l22' || deCursos(l));
   assert.ok(sinReferidosNiCursos < maestro, `sin cursos ni referidos: ${sinReferidosNiCursos}`);
-  // Maestro pide el 70 % o más de todo el XP posible
-  assert.ok(maestro / m.total > 0.7, `Maestro pide ${Math.round(maestro / m.total * 100)} % del máximo`);
+  // Maestro pide cerca del 70 % de todo el XP posible (68 % desde las 30 escenas nuevas de Detective: los umbrales no se mueven para no bajar el nivel de nadie)
+  assert.ok(maestro / m.total > 0.65, `Maestro pide ${Math.round(maestro / m.total * 100)} % del máximo`);
 });
 
 test('escenario del contrato: ~4 cursos + 20 retos + foro/directorio + 30 días NO alcanzan Profesional (es difícil)', () => {

@@ -7,6 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const L = require('../services/logros');
 const P = require('../services/premios');
+const R = require('../services/retos');
 const { ruta } = require('./helpers/rutas-xp');
 
 const MAX = L.xpMaximo();
@@ -39,9 +40,9 @@ test('niveles: 5 niveles con nombres fijos, umbrales crecientes y tabla única (
 
 test('calibración: Profesional ~25 % y Maestro ~75 % del XP máximo, y Maestro sigue siendo alcanzable (<= 90 %)', () => {
   assert.ok(Math.abs(PROFESIONAL / MAX.total - 0.25) <= 0.03, `Profesional pide ${(PROFESIONAL / MAX.total * 100).toFixed(1)} % del máximo`);
-  // Al agregar 24 retos al camino (+240 XP de máximo) los umbrales NO se movieron a propósito: subirlos haría bajar de nivel a
-  // quien ya lo tiene. Maestro pasó de 74.5 % a 71.9 % del máximo, por eso la tolerancia de Maestro es 4 puntos.
-  assert.ok(Math.abs(MAESTRO / MAX.total - 0.75) <= 0.04, `Maestro pide ${(MAESTRO / MAX.total * 100).toFixed(1)} % del máximo`);
+  // Al agregar 24 retos al camino (+240 XP de máximo) y luego 30 escenas de Detective (+300 XP) los umbrales NO se movieron a propósito:
+  // subirlos haría bajar de nivel a quien ya lo tiene. Maestro pasó de 74.5 % a 68.2 % del máximo, por eso su tolerancia es 8 puntos.
+  assert.ok(Math.abs(MAESTRO / MAX.total - 0.75) <= 0.08, `Maestro pide ${(MAESTRO / MAX.total * 100).toFixed(1)} % del máximo`);
   assert.ok(MAESTRO / MAX.total <= 0.9);
   assert.ok(MAX.total >= 6000 && MAX.total <= 7500, `máximo ${MAX.total}`);
 });
@@ -53,7 +54,8 @@ test('los logros de cursos no pagan dos veces lo mismo: todos juntos valen menos
 });
 
 test('el máximo se puede alcanzar de verdad: la persona que lo hace todo suma exactamente el XP máximo y es Maestro', () => {
-  const ev = ruta(TODO);
+  // Solo el escenario máximo hace todos los retos; las rutas de dificultad conservan sus 77.
+  const ev = ruta({ ...TODO, retos: { ...TODO.retos, camino: Object.values(R.TOTALES_CAMINO).reduce((suma, n) => suma + n, 0) } });
   assert.equal(ev.xp.total, MAX.total);
   assert.equal(ev.nivel.id, 5);
   assert.deepEqual(ev.xp, { total: MAX.total, logros: MAX.logros, retos: MAX.insignias + MAX.retos, referidos: MAX.referidos, cursos: MAX.cursos, bienvenida: MAX.bienvenida });
