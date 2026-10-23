@@ -213,7 +213,7 @@ function crearServicio({ db, admin, ahora = () => Date.now(), azar }) {
         throw new ErrorCupon(403, aud === 'vip' ? 'Este cupón es solo para miembros VIP.' : 'Este cupón es solo para miembros no VIP (plan gratuito).', 'cupon-no-aplica', { audiencia: aud });
       }
       if (estado === 'vencido') throw new ErrorCupon(410, 'Este cupón ya venció.', 'cupon-vencido');
-      if (estado === 'agotado') throw new ErrorCupon(410, `Este cupón ya alcanzó su límite de ${c.maxPersonas} personas.`, 'cupon-agotado', { limite: c.maxPersonas });
+      if (estado === 'agotado') throw new ErrorCupon(410, `Este cupón ya alcanzó su límite de ${c.maxPersonas} ${c.maxPersonas === 1 ? 'persona' : 'personas'}.`, 'cupon-agotado', { limite: c.maxPersonas });
       const cantidad = Number(c.creditos) || 0;
       const previo = cuenta.exists ? (cuenta.data() || {}) : {};
       const saldo = (Number.isInteger(previo.saldo) && previo.saldo > 0 ? previo.saldo : 0) + cantidad;

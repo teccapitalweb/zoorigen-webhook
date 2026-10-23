@@ -137,7 +137,7 @@ test('claves que no sirven: no existe y pausado dan el mismo mensaje; vencido y 
   assert.equal(nada.body.codigo, 'no-valido');
   const agot = await canjear(app, 'LIMITE2');
   assert.equal(agot.status, 410); assert.equal(agot.body.codigo, 'cupon-agotado'); assert.equal(agot.body.limite, 1);
-  assert.match(agot.body.error, /límite de 1 personas/);
+  assert.match(agot.body.error, /límite de 1 persona./);
   const venc = await canjear(app, 'VENCIDO3');
   assert.equal(venc.status, 410); assert.equal(venc.body.codigo, 'cupon-vencido');
   assert.equal(saldoDe(db), 0, 'ninguno de esos dio créditos');
