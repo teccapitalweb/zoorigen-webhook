@@ -243,3 +243,75 @@ test('los créditos de un cupón se canjean como cualquier regalo y salen en el 
   assert.equal(est.body.saldo, 100);
   assert.equal(est.body.avisoPendiente, 0);
 });
+
+// ── Para quién es el cupón: todas las cuentas, solo cuentas gratuitas o solo miembros VIP ──
+const servidorConVip = () => servidor({ 'miembros/beto': require('./helpers/club').miembroConPlan({ name: 'Beto', email: 'beto@example.com' }) });
+
+test('para quién: todas las cuentas por omisión, solo gratuitas o solo VIP; un valor raro da 400', async () => {
+  const { app } = servidor();
+  const a = await crear(app, { clave: 'PARATODOS', creditos: 100 });
+  assert.equal(a.body.cupon.audiencia, 'todos');
+  assert.equal((await crear(app, { clave: 'SOLOFREE', creditos: 100, audiencia: 'gratuitos' })).body.cupon.audiencia, 'gratuitos');
+  assert.equal((await crear(app, { clave: 'SOLOVIP', creditos: 100, audiencia: 'vip' })).body.cupon.audiencia, 'vip');
+  for (const raro of ['miembros', 'VIP', 5, {}]) assert.equal((await crear(app, { clave: 'RARO' + String(raro).length + 'XX', creditos: 100, audiencia: raro })).status, 400, JSON.stringify(raro));
+  const l = (await lista(app)).body.cupones.map(c => [c.clave, c.audiencia]).sort();
+  assert.deepEqual(l, [['PARATODOS', 'todos'], ['SOLOFREE', 'gratuitos'], ['SOLOVIP', 'vip']]);
+});
+
+test('un cupón anterior, sin el dato de para quién, vale para todas las cuentas', async () => {
+  const { app } = servidor({ 'creditosCupones/VIEJO1': { clave: 'VIEJO1', creditos: 100, canjes: 0, creditosEntregados: 0, estado: 'activo', creadoMs: Date.now() } });
+  assert.equal((await lista(app)).body.cupones[0].audiencia, 'todos');
+  assert.equal((await canjear(app, 'VIEJO1')).status, 200);
+});
+
+test('solo para miembros VIP: una cuenta gratuita no lo canjea (403, sin gastar un intento) y una con membresía sí', async () => {
+  const { app, db } = servidorConVip();
+  await crear(app, { clave: 'SOLOVIP', creditos: 100, audiencia: 'vip' });
+  const gratis = await canjear(app, 'SOLOVIP', 'token-ana');
+  assert.equal(gratis.status, 403); assert.equal(gratis.body.codigo, 'cupon-no-aplica'); assert.equal(gratis.body.audiencia, 'vip');
+  assert.equal(gratis.body.error, 'Este cupón es solo para miembros VIP.');
+  assert.equal(saldoDe(db), 0);
+  for (let i = 0; i < 6; i++) assert.equal((await canjear(app, 'SOLOVIP', 'token-ana')).status, 403, 'no es un intento fallido: nunca se bloquea por esto');
+  const vip = await canjear(app, 'SOLOVIP', 'token-beto');
+  assert.equal(vip.status, 200);
+  assert.equal((db.value('creditosCuentas/beto') || {}).saldo, 100);
+});
+
+test('solo para cuentas gratuitas: una con membresía no lo canjea y una sin membresía sí', async () => {
+  const { app, db } = servidorConVip();
+  await crear(app, { clave: 'SOLOFREE', creditos: 100, audiencia: 'gratuitos' });
+  const vip = await canjear(app, 'SOLOFREE', 'token-beto');
+  assert.equal(vip.status, 403); assert.equal(vip.body.error, 'Este cupón es solo para cuentas gratuitas.');
+  assert.equal((db.value('creditosCuentas/beto') || {}).saldo, undefined);
+  assert.equal((await canjear(app, 'SOLOFREE', 'token-ana')).status, 200);
+});
+
+test('el aviso solo se ofrece a quien el cupón le sirve (y cuenta solo esos)', async () => {
+  const { app } = servidorConVip();
+  assert.equal((await disponible(app, 'token-ana')).body.hay, false);
+  await crear(app, { clave: 'SOLOVIP', creditos: 300, audiencia: 'vip' });
+  assert.equal((await disponible(app, 'token-ana')).body.hay, false, 'a una cuenta gratuita no le avisa de un cupón VIP');
+  const v = await disponible(app, 'token-beto');
+  assert.deepEqual([v.body.hay, v.body.cantidad, v.body.creditos], [true, 1, 300]);
+  await crear(app, { clave: 'SOLOFREE', creditos: 100, audiencia: 'gratuitos' });
+  await crear(app, { clave: 'PARATODOS', creditos: 200 });
+  const g = await disponible(app, 'token-ana');
+  assert.deepEqual([g.body.cantidad, g.body.creditos], [2, 200], 'gratuitos + todos');
+  const m = await disponible(app, 'token-beto');
+  assert.deepEqual([m.body.cantidad, m.body.creditos], [2, 300], 'vip + todos');
+  assert.ok(!JSON.stringify(g.body).includes('SOLOVIP') && !JSON.stringify(m.body).includes('SOLOFREE'));
+});
+
+test('quien ya canjeó o un cupón de otro tipo no aparece como disponible; los cupones vencidos ni agotados tampoco, sea cual sea la audiencia', async () => {
+  const { app } = servidorConVip();
+  await crear(app, { clave: 'SOLOVIP', creditos: 100, audiencia: 'vip', maxPersonas: 1 });
+  await canjear(app, 'SOLOVIP', 'token-beto');
+  assert.equal((await disponible(app, 'token-beto')).body.hay, false);
+});
+
+test('si la persona deja de tener membresía el cupón VIP deja de servirle, y al revés; lo decide el servidor en el momento', async () => {
+  const { app, db } = servidorConVip();
+  await crear(app, { clave: 'SOLOVIP', creditos: 100, audiencia: 'vip' });
+  db._data.set('miembros/beto', { ...db.value('miembros/beto'), planActivo: false, planStatus: 'canceled', planVence: null });
+  assert.equal((await canjear(app, 'SOLOVIP', 'token-beto')).status, 403);
+});

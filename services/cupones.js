@@ -5,6 +5,8 @@
 // clave la escribe en «¿Tienes un código?» (PDFs y materiales) y recibe los créditos al instante. Reglas:
 //  · Una vez por persona y por cupón (creditosCuponCanjes/{clave__uid}); la clave no distingue mayúsculas, acentos ni espacios.
 //  · Opcionales: fecha y hora límite, y máximo de personas. Se puede pausar y reactivar; un cupón usado nunca se borra.
+//  · Para quién es: todas las cuentas, solo cuentas gratuitas (sin membresía vigente) o solo miembros VIP (con membresía vigente). La tarjeta de aviso
+//    solo se le ofrece a quien el cupón le sirve, y al canjear el servidor vuelve a comprobarlo.
 //  · Los créditos entran al libro de movimientos como un regalo más (origen «cupon»), así el canje de materiales y el historial
 //    funcionan igual que con los regalos del administrador. No cuentan para el tope diario de regalos (cada cupón fija su cantidad).
 //  · Quien se equivoca muchas veces espera (frena adivinar claves). Solo cuentas con correo verificado y que no sean administración.
@@ -22,6 +24,7 @@ const TOPE_LISTA = 500;
 const TOPE_CANJES = 5000;
 const CLAVE_VALIDA = /^[A-Z0-9_-]{4,24}$/;
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';   // sin 0, O, 1, I, L para que no se confundan al teclear
+const AUDIENCIAS = Object.freeze(['todos', 'gratuitos', 'vip']);   // a quién le sirve el cupón
 const INTENTOS_MAX = 5;                        // fallos permitidos por persona...
 const INTENTOS_VENTANA_MS = 15 * 60 * 1000;    // ...en esta ventana; después espera a que pase
 
@@ -64,7 +67,15 @@ function estadoDe(c, ahora = Date.now()) {
   return 'activo';
 }
 
-function validarNuevo({ clave, creditos: cantidad, venceMs, maxPersonas }, ahora = Date.now()) {
+// ¿Le sirve este cupón a esta persona? membresia = tiene una membresía vigente
+function aplicaA(audiencia, membresia) {
+  if (audiencia === 'vip') return membresia === true;
+  if (audiencia === 'gratuitos') return membresia !== true;
+  return true;
+}
+const audienciaDe = d => (AUDIENCIAS.includes(d && d.audiencia) ? d.audiencia : 'todos');
+
+function validarNuevo({ clave, creditos: cantidad, venceMs, maxPersonas, audiencia }, ahora = Date.now()) {
   const cl = String(clave == null ? '' : clave).trim() ? normalizarClave(clave) : '';
   if (String(clave == null ? '' : clave).trim() && !cl) throw new ErrorCupon(400, 'La clave debe tener de 4 a 24 letras o números, sin símbolos (puedes usar guion).', 'clave-invalida');
   if (typeof cantidad !== 'number' || !Number.isInteger(cantidad) || cantidad < 1 || cantidad > MAX_CREDITOS) {
@@ -83,7 +94,9 @@ function validarNuevo({ clave, creditos: cantidad, venceMs, maxPersonas }, ahora
     }
     max = maxPersonas;
   }
-  return { clave: cl, creditos: cantidad, venceMs: vence, maxPersonas: max };
+  const aud = audiencia === undefined || audiencia === null || audiencia === '' ? 'todos' : audiencia;
+  if (!AUDIENCIAS.includes(aud)) throw new ErrorCupon(400, 'Elige para quién es el cupón: todas las cuentas, solo cuentas gratuitas o solo miembros VIP.', 'audiencia-invalida');
+  return { clave: cl, creditos: cantidad, venceMs: vence, maxPersonas: max, audiencia: aud };
 }
 
 // Frena adivinar claves: tras INTENTOS_MAX fallos en la ventana, la persona espera. Un acierto borra sus fallos.
@@ -107,7 +120,7 @@ function filaPublica(id, d, ahora) {
   return {
     clave: d.clave || id, creditos: Number(d.creditos) || 0, estado: estadoDe(d, ahora), estadoGuardado: d.estado === 'pausado' ? 'pausado' : 'activo',
     canjes: Number(d.canjes) || 0, maxPersonas: Number.isInteger(d.maxPersonas) ? d.maxPersonas : null,
-    creditosEntregados: Number(d.creditosEntregados) || 0, vence: aMs(d.venceMs) !== null ? new Date(aMs(d.venceMs)).toISOString() : null,
+    creditosEntregados: Number(d.creditosEntregados) || 0, audiencia: audienciaDe(d), vence: aMs(d.venceMs) !== null ? new Date(aMs(d.venceMs)).toISOString() : null,
     creado: aMs(d.creadoMs) !== null ? new Date(aMs(d.creadoMs)).toISOString() : null, creadoPor: d.creadoPorCorreo || ''
   };
 }
@@ -115,9 +128,9 @@ function filaPublica(id, d, ahora) {
 function crearServicio({ db, admin, ahora = () => Date.now(), azar }) {
   const FieldValue = () => admin.firestore.FieldValue;
 
-  async function crear({ adminUid, adminCorreo = '', clave, creditos: cantidad, venceMs, maxPersonas }) {
+  async function crear({ adminUid, adminCorreo = '', clave, creditos: cantidad, venceMs, maxPersonas, audiencia }) {
     const t = ahora();
-    const v = validarNuevo({ clave, creditos: cantidad, venceMs, maxPersonas }, t);
+    const v = validarNuevo({ clave, creditos: cantidad, venceMs, maxPersonas, audiencia }, t);
     const propia = !!v.clave;
     for (let intento = 0; intento < 6; intento++) {
       const cl = v.clave || generarClave(azar);
@@ -126,12 +139,12 @@ function crearServicio({ db, admin, ahora = () => Date.now(), azar }) {
         const previo = await tx.get(ref);
         if (previo.exists) return null;
         tx.set(ref, {
-          clave: cl, creditos: v.creditos, venceMs: v.venceMs, maxPersonas: v.maxPersonas, canjes: 0, creditosEntregados: 0, estado: 'activo',
+          clave: cl, creditos: v.creditos, venceMs: v.venceMs, maxPersonas: v.maxPersonas, audiencia: v.audiencia, canjes: 0, creditosEntregados: 0, estado: 'activo',
           creadoMs: t, creadoPor: adminUid, creadoPorCorreo: String(adminCorreo || '').toLowerCase().slice(0, 160), id: idPublico(cl)
         });
         return cl;
       });
-      if (hecho) return filaPublica(hecho, { clave: hecho, creditos: v.creditos, venceMs: v.venceMs, maxPersonas: v.maxPersonas, canjes: 0, creditosEntregados: 0, estado: 'activo', creadoMs: t, creadoPorCorreo: adminCorreo }, t);
+      if (hecho) return filaPublica(hecho, { clave: hecho, creditos: v.creditos, venceMs: v.venceMs, maxPersonas: v.maxPersonas, audiencia: v.audiencia, canjes: 0, creditosEntregados: 0, estado: 'activo', creadoMs: t, creadoPorCorreo: adminCorreo }, t);
       if (propia) throw new ErrorCupon(409, 'Ya existe un cupón con esa clave. Elige otra o déjala vacía para que se cree una al azar.', 'clave-existe');
     }
     throw new ErrorCupon(503, 'No se pudo generar una clave libre. Inténtalo de nuevo.', 'sin-clave');
@@ -166,21 +179,21 @@ function crearServicio({ db, admin, ahora = () => Date.now(), azar }) {
   }
 
   // Lo que ESTA persona aún puede canjear: cuántos cupones activos hay y cuántos créditos da el mayor. Nunca devuelve claves.
-  async function disponiblesPara(uid) {
+  async function disponiblesPara(uid, { membresia = false } = {}) {
     const [cupones, hechos] = await Promise.all([
       db.collection(COL_CUPONES).limit(TOPE_LISTA).get(),
       db.collection(COL_CANJES).where('uid', '==', uid).limit(TOPE_LISTA).get()
     ]);
     const ya = new Set(hechos.docs.map(d => (d.data() || {}).clave));
     const t = ahora();
-    const lista = cupones.docs.map(d => ({ id: d.id, d: d.data() || {} })).filter(x => estadoDe(x.d, t) === 'activo' && !ya.has(x.d.clave || x.id));
+    const lista = cupones.docs.map(d => ({ id: d.id, d: d.data() || {} })).filter(x => estadoDe(x.d, t) === 'activo' && aplicaA(audienciaDe(x.d), membresia) && !ya.has(x.d.clave || x.id));
     return {
       hay: lista.length > 0, cantidad: lista.length, creditos: lista.reduce((m, x) => Math.max(m, Number(x.d.creditos) || 0), 0),
       limitado: lista.some(x => aMs(x.d.venceMs) !== null || Number.isInteger(x.d.maxPersonas)), ids: lista.map(x => idPublico(x.d.clave || x.id))
     };
   }
 
-  async function canjear({ uid, nombre = '', email = '', clave }) {
+  async function canjear({ uid, nombre = '', email = '', clave, membresia = false }) {
     const cl = normalizarClave(clave);
     if (!cl) throw new ErrorCupon(404, 'Esa clave no es válida o ya no está disponible.', 'no-valido');
     const cuponRef = db.collection(COL_CUPONES).doc(cl);
@@ -195,6 +208,10 @@ function crearServicio({ db, admin, ahora = () => Date.now(), azar }) {
       if (canje.exists) throw new ErrorCupon(409, 'Ya canjeaste este cupón. Cada persona lo puede usar una sola vez.', 'ya-canjeado');
       const estado = estadoDe(c, t);
       if (estado === 'pausado') throw new ErrorCupon(404, 'Esa clave no es válida o ya no está disponible.', 'no-valido');
+      const aud = audienciaDe(c);
+      if (!aplicaA(aud, membresia)) {
+        throw new ErrorCupon(403, aud === 'vip' ? 'Este cupón es solo para miembros VIP.' : 'Este cupón es solo para cuentas gratuitas.', 'cupon-no-aplica', { audiencia: aud });
+      }
       if (estado === 'vencido') throw new ErrorCupon(410, 'Este cupón ya venció.', 'cupon-vencido');
       if (estado === 'agotado') throw new ErrorCupon(410, `Este cupón ya alcanzó su límite de ${c.maxPersonas} personas.`, 'cupon-agotado', { limite: c.maxPersonas });
       const cantidad = Number(c.creditos) || 0;
@@ -215,6 +232,6 @@ function crearServicio({ db, admin, ahora = () => Date.now(), azar }) {
 }
 
 module.exports = {
-  COL_CUPONES, COL_CANJES, MAX_CREDITOS, MAX_PERSONAS, INTENTOS_MAX, INTENTOS_VENTANA_MS, ErrorCupon,
+  COL_CUPONES, COL_CANJES, AUDIENCIAS, aplicaA, MAX_CREDITOS, MAX_PERSONAS, INTENTOS_MAX, INTENTOS_VENTANA_MS, ErrorCupon,
   normalizarClave, generarClave, idPublico, estadoDe, validarNuevo, crearLimitadorIntentos, filaPublica, crearServicio
 };

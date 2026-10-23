@@ -1197,7 +1197,7 @@ montarRutasMateriales(app, {
 montarRutasCreditos(app, { db, admin, autenticarFirebase, errorHttp, club, catalogoLibros, catalogoMateriales, analizadorJson: express.json({ limit: '2kb' }) });
 // ── Cupones de créditos: la administración crea una clave y la comparte por el canal de WhatsApp; la persona la canjea (services/rutas-cupones.js) ──
 // creditosCupones y creditosCuponCanjes solo las escribe este servidor. La tarjeta de aviso nunca recibe la clave.
-montarRutasCupones(app, { db, admin, auth, autenticarFirebase, errorHttp, analizadorJson: express.json({ limit: '2kb' }) });
+montarRutasCupones(app, { db, admin, auth, autenticarFirebase, errorHttp, club, analizadorJson: express.json({ limit: '2kb' }) });
 // ── Reseñas de cursos: la persona califica de 1 a 5 estrellas un curso que ya terminó (services/rutas-resenas.js) ──
 // La colección resenas solo la escribe este servidor y solo la lee la administración.
 montarRutasResenas(app, { db, autenticarFirebase, errorHttp, analizadorJson: express.json({ limit: '4kb' }) });
