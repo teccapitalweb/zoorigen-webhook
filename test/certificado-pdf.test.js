@@ -2,6 +2,8 @@
 
 // Certificado en PDF (pdfkit + qrcode) y correo con el PDF adjunto (Resend simulado).
 const test = require('node:test');
+const fs = require('node:fs');
+const path = require('node:path');
 const assert = require('node:assert/strict');
 const QRCode = require('qrcode');
 const { generarCertificadoPdf, seguro, urlVerificacion } = require('../services/certificado-pdf');
@@ -159,4 +161,61 @@ test('enviarConResend: sin adjuntos el cuerpo no trae "attachments" (el correo d
   assert.equal('attachments' in llamadas[0].cuerpo, false);
   await correo.enviarConResend({ para: 'a@x.com', asunto: 's', html: 'h', texto: 't', adjuntos: [{ filename: 'a.pdf', content: 'QQ==' }] }, { ...config, fetchImpl });
   assert.deepEqual(llamadas[1].cuerpo.attachments, [{ filename: 'a.pdf', content: 'QQ==' }]);
+});
+
+// ── Dos firmas (Zoorigen + IPCIL Latinoamericano) y la fecha en el pie ──
+
+test('PDF: dos firmas (Erick y la Coordinación de Certificación de IPCIL), QR y folio siguen', async () => {
+  const pdf = await generarCertificadoPdf(base, { comprimir: false });
+  const texto = textoDe(pdf);
+  for (const esperado of ['ERICK DE JESÚS SALAS ROJAS', 'Director General · Zoorigen México', 'Escanea para verificar', 'COORDINACIÓN DE CERTIFICACIÓN', 'IPCIL LATINOAMERICANO', 'FOLIO OFICIAL', 'ZOO-2026-ABC12345']) {
+    assert.ok(texto.includes(esperado), `falta "${esperado}"`);
+  }
+  // la imagen de la firma de IPCIL (PNG con transparencia) viaja dentro del PDF: logo + QR + firma (+ sus máscaras de transparencia)
+  const imagenes = (pdf.toString('latin1').match(/\/Subtype \/Image/g) || []).length;
+  assert.ok(imagenes >= 3, 'imágenes en el PDF: ' + imagenes);
+  assert.ok(fs.existsSync(path.join(__dirname, '..', 'assets', 'cert', 'firma-ipcil.png')), 'existe assets/cert/firma-ipcil.png');
+});
+
+test('PDF: la fecha ya no es una columna; va en la línea de pie con folio, sitio y lugar, y sale del dato real', async () => {
+  const texto = textoDe(await generarCertificadoPdf(base, { comprimir: false }));
+  assert.equal(texto.includes('FECHA DE EXPEDICIÓN'), false);
+  assert.ok(texto.includes('Folio: ZOO-2026-ABC12345 · zoorigen.com · Emitido el 24 de septiembre de 2026 · Tehuacán, Puebla, México · Certificado emitido digitalmente por Zoorigen México'), texto.slice(-400));
+  // otra fecha en el dato, otra fecha en el pie (no está escrita a mano)
+  const otra = textoDe(await generarCertificadoPdf({ ...base, emitido: '2026-10-19T18:30:00Z' }, { comprimir: false }));
+  assert.ok(otra.includes('Emitido el 19 de octubre de 2026'));
+  assert.equal(otra.includes('24 de septiembre'), false);
+  // sin fecha válida el pie no inventa una
+  const sinFecha = textoDe(await generarCertificadoPdf({ ...base, emitido: 'no es fecha' }, { comprimir: false }));
+  assert.equal(/Emitido el/.test(sinFecha), false);
+  assert.ok(sinFecha.includes('zoorigen.com'));
+});
+
+test('PDF: nombre largo, curso de dos líneas y pie largo siguen en una sola página, con las dos firmas y el pie', async () => {
+  const largo = await generarCertificadoPdf({
+    ...base, nombre: 'María de los Ángeles Guadalupe Fernández de la Cruz y Rodríguez',
+    curso: 'Programa integral avanzado de manejo, bienestar, reproducción y conservación de fauna silvestre bajo cuidado humano en México'
+  }, { comprimir: false });
+  assert.equal(paginas(largo), 1);
+  const texto = textoDe(largo);
+  assert.ok(texto.includes('IPCIL LATINOAMERICANO'));
+  assert.ok(texto.includes('Emitido el 24 de septiembre de 2026'));
+});
+
+test('PDF: sin el archivo de la firma de IPCIL el certificado sale igual, con su línea y su texto', () => {
+  // el módulo la lee de assets/cert; se carga otra copia del módulo con la lectura de archivos sin esa imagen
+  const rutaModulo = require.resolve('../services/certificado-pdf');
+  const leerOriginal = fs.readFileSync;
+  const copia = require.cache[rutaModulo];
+  delete require.cache[rutaModulo];
+  fs.readFileSync = function (ruta, ...resto) {
+    if (String(ruta).endsWith('firma-ipcil.png')) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    return leerOriginal.call(this, ruta, ...resto);
+  };
+  let sin;
+  try { sin = require('../services/certificado-pdf'); } finally { fs.readFileSync = leerOriginal; delete require.cache[rutaModulo]; require.cache[rutaModulo] = copia; }
+  return sin.generarCertificadoPdf(base, { comprimir: false }).then(pdf => {
+    assert.equal(paginas(pdf), 1);
+    assert.ok(textoDe(pdf).includes('COORDINACIÓN DE CERTIFICACIÓN'));
+  });
 });

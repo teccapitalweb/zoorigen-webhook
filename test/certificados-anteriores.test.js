@@ -514,3 +514,32 @@ test('pendientes: informa la fecha límite configurada y responde 503 sin la lla
   const sin = servidor({ sinLlave: true });
   assert.equal((await get(sin.app, '/api/admin/certificados/pendientes', 'token-admin')).status, 503);
 });
+
+// ── El rediseño (dos firmas, fecha en el pie) no toca lo guardado ni lo firmado ──
+
+test('rediseño: un certificado anterior se verifica igual y su PDF sale con el diseño nuevo, sin escribir ni cambiar la firma', async () => {
+  const { app, db } = servidor({ seed: seedNavegador() });
+  const antes = foto(db);
+  const publico = await request(app).get(`/api/certificados/${FOLIO}`);
+  assert.equal(publico.status, 200);
+  assert.equal(publico.body.valido, true);
+  assert.equal(publico.body.anterior, true);
+  // el PDF se dibuja con los mismos datos públicos: dos firmas y la fecha real del certificado en el pie
+  const { generarCertificadoPdf } = require('../services/certificado-pdf');
+  const pdf = await generarCertificadoPdf(publico.body.certificado, { comprimir: false });
+  const texto = [...pdf.toString('latin1').matchAll(/<([0-9a-fA-F]{2,})>/g)].map(m => Buffer.from(m[1], 'hex').toString('latin1')).join('');
+  for (const esperado of ['COORDINACIÓN DE CERTIFICACIÓN', 'IPCIL LATINOAMERICANO', 'Emitido el 4 de marzo de 2026', 'Ana Pérez', FOLIO]) assert.ok(texto.includes(esperado), esperado);
+  assert.equal(texto.includes('FECHA DE EXPEDICIÓN'), false);
+  assert.equal(foto(db), antes, 'ni la verificación ni el PDF escriben en Firestore');
+  assert.equal((await request(app).get(`/api/certificados/${FOLIO}`)).status, 200, 'sigue válido después de generar el PDF');
+});
+
+test('rediseño: la firma HMAC de un certificado emitido solo cubre folio, titular, curso, fecha y año; el diseño no forma parte', () => {
+  const c = cert.construirCertificado({ uid: 'ana', cursoId: 'c1', curso: { title: 'Biología de tiburones', lecciones: [{ titulo: 'A', videoId: uuid(1), provider: 'bunny' }] }, nombre: 'Ana Pérez', emitido: '2026-03-04T15:00:00Z', llave: LLAVE });
+  assert.equal(cert.firmaValida(c, LLAVE), true);
+  assert.equal(cert.datosFirma(c).split('\n').length, 5);
+  assert.equal(/IPCIL|firma-ipcil|diseno|dise\u00f1o|plantilla/i.test(cert.datosFirma(c)), false);
+  // los campos personales o de presentación pueden cambiar sin invalidar; la firma de seguridad no cambia
+  assert.equal(cert.firmaValida({ ...c, memberEmail: 'otro@example.com', instructor: 'Otro', horas: 99 }, LLAVE), true);
+  assert.equal(cert.firmaValida({ ...c, emitido: '2026-03-05T15:00:00Z' }, LLAVE), false, 'la fecha sí está firmada');
+});

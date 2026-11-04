@@ -2,7 +2,7 @@
 
 // Genera el certificado en PDF (A4 horizontal) para adjuntarlo al correo.
 // Reproduce el diseño de pages/ver-certificado.html del sitio (lienzo de 1000x707 px, misma proporción
-// que A4): marco verde y dorado, logo, nombre, curso, QR de verificación, firma y sello.
+// que A4): marco verde y dorado, logo, nombre, curso, QR de verificación, dos firmas (Zoorigen e IPCIL Latinoamericano), pie con la fecha y sello.
 // Usa las fuentes estándar de PDF (Times/Helvetica/Courier): no depende de archivos de fuentes.
 
 const fs = require('fs');
@@ -26,6 +26,8 @@ const ASSETS = path.join(__dirname, '..', 'assets', 'cert');
 const leer = nombre => { try { return fs.readFileSync(path.join(ASSETS, nombre)); } catch (_) { return null; } };
 // Si el logo no está, el encabezado queda con texto (el certificado se genera igual)
 const LOGO = leer('logo.png');
+// Segunda firma: Coordinación de Certificación de IPCIL Latinoamericano (PNG con fondo transparente). Si falta, el certificado sale igual, con su línea y su texto.
+const FIRMA_IPCIL = leer('firma-ipcil.png');
 
 // Las fuentes estándar de PDF solo cubren Latin-1/CP1252: se conservan acentos y ñ,
 // y cualquier otro carácter se simplifica para que nunca salga un símbolo roto.
@@ -223,7 +225,7 @@ async function generarCertificadoPdf(datos, opciones = {}) {
         .text('Reconociendo su dedicación, compromiso y empeño por continuar su formación profesional en beneficio de la fauna y la biodiversidad mexicana.',
           (ANCHO - 640) / 2, 394 + altoCurso + 40, { width: 640, align: 'center' });
 
-      // Pie: firma · QR · fecha
+      // Pie: firma de Zoorigen · QR · firma de IPCIL Latinoamericano (la fecha va en la línea de pie, abajo)
       const colIzq = 118, colDer = ANCHO - 118 - 230;
       dibujarFirma(doc, colIzq + 10, 548);
       doc.lineWidth(1.5).strokeColor(TINTA, 1).moveTo(colIzq, 604).lineTo(colIzq + 230, 604).stroke();
@@ -238,13 +240,28 @@ async function generarCertificadoPdf(datos, opciones = {}) {
       doc.font('Times-Italic').fontSize(9.5).fillColor(GRIS, 1)
         .text('Escanea para verificar', centro - 80, 629, { width: 160, align: 'center', lineBreak: false });
 
-      doc.font('Times-BoldItalic').fontSize(21).fillColor(VERDE, 1)
-        .text(seguro(fechaLarga(emitido)) || '-', colDer, 566, { width: 230, align: 'center', lineBreak: false });
+      if (FIRMA_IPCIL) {
+        // La firma sube un poco sobre la línea, como una firma hecha a mano (320 x 400 px de origen)
+        const altoFirma = 76;
+        doc.image(FIRMA_IPCIL, colDer + (230 - altoFirma * 0.8) / 2, 604 - altoFirma + 2, { height: altoFirma });
+      }
       doc.lineWidth(1.5).strokeColor(TINTA, 1).moveTo(colDer, 604).lineTo(colDer + 230, 604).stroke();
-      doc.font('Times-Bold').fontSize(10.5).fillColor(TINTA, 1)
-        .text('FECHA DE EXPEDICIÓN', colDer, 611, { width: 230, align: 'center', characterSpacing: 0.8, lineBreak: false });
-      doc.font('Times-Italic').fontSize(10.5).fillColor(GRIS, 1)
-        .text('Tehuacán, Puebla · México', colDer, 627, { width: 230, align: 'center', lineBreak: false });
+      let tamCoord = 10.5;
+      doc.font('Times-Bold');
+      while (tamCoord > 8 && doc.fontSize(tamCoord).widthOfString('COORDINACIÓN DE CERTIFICACIÓN', { characterSpacing: 0.8 }) > 230) tamCoord -= 0.25;
+      doc.font('Times-Bold').fontSize(tamCoord).fillColor(TINTA, 1)
+        .text('COORDINACIÓN DE CERTIFICACIÓN', colDer, 611, { width: 230, align: 'center', characterSpacing: 0.8, lineBreak: false });
+      doc.font('Times-Roman').fontSize(9.5).fillColor(GRIS, 1)
+        .text('IPCIL LATINOAMERICANO', colDer, 627, { width: 230, align: 'center', characterSpacing: 1.2, lineBreak: false });
+
+      // Línea de pie dentro del marco (letra pequeña y gris): folio, sitio, fecha de emisión y lugar. La fecha sale del dato real del certificado.
+      const fechaPie = seguro(fechaLarga(emitido));
+      const textoPie = ['Folio: ' + folioSeguro, 'zoorigen.com', fechaPie ? 'Emitido el ' + fechaPie : '', 'Tehuacán, Puebla, México', 'Certificado emitido digitalmente por Zoorigen México'].filter(Boolean).join(' · ');
+      let tamPie = 8.4;
+      doc.font('Times-Roman');
+      while (tamPie > 6.5 && doc.fontSize(tamPie).widthOfString(textoPie) > 740) tamPie -= 0.2;
+      doc.font('Times-Roman').fontSize(tamPie).fillColor(GRIS, 1)
+        .text(textoPie, (ANCHO - 740) / 2, 652, { width: 740, align: 'center', lineBreak: false });
 
       dibujarSello(doc, ANCHO - 95 - 47.5, 340);
 
