@@ -7,6 +7,7 @@
 //   GET  /api/admin/retos/historial   quién resolvió qué reto: tipo, fecha y hora, XP (filtros y paginación)
 //   GET  /api/admin/retos/usuarios    TODAS las personas (también con 0 retos): XP total y de retos, nivel, retos superados por tipo, días activos,
 //                                     último día, cambios de orden de cursos; y los datos de las gráficas (por tipo, por nivel, por día)
+//   GET  /api/admin/cambios-orden     cambio de orden de cursos: quién lo usó (nombre, fecha, retos, curso de y a), embudo, cambios por día y cursos elegidos
 //   GET  /api/admin/foro              publicaciones recientes con su texto y sus respuestas
 //   POST /api/admin/foro/publicar     publica como cuenta oficial «Zoorigen» (texto de hasta 1,500 caracteres; sin imagen)
 //   POST /api/admin/foro/:id/eliminar                     borra la publicación y sus respuestas
@@ -184,7 +185,7 @@ function montarRutasAdminComunidad(app, deps, a) {
         xp: xpRetos, xpTotal, nivel: { id: nivel.id, nombre: nivel.nombre },
         superados: Number.isFinite(data.superados) ? data.superados : 0, dias: Array.isArray(data.dias) ? data.dias.length : 0,
         ultimaVez: ultima ? ultima.toISOString() : null, porReto,
-        cambioOrden: { usados: progresoOrden.usados, contados: progresoOrden.contados.total }
+        cambioOrden: { usados: progresoOrden.usados, maximo: progresoOrden.maximo, contados: progresoOrden.contados.total }
       };
     };
     const filas = [];
@@ -218,6 +219,91 @@ function montarRutasAdminComunidad(app, deps, a) {
         porDia: dias.map(d => ({ dia: d, retos: porDia.get(d) })),
         eventosEnDias, historialDesde: desde
       }
+    });
+  }));
+
+  // ════════════════════════════════════════════════════════════
+  // Cambio de orden de cursos: quién lo usó y si lo están usando
+  // ════════════════════════════════════════════════════════════
+  // Embudo (solo miembros con membresía vigente, sin administradores):
+  //   activos → con al menos 1 reto nuevo → llegaron a la meta del cambio (pueden cambiar o ya cambiaron) → ya lo usaron → pueden y no lo han usado.
+  // «Pueden» = cumplen los retos del siguiente cambio y todavía les queda alguno por usar. (Que además haya otro curso cerrado para mover lo decide el calendario de cada persona.)
+  const TOPE_CAMBIOS_ORDEN = 2000;
+  app.get('/api/admin/cambios-orden', conAdmin('No se pudo cargar el cambio de orden de cursos', 'cambios-orden', async (req, res) => {
+    const forzar = refrescar(req);
+    const [mi, rt] = await Promise.all([miembros(forzar), conCache('retosUsuario', () => leerColeccion('retosUsuario'), forzar)]);
+    const snap = await db.collection('calendarioCambios').orderBy('fecha', 'desc').limit(TOPE_CAMBIOS_ORDEN + 1).get().catch(() => ({ docs: [] }));
+    const perfiles = new Map(mi.docs.map(({ id, data }) => [id, data]));
+    const retosPorUid = new Map(rt.docs.map(({ id, data }) => [id, data]));
+    const maximo = retosReglas.maxCambiosOrden();
+    const tramos = retosReglas.cambiosOrdenVigentes().map(t => ({ n: t.n, total: t.total, porTipo: t.porTipo }));
+    const texto = (v, n) => String(v === undefined || v === null ? '' : v).slice(0, n);
+
+    const cambios = snap.docs.slice(0, TOPE_CAMBIOS_ORDEN).map(d => {
+      const c = d.data() || {};
+      const fecha = panel.aFecha(c.fecha) || (c.en ? panel.aFecha(c.en) : null);
+      const p = perfiles.get(c.uid);
+      const r = c.retos && typeof c.retos === 'object' ? c.retos : null;
+      const num = v => (Number.isFinite(Number(v)) ? Math.max(0, Math.floor(Number(v))) : 0);
+      return {
+        id: d.id, uid: texto(c.uid, 128), nombre: p ? nombreDe(p) : 'Sin nombre', correo: p ? panel.enmascararCorreo(p.email) : '',
+        n: Number(c.n) || 1, cursoId: texto(c.cursoId, 200), curso: texto(c.titulo, 160),
+        anteriorCursoId: texto(c.anteriorCursoId, 200), anterior: texto(c.anteriorTitulo, 160),
+        deLugar: Number.isFinite(Number(c.deLugar)) ? Number(c.deLugar) : null, aLugar: Number.isFinite(Number(c.aLugar)) ? Number(c.aLugar) : null,
+        en: fecha ? fecha.toISOString() : null,
+        retos: r ? { quiz: num(r.quiz), detective: num(r.detective), orden: num(r.orden), total: num(r.total) || num(r.quiz) + num(r.detective) + num(r.orden) } : null
+      };
+    });
+
+    // Embudo
+    let activos = 0, conReto = 0, alcanzaron = 0, usaron = 0, disponibles = 0;
+    const puedenSinUsar = [];
+    for (const { id, data } of mi.docs) {
+      if (!tieneAcceso(data) || data.role === 'admin') continue;
+      activos += 1;
+      const prog = retosReglas.progresoCambioOrden(retosPorUid.get(id) || {});
+      if (prog.contados.total >= 1) conReto += 1;
+      if (prog.usados >= 1 || (prog.tramos[0] && prog.tramos[0].cumple)) alcanzaron += 1;
+      if (prog.usados >= 1) usaron += 1;
+      if (prog.usados < prog.maximo && prog.siguiente && prog.siguiente.cumple) {
+        disponibles += 1;
+        if (puedenSinUsar.length < 50) puedenSinUsar.push({ uid: id, nombre: nombreDe(data), correo: panel.enmascararCorreo(data.email), retos: prog.contados.total, usados: prog.usados });
+      }
+    }
+    const embudo = [
+      { id: 'activos', nombre: 'Miembros activos', personas: activos },
+      { id: 'conRetos', nombre: 'Con al menos 1 reto nuevo', personas: conReto },
+      { id: 'alcanzaron', nombre: 'Llegaron a ' + (tramos[0] ? tramos[0].total : 35) + ' retos (pueden cambiar)', personas: alcanzaron },
+      { id: 'usaron', nombre: 'Ya usaron el cambio', personas: usaron },
+      { id: 'disponibles', nombre: 'Lo tienen disponible y no lo han usado', personas: disponibles }
+    ];
+
+    // Cambios por día (últimos 30 días, hora de México)
+    const HOY = Date.now();
+    const dias = [];
+    for (let i = 29; i >= 0; i--) dias.push(retosReglas.fechaMexico(new Date(HOY - i * 86400000)));
+    const porDia = new Map(dias.map(d => [d, 0]));
+    for (const c of cambios) {
+      if (!c.en) continue;
+      const dia = retosReglas.fechaMexico(new Date(c.en));
+      if (porDia.has(dia)) porDia.set(dia, porDia.get(dia) + 1);
+    }
+    // Cursos más elegidos como «el que se abre primero»
+    const porCurso = new Map();
+    for (const c of cambios) {
+      const k = c.cursoId || c.curso;
+      if (!k) continue;
+      const x = porCurso.get(k) || { cursoId: c.cursoId, curso: c.curso || c.cursoId, veces: 0 };
+      x.veces += 1;
+      porCurso.set(k, x);
+    }
+    const cursos = [...porCurso.values()].sort((a, b) => b.veces - a.veces || a.curso.localeCompare(b.curso, 'es')).slice(0, 8);
+
+    return res.json({
+      ok: true, generado: new Date().toISOString(), truncado: snap.docs.length > TOPE_CAMBIOS_ORDEN || mi.truncado || rt.truncado,
+      maximo, tramos, total: cambios.length,
+      resumen: { cambios: cambios.length, personas: new Set(cambios.map(c => c.uid)).size },
+      embudo, puedenSinUsar, porDia: dias.map(d => ({ dia: d, cambios: porDia.get(d) })), cursos, cambios
     });
   }));
 

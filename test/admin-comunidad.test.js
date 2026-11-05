@@ -193,7 +193,7 @@ test('GET /api/admin/retos/usuarios: TODAS las personas (también con 0 retos), 
   assert.deepEqual(ana.porReto, { quiz: { veces: 6, superados: 4, perfectos: 1 } }, 'solo retos conocidos');
   assert.equal(ana.dias, 2);
   assert.ok(ana.ultimaVez);
-  assert.deepEqual(ana.cambioOrden, { usados: 1, contados: 4 });
+  assert.deepEqual(ana.cambioOrden, { usados: 1, maximo: 1, contados: 4 });
   assert.deepEqual([ana.membresia, ana.esMiembro, ana.admin], ['activa', true, false]);
   const beto = r.body.usuarios[1];
   assert.deepEqual([beto.xpTotal, beto.nivel.nombre], [300, 'Aprendiz'], 'sin XP guardado se usa el de retos');
@@ -241,7 +241,7 @@ test('la ficha del miembro muestra sus cambios de orden de cursos', async () => 
   });
   const f = await get(app, '/api/admin/miembros/ana');
   assert.equal(f.status, 200);
-  assert.deepEqual([f.body.retos.cambioOrden.usados, f.body.retos.cambioOrden.maximo, f.body.retos.cambioOrden.contados.total], [1, 2, 2]);
+  assert.deepEqual([f.body.retos.cambioOrden.usados, f.body.retos.cambioOrden.maximo, f.body.retos.cambioOrden.contados.total], [1, 1, 2], 'la función sale con un solo cambio por miembro');
   assert.deepEqual(f.body.retos.cambioOrden.cambios, [{ n: 1, cursoId: 'c4', curso: 'Curso 4', deLugar: 3, en: '2026-11-05T10:00:00.000Z' }]);
   const sin = await get(app, '/api/admin/miembros/beto');
   assert.deepEqual(sin.body.retos.cambioOrden.cambios, []);
