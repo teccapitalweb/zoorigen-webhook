@@ -4,6 +4,8 @@
 // rutas-admin.js llama a montarRutasAdminExtra(app, deps, ayudas) al final. Aquí viven:
 //
 //   POST   /api/admin/miembros/:uid/regalar          regala 1 mes (30) o 1 año (365) sin tocar Stripe
+//   POST   /api/admin/miembros/:uid/datos            edita nombre, teléfono y especialidad (se anota)
+//   POST   /api/admin/miembros/:uid/quitar-acceso    pasa la cuenta a «sin membresía» al instante (no toca Stripe; se rechaza si hay suscripción de Stripe activa)
 //   DELETE /api/admin/miembros/:uid                  elimina con respaldo previo y confirmación escribiendo el correo
 //   GET    /api/admin/eliminados                     miembros eliminados (últimos 30 días se pueden restaurar)
 //   POST   /api/admin/eliminados/:uid/restaurar      vuelve a crear la cuenta y reescribe lo respaldado
@@ -66,6 +68,46 @@ function montarRutasAdminExtra(app, deps, a) {
     configCache = { en: Date.now(), valor };
     return valor;
   }
+
+  // ════════════════════════════════════════════════════════════
+  // EDITAR DATOS y QUITAR ACCESO (ventana «Acciones del miembro»). Ninguna toca Stripe.
+  // ════════════════════════════════════════════════════════════
+  app.post('/api/admin/miembros/:uid/datos', analizadorJson, conAdmin('No se pudieron guardar los datos', 'editar-datos', async (req, res, decoded) => {
+    const uid = uidDe(req);
+    const v = miembrosAdm.validarDatos(req.body);
+    if (v.error) throw errorHttp(400, v.error);
+    const ref = db.collection('miembros').doc(uid);
+    const snap = await ref.get();
+    if (!snap.exists) throw errorHttp(404, 'No encontramos a esa persona');
+    const m = snap.data() || {};
+    await ref.set({ ...v.datos, datosEditadosEn: aTs(new Date()), datosEditadosPor: decoded.uid }, { merge: true });
+    cache.delete('miembros');
+    const campos = [v.datos.name !== undefined ? 'nombre' : null, v.datos.phone !== undefined ? 'teléfono' : null, v.datos.especialidad !== undefined ? 'especialidad' : null].filter(Boolean);
+    await anotarAccion(decoded, 'editar-datos', uid, `Editó los datos de ${nombreDe(m)} (${campos.join(', ')})`, { campos });
+    return res.json({ ok: true, miembro: { nombre: v.datos.name !== undefined ? v.datos.name : nombreDe(m), telefono: v.datos.phone !== undefined ? v.datos.phone : String(m.phone || ''), especialidad: v.datos.especialidad !== undefined ? v.datos.especialidad : String(m.especialidad || '') } });
+  }, { escritura: true }));
+
+  // Quitar acceso: la cuenta pasa a «sin membresía» AHORA. No borra nada (cuenta, avance y certificados se conservan) y no toca Stripe:
+  // si hay una suscripción de Stripe activa se rechaza (Stripe volvería a darle acceso en su próximo cobro).
+  app.post('/api/admin/miembros/:uid/quitar-acceso', analizadorJson, conAdmin('No se pudo quitar el acceso', 'quitar-acceso', async (req, res, decoded) => {
+    const uid = uidDe(req);
+    if (!req.body || req.body.confirmar !== true) throw errorHttp(400, 'Falta la confirmación para quitar el acceso');
+    const ref = db.collection('miembros').doc(uid);
+    const snap = await ref.get();
+    if (!snap.exists) throw errorHttp(404, 'No encontramos a esa persona');
+    const m = snap.data() || {};
+    if (m.role === 'admin' || uid === decoded.uid) throw errorHttp(400, 'Las cuentas de administración no se pueden dejar sin acceso desde aquí');
+    if (panel.stripeActiva(m)) {
+      throw Object.assign(errorHttp(409, 'Esta persona tiene una suscripción de Stripe activa. Quitarle el acceso aquí no detiene los cobros y Stripe podría volver a darle acceso en su próximo cobro. Cancela primero la suscripción en Stripe.'), { codigo: 'stripe-activa' });
+    }
+    if (!tieneAcceso(m)) return res.json({ ok: true, yaSinAcceso: true });
+    const ahora = new Date();
+    await ref.set({ planActivo: false, planStatus: 'expired', planVence: aTs(ahora), accesoQuitadoEn: aTs(ahora), accesoQuitadoPor: decoded.uid }, { merge: true });
+    await db.collection('usuarios').doc(uid).set({ planActivo: false, planStatus: 'expired', fechaExpiracion: aTs(ahora) }, { merge: true });
+    cache.delete('miembros');
+    await anotarAccion(decoded, 'quitar-acceso', uid, `Quitó el acceso de ${nombreDe(m)} (pasó a sin membresía)`, { planTipo: m.planTipo || null });
+    return res.json({ ok: true, yaSinAcceso: false });
+  }, { escritura: true }));
 
   // ════════════════════════════════════════════════════════════
   // REGALAR tiempo

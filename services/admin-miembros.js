@@ -40,6 +40,31 @@ function validarRegalo(cuerpo) {
   return { dias, nota };
 }
 
+// Cuerpo de POST /api/admin/miembros/:uid/datos → { error } | { datos: { name?, phone?, especialidad? } } (solo los campos que llegan)
+const limpiarLinea = (t, max) => String(t).replace(/[\u0000-\u001f\u007f<>\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+function validarDatos(cuerpo) {
+  if (!esObjeto(cuerpo)) return { error: 'Faltan los datos a guardar' };
+  const datos = {};
+  if (cuerpo.nombre !== undefined) {
+    if (typeof cuerpo.nombre !== 'string') return { error: 'El nombre no es válido' };
+    const n = limpiarLinea(cuerpo.nombre, 80);
+    if (n.length < 2) return { error: 'Escribe el nombre (al menos 2 letras)' };
+    datos.name = n;
+  }
+  if (cuerpo.telefono !== undefined) {
+    if (typeof cuerpo.telefono !== 'string') return { error: 'El teléfono no es válido' };
+    const t = limpiarLinea(cuerpo.telefono, 30);
+    if (t && !/^[0-9+()\-\s.]{7,30}$/.test(t)) return { error: 'El teléfono solo puede llevar números, espacios, +, guion y paréntesis (de 7 a 30 caracteres)' };
+    datos.phone = t;
+  }
+  if (cuerpo.especialidad !== undefined) {
+    if (typeof cuerpo.especialidad !== 'string') return { error: 'La especialidad no es válida' };
+    datos.especialidad = limpiarLinea(cuerpo.especialidad, 80);
+  }
+  if (!Object.keys(datos).length) return { error: 'No hay nada que guardar' };
+  return { datos };
+}
+
 // Suma los días desde el vencimiento vigente (si todavía no pasa) o desde hoy.
 function calcularRegalo(miembro, dias, ahora = new Date()) {
   const m = miembro || {};
@@ -145,6 +170,6 @@ function vistaEliminado(id, r, ahora = new Date()) {
 
 module.exports = {
   DIAS_REGALO_VALIDOS, DIAS_PARA_RESTAURAR, TAMANO_MAXIMO_RESPALDO,
-  validarRegalo, calcularRegalo, stripeActiva, normalizarCorreo, validarEliminacion,
+  validarRegalo, validarDatos, calcularRegalo, stripeActiva, normalizarCorreo, validarEliminacion,
   copiaLimpia, tamanoAproximado, construirRespaldo, respaldoCabe, evaluarRestauracion, vistaEliminado
 };

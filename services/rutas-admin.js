@@ -105,6 +105,15 @@ function montarRutasAdmin(app, deps) {
     return new Map(snap.docs.map(d => [d.id, String((d.data() || {}).title || (d.data() || {}).titulo || d.id).slice(0, 140)]));
   }, refrescar);
 
+  // Cursos con su número de clases (para el avance «N/M» de la ficha). Una lectura compartida y en caché
+  const cursosConClases = refrescar => conCache('cursosClases', async () => {
+    const snap = await db.collection('cursos').get();
+    return snap.docs.map(d => {
+      const c = d.data() || {};
+      return { id: d.id, titulo: String(c.title || c.titulo || d.id).slice(0, 140), clases: Array.isArray(c.lecciones) ? c.lecciones.length : 0, orden: Number.isFinite(c.ordenVip) ? c.ordenVip : 9999 };
+    }).sort((a, b) => a.orden - b.orden || a.titulo.localeCompare(b.titulo, 'es'));
+  }, refrescar);
+
   const refrescar = req => req.query.refrescar === '1';
   const tieneAcceso = m => tieneAccesoVigente(m);
   const nombreDe = m => String((m && (m.name || m.displayName)) || '').slice(0, 120) || 'Sin nombre';
@@ -248,13 +257,14 @@ function montarRutasAdmin(app, deps) {
     const snap = await db.collection('miembros').doc(uid).get();
     if (!snap.exists) throw errorHttp(404, 'No encontramos a esa persona');
     const m = snap.data() || {};
-    const [progresoSnap, certSnap, refSnap, retosSnap, nombresCursos, histSnap] = await Promise.all([
+    const [progresoSnap, certSnap, refSnap, retosSnap, nombresCursos, histSnap, listaCursos] = await Promise.all([
       db.collection('miembros').doc(uid).collection('progresoCursos').get().catch(() => ({ docs: [] })),
       db.collection('certificados').where('uid', '==', uid).limit(50).get().catch(() => ({ docs: [] })),
       db.collection('referidos').where('anfitrionUid', '==', uid).limit(100).get().catch(() => ({ docs: [] })),
       db.collection('retosUsuario').doc(uid).get().catch(() => ({ exists: false })),
       cursos(),
-      db.collection('retosHistorial').where('uid', '==', uid).limit(300).get().catch(() => ({ docs: [] }))
+      db.collection('retosHistorial').where('uid', '==', uid).limit(300).get().catch(() => ({ docs: [] })),
+      cursosConClases(false).catch(() => [])
     ]);
     const progreso = progresoSnap.docs.map(d => {
       const p = d.data() || {};
@@ -278,7 +288,7 @@ function montarRutasAdmin(app, deps) {
     return res.json({
       ok: true,
       miembro: panel.fichaMiembro(uid, m, tieneAcceso),
-      progreso, certificados: certs, referidos,
+      progreso, avance: panel.avanceDeCursos(listaCursos, progreso), certificados: certs, referidos,
       retos: {
         xp: Number.isFinite(r.xp) ? r.xp : 0, superados: Number.isFinite(r.superados) ? r.superados : 0,
         historialTotal: histSnap.docs.length,

@@ -118,6 +118,7 @@ function fichaMiembro(id, m = {}, tieneAcceso) {
   return {
     ...base,
     telefono: String(m.phone || '').slice(0, 40),
+    especialidad: String(m.especialidad || '').slice(0, 80),
     inicioPlan: aIso(m.planInicio),
     cancelacion: aIso(m.canceladoEn),
     metodoPago: m.activadoManualmente ? String(m.metodoPago || 'Administración').slice(0, 60) : (m.stripeSubscriptionId ? 'Stripe' : null),
@@ -125,6 +126,20 @@ function fichaMiembro(id, m = {}, tieneAcceso) {
     activadoPor: m.activadoManualmente ? 'administración' : null,
     racha: Number.isFinite(m.streak) ? m.streak : 0
   };
+}
+
+// Avance de un miembro en TODOS los cursos publicados: { cursoId, curso, clasesVistas, clasesTotal, completado }.
+// lista: [{ id, titulo, clases }] · progreso: lo que ya trae la ficha ({ cursoId, clasesVistas, completado }). Solo lectura.
+function avanceDeCursos(lista, progreso) {
+  const por = new Map((Array.isArray(progreso) ? progreso : []).map(p => [p.cursoId, p]));
+  const filas = (Array.isArray(lista) ? lista : []).map(c => {
+    const p = por.get(c.id) || {};
+    const clasesTotal = Number.isFinite(c.clases) ? c.clases : 0;
+    const vistas = Number.isFinite(p.clasesVistas) ? p.clasesVistas : 0;
+    return { cursoId: c.id, curso: String(c.titulo || c.id).slice(0, 140), clasesVistas: clasesTotal ? Math.min(vistas, clasesTotal) : vistas, clasesTotal, completado: p.completado === true };
+  });
+  // Los cursos que ya empezó van primero (del más avanzado al menos); después los demás en su orden
+  return filas.map((f, i) => ({ f, i })).sort((a, b) => (b.f.clasesVistas > 0) - (a.f.clasesVistas > 0) || a.i - b.i).map(x => x.f);
 }
 
 // ── Resumen ──
@@ -278,5 +293,5 @@ function validarActivacion(cuerpo) {
 
 module.exports = {
   PRECIOS_LISTA_MXN, ESTADOS, ETIQUETAS_ESTADO, aFecha, aIso, diaMexico, mesMexico, origenPlan, clasificarMiembro, stripeActiva,
-  vistaMiembro, fichaMiembro, valorPago, construirResumen, enmascararCorreo, limpiarTexto, validarActivacion, numeroMonto
+  vistaMiembro, fichaMiembro, avanceDeCursos, valorPago, construirResumen, enmascararCorreo, limpiarTexto, validarActivacion, numeroMonto
 };
