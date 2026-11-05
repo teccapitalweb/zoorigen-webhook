@@ -236,7 +236,7 @@ function crearServicioCalendario(deps) {
   // Estado para pintar el bloque "Cambia el orden de tu calendario": avance, cursos cerrados que se pueden mover y cambios ya hechos.
   async function estadoCambioOrden(uid, ctx, estadoRetos, ahoraMs = Date.now()) {
     const progreso = retos.progresoCambioOrden(estadoRetos);
-    const base = { ok: true, aplica: false, ...progreso, disponible: false, cursosCerrados: [], cambios: [], xpInsignias: xpInsigniasCambio() };
+    const base = { ok: true, aplica: false, ...progreso, disponible: false, cursosCerrados: [], siguienteCurso: null, cambios: [], xpInsignias: xpInsigniasCambio() };
     if (!ctx || ctx.esAdmin || !ctx.tienePlan) return base;
     const cuadro = await asegurar(uid, ctx, ahoraMs);
     if (!cuadro) return base;
@@ -246,7 +246,9 @@ function crearServicioCalendario(deps) {
     });
     const cambios = Array.isArray(cuadro.doc.cambiosOrden) ? cuadro.doc.cambiosOrden.map(c => ({ n: c.n, cursoId: c.cursoId, titulo: c.titulo, deLugar: c.deLugar, en: c.en })) : [];
     const siguiente = progreso.siguiente;
-    return { ...base, aplica: true, cursosCerrados: cerrados, cambios, disponible: Boolean(siguiente && siguiente.cumple && cerrados.length > 1) };
+    // La oferta siempre va ligada al SIGUIENTE curso por abrirse (el primero de los cerrados): si ese curso se abre solo por su fecha,
+    // la oferta pasa sola al nuevo siguiente. Los retos contados y los cambios disponibles no dependen del calendario y no se pierden.
+    return { ...base, aplica: true, cursosCerrados: cerrados, siguienteCurso: cerrados[0] || null, cambios, disponible: Boolean(siguiente && siguiente.cumple && cerrados.length > 1) };
   }
 
   // Aplica el cambio. Todo ocurre en una transacción (calendario + retos): dos clics a la vez gastan un solo cambio.

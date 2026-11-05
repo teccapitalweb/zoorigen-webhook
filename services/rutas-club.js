@@ -687,7 +687,7 @@ function montarRutasClub(app, deps) {
     }
   });
   async function sinCambioOrden(estadoRetos) {
-    return { ok: true, aplica: false, ...retos.progresoCambioOrden(estadoRetos), disponible: false, cursosCerrados: [], cambios: [] };
+    return { ok: true, aplica: false, ...retos.progresoCambioOrden(estadoRetos), disponible: false, cursosCerrados: [], siguienteCurso: null, cambios: [] };
   }
 
   // POST /api/calendario/cambiar-orden { cursoId, confirmar: true } — pone un curso cerrado como el siguiente en abrirse.

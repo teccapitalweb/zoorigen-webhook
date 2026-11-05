@@ -350,3 +350,79 @@ test('admin: GET /api/admin/cambios-orden es solo para administradores y lista l
   assert.equal(r.body.total, 1);
   assert.deepEqual([r.body.cambios[0].uid, r.body.cambios[0].cursoId, r.body.cambios[0].n, r.body.cambios[0].titulo], ['ana', 'c4', 1, 'Curso 4']);
 });
+
+/* ───────────── La oferta va ligada al SIGUIENTE curso por abrirse ───────────── */
+
+const esperar = ms => new Promise(r => setTimeout(r, ms));
+// Calendario ya guardado: c1 abierto, c2 se abre en medio segundo y c3, c4 y c5 mucho después
+function calendarioQueAbreC2Pronto() {
+  const ahora = Date.now();
+  const f = ms => new Date(ahora + ms).toISOString();
+  return {
+    'calendariosCursos/ana': {
+      uid: 'ana', version: 1, modo: 'nuevo', fuente: 'plan', inicioMs: ahora - 2 * DIA, eleccion: null, planInicioMs: ahora - 2 * DIA, primerCursoId: null, cursoAdelantado: null,
+      entradas: [
+        { cursoId: 'c1', desbloqueoEn: f(-2 * DIA) }, { cursoId: 'c2', desbloqueoEn: f(600) }, { cursoId: 'c3', desbloqueoEn: f(8 * DIA) },
+        { cursoId: 'c4', desbloqueoEn: f(16 * DIA) }, { cursoId: 'c5', desbloqueoEn: f(24 * DIA) }
+      ]
+    }
+  };
+}
+
+test('estado: siempre trae el siguiente curso por abrirse (el primero de los cerrados)', async () => {
+  const { app } = servidor(base({ 'retosUsuario/ana': retosCon(5, 3, 2) }));
+  const r = (await estado(app)).body;
+  assert.equal(r.siguienteCurso.cursoId, 'c2');
+  assert.deepEqual([r.siguienteCurso.lugar, r.siguienteCurso.titulo], [1, 'Curso 2']);
+  assert.ok(r.siguienteCurso.diasFalta >= 1);
+  assert.deepEqual(r.cursosCerrados[0], r.siguienteCurso);
+  for (const t of ['token-sinplan', 'token-admin']) assert.equal((await estado(app, t)).body.siguienteCurso, null, t);
+});
+
+test('si el siguiente curso se abre solo con 20 retos acumulados, la oferta pasa al nuevo siguiente y nada se pierde', async () => {
+  const { app, db } = servidor(base({ ...calendarioQueAbreC2Pronto(), 'retosUsuario/ana': retosCon(8, 6, 6) }));   // 20 retos nuevos
+  const antes = (await estado(app)).body;
+  assert.equal(antes.siguienteCurso.cursoId, 'c2');
+  assert.deepEqual([antes.contados.total, antes.usados, antes.siguiente.n], [20, 0, 1]);
+  await esperar(900);   // c2 se abre por su fecha
+  const despues = (await estado(app)).body;
+  assert.equal(despues.siguienteCurso.cursoId, 'c3', 'la oferta pasó al nuevo siguiente');
+  assert.deepEqual(despues.cursosCerrados.map(c => c.cursoId), ['c3', 'c4', 'c5']);
+  assert.deepEqual(despues.cursosCerrados.map(c => c.lugar), [1, 2, 3]);
+  assert.deepEqual(despues.contados, antes.contados, 'los 20 retos contados se conservan');
+  assert.deepEqual([despues.usados, despues.maximo, despues.siguiente.n, despues.siguiente.total], [0, 2, 1, 35], 'los 2 cambios siguen disponibles');
+  assert.equal(db.value('retosUsuario/ana').cambiosOrden, 0, 'dejar pasar el tiempo no gasta ningún cambio');
+  assert.equal(db.value('calendariosCursos/ana').cambiosOrden, undefined);
+  // y los retos que siga resolviendo se suman a los de antes
+  const uno = await camino(app, { modo: 'quiz', indice: 40, puntaje: 5, total: 5 });
+  assert.equal(uno.body.cambioOrden.contados.total, 21);
+});
+
+test('con 35 retos ya cumplidos, si el siguiente curso se abre solo, sigue pudiendo elegir sobre el nuevo siguiente', async () => {
+  const { app, db } = servidor(base({ ...calendarioQueAbreC2Pronto(), 'retosUsuario/ana': retosCon(19, 8, 8) }));
+  const antes = (await estado(app)).body;
+  assert.deepEqual([antes.siguienteCurso.cursoId, antes.disponible], ['c2', true]);
+  await esperar(900);
+  const despues = (await estado(app)).body;
+  assert.deepEqual([despues.siguienteCurso.cursoId, despues.disponible, despues.contados.total, despues.usados], ['c3', true, 35, 0]);
+  // elegir c2 ya no se puede (se abrió solo) pero c5 sí, y pasa a ser el siguiente
+  const mal = await cambiar(app, { cursoId: 'c2', confirmar: true });
+  assert.deepEqual([mal.status, mal.body.codigo], [400, 'no-cerrado']);
+  assert.equal(db.value('retosUsuario/ana').cambiosOrden, 0, 'el intento no gastó nada');
+  const ok = await cambiar(app, { cursoId: 'c5', confirmar: true });
+  assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  assert.deepEqual([ok.body.cambio.deLugar, ok.body.cambio.aLugar], [3, 1]);
+  assert.equal(ok.body.cambioOrden.siguienteCurso.cursoId, 'c5');
+  assert.equal(ok.body.cambioOrden.usados, 1);
+});
+
+test('calendario puro: pasan los días y el siguiente cambia sin tocar fechas ni retos', () => {
+  const t0 = Date.UTC(2026, 10, 1);
+  const entradas = [{ cursoId: 'a', desbloqueoEn: new Date(t0 + 1 * DIA).toISOString() }, { cursoId: 'b', desbloqueoEn: new Date(t0 + 9 * DIA).toISOString() }, { cursoId: 'c', desbloqueoEn: new Date(t0 + 17 * DIA).toISOString() }];
+  const lista = ['a', 'b', 'c'].map(id => ({ id }));
+  const en = ms => cal.cursosCerradosEnOrden(cal.estadoDeCursos({ lista, entradas, eleccion: null, premios: [], adelantado: null, esAdmin: false, ahoraMs: ms })).map(c => c.cursoId);
+  assert.deepEqual(en(t0), ['a', 'b', 'c']);
+  assert.deepEqual(en(t0 + 2 * DIA), ['b', 'c']);
+  assert.deepEqual(en(t0 + 10 * DIA), ['c']);
+  assert.deepEqual(en(t0 + 20 * DIA), []);
+});
