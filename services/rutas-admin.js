@@ -30,6 +30,7 @@ const panel = require('./admin-panel');
 const bitacora = require('./bitacora-memoria');
 const { montarRutasAdminExtra } = require('./rutas-admin-extra');
 const { montarRutasAdminComunidad } = require('./rutas-admin-comunidad');
+const { montarRutasMetricasVisitas } = require('./rutas-metricas-visitas');
 const { montarRutasAdminServidor } = require('./rutas-admin-servidor');
 const { montarRutasAdminCreditos } = require('./rutas-creditos');
 const { montarRutasAdminResenas } = require('./rutas-resenas');
@@ -700,6 +701,9 @@ function montarRutasAdmin(app, deps) {
   montarRutasAdminComunidad(app, deps, {
     conAdmin, anotarAccion, cache, conCache, miembros, leerColeccion, refrescar, tieneAcceso, nombreDe, analizadorJson
   });
+
+  // ── Métricas de visitas (contador anónimo público + lectura para el panel) ──
+  montarRutasMetricasVisitas(app, deps, { conAdmin, conCache, miembros, tieneAcceso, refrescar });
 
   // ── Cuarta parte: precios (solo lectura), contacto, estado de servicios e historial del servidor ──
   montarRutasAdminServidor(app, deps, { conAdmin, anotarAccion, miembros, refrescar, tieneAcceso, analizadorJson });

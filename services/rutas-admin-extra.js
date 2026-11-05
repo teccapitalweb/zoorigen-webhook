@@ -323,6 +323,18 @@ function montarRutasAdminExtra(app, deps, a) {
       const snap = await db.collection('visitasDiarias').where('dia', '>=', rango.desde).where('dia', '<=', rango.hasta).limit(800).get();
       filasVisitas = snap.docs.map(d => ({ id: d.id, data: d.data() || {} }));
     } catch (_) { filasVisitas = []; }
+    // Con el contador nuevo (métricas de visitas) los días salen de metricasVisitas; el contador anterior (visitasDiarias) queda como respaldo
+    try {
+      const nuevo = await db.collection('metricasVisitas').where('dia', '>=', rango.desde).where('dia', '<=', rango.hasta).limit(800).get();
+      const porId = new Map(filasVisitas.map(f => [f.id, f]));
+      for (const d of nuevo.docs) {
+        const x = d.data() || {};
+        const paginas = {};
+        for (const [k, v] of Object.entries(x.paginas && typeof x.paginas === 'object' ? x.paginas : {})) if (Number(v) > 0) paginas[k === 'landing' ? 'portada' : k] = Number(v);
+        porId.set(d.id, { id: d.id, data: { total: Number(x.total) || 0, paginas } });
+      }
+      filasVisitas = [...porId.values()];
+    } catch (_) { /* sin el contador nuevo se queda con lo anterior */ }
     const datos = metricas.construirMetricas({
       miembros: mi.docs, certificados: ce.docs, retos: rt.docs, pruebas: pr.docs, progreso: prog, cursos,
       visitas: filasVisitas, visitasActivo: config.contadorVisitas, rango, ahora, tieneAcceso
