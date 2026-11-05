@@ -83,10 +83,10 @@ const INSIGNIAS = [
   { id: 'r10', nombre: 'Leyenda de los retos', desc: 'Superaste 100 retos', xp: 70, criterio: 'Supera 100 retos',
     cumple: e => e.superados >= 100 },
   // Cambio del orden de los cursos (el estado guarda cuántos cambios se usaron; solo el servidor los registra)
-  { id: 'r11', nombre: 'Calendario a tu medida', desc: 'Cambiaste el orden de tu calendario por primera vez', xp: 40,
+  { id: 'r11', nombre: 'Calendario a tu medida', desc: 'Cambia el orden de tu calendario por primera vez (35 retos nuevos, 8 de cada tipo). Solo hay 2 cambios por miembro: mueves 2 cursos en total', xp: 40,
     criterio: 'Resuelve 35 retos nuevos (8 de cada tipo) y cambia el orden de tus cursos cerrados. Solo hay 2 cambios por miembro: mueves 2 cursos en total',
     cumple: e => e.cambiosOrden >= 1 },
-  { id: 'r12', nombre: 'Rumbo propio', desc: 'Usaste tu segundo cambio de orden', xp: 60,
+  { id: 'r12', nombre: 'Rumbo propio', desc: 'Usa tu segundo y último cambio de orden (55 retos nuevos, 14 de cada tipo)', xp: 60,
     criterio: 'Llega a 55 retos nuevos (14 de cada tipo) y usa tu segundo cambio. Es el último: solo hay 2 cambios por miembro',
     cumple: e => e.cambiosOrden >= 2 }
 ];
