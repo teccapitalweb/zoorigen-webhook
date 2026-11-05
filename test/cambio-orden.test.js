@@ -426,3 +426,22 @@ test('calendario puro: pasan los días y el siguiente cambia sin tocar fechas ni
   assert.deepEqual(en(t0 + 10 * DIA), ['c']);
   assert.deepEqual(en(t0 + 20 * DIA), []);
 });
+
+/* ───────────── Las insignias no muestran su XP (se otorga igual) ───────────── */
+
+test('insignias r11 y r12: descripción corta, XP otorgado (+40 y +60) y el aviso de la campana no menciona el XP', async () => {
+  const [r11, r12] = ['r11', 'r12'].map(id => R.INSIGNIAS.find(i => i.id === id));
+  assert.deepEqual([r11.xp, r12.xp], [40, 60]);
+  for (const i of [r11, r12]) { assert.ok(i.desc.length <= 60, i.desc); assert.equal(/XP|\d+ retos|solo hay/i.test(i.desc), false, 'la descripción no trae cifras ni reglas: ' + i.desc); }
+  const { app, db } = servidor(base({ 'retosUsuario/ana': retosCon(19, 8, 8) }));
+  const r = await cambiar(app, { cursoId: 'c4', confirmar: true });
+  assert.equal(r.status, 200);
+  const aviso = db.value('avisos/ana/items/logro_r11');
+  assert.ok(aviso, 'avisó la insignia');
+  assert.equal(/XP/.test(aviso.texto), false, 'sin XP en el aviso: ' + aviso.texto);
+  assert.equal(aviso.texto, 'Calendario a tu medida');
+  const premios = (await request(app).get('/api/premios').set(auth('token-ana'))).body;
+  const l = premios.logros.find(x => x.id === 'r11');
+  assert.deepEqual([l.ganado, l.xp, l.categoria], [true, 40, 'Retos'], 'el servidor sigue otorgando el XP');
+  assert.equal(premios.logros.length, 38, '26 logros + 12 insignias de retos');
+});

@@ -312,6 +312,9 @@ function montarRutasClub(app, deps) {
     return r;
   }
 
+  // Las insignias del cambio de orden (r11 y r12) no muestran su valor en XP en el aviso (el XP se otorga igual)
+  const SIN_XP_EN_AVISO = new Set(['r11', 'r12']);
+
   // Avisos por logros nuevos y por XP de cursos terminados (los premios los avisa guardarProgreso)
   async function avisarNovedades(uid, ev, guardado) {
     try {
@@ -319,7 +322,7 @@ function montarRutasClub(app, deps) {
         const logro = ev.logros.find(l => l.id === id);
         if (!logro) continue;
         await avisos.crearAviso(db, uid, {
-          id: `logro_${id}`, tipo: 'logro', titulo: '🏅 ¡Nueva insignia!', texto: `${logro.nombre} · +${logro.xp} XP`, enlace: ENLACE_LOGROS
+          id: `logro_${id}`, tipo: 'logro', titulo: '🏅 ¡Nueva insignia!', texto: SIN_XP_EN_AVISO.has(id) ? logro.nombre : `${logro.nombre} · +${logro.xp} XP`, enlace: ENLACE_LOGROS
         });
       }
       for (const cursoId of guardado.cursosNuevos || []) {
