@@ -39,17 +39,30 @@ const TOTAL_MAXIMO = 30;
 // fecha). Es la regla de Alintec Food. Cada reto cuenta una sola vez (caminoHechos); flashcards, historia y práctica diaria no cuentan.
 const PRIMER_CURSO_RETOS = Object.freeze({ total: 15, porTipo: 4 });
 
-// Cambiar el orden en que se abren los cursos cerrados. Solo 2 cambios por miembro y son UMBRALES ACUMULADOS (no se gastan):
+// Cambiar el orden en que se abren los cursos cerrados. Los cambios son UMBRALES ACUMULADOS (no se gastan):
 // el 1.º se puede hacer con 35 retos contados y el 2.º con 55, y en cada umbral hace falta un mínimo de cada tipo
 // (quiz, detective y ordena; el modo historia NO cuenta: su avance vive en el navegador y el servidor no lo puede comprobar).
 // Solo cuentan los retos del camino superados DESPUÉS de activar esta función (campo ordenRetos de retosUsuario, que
 // nace vacío para todos). Un reto que la persona ya había superado antes SÍ cuenta si lo vuelve a superar después,
 // una sola vez, pero sin dar XP de nuevo (el XP del camino sigue siendo solo la primera vez).
-const CAMBIOS_ORDEN = Object.freeze([
+//
+// ► CUÁNTOS CAMBIOS HAY: la función sale primero con UN SOLO cambio por miembro (para ver si la usan) y más adelante se ampliará a 2.
+//   Para ampliarla se cambia UN solo número: MAX_CAMBIOS_ORDEN (de 1 a 2). Con eso aparecen solos el segundo tramo (55 retos, 14 de cada
+//   tipo), la insignia «Rumbo propio» (r12) y el total de logros; el sitio lo lee del estado que manda el servidor (campo maximo).
+const CAMBIOS_ORDEN_DEFINIDOS = Object.freeze([
   Object.freeze({ n: 1, total: 35, porTipo: 8 }),
   Object.freeze({ n: 2, total: 55, porTipo: 14 })
 ]);
-const MAX_CAMBIOS_ORDEN = CAMBIOS_ORDEN.length;
+const MAX_CAMBIOS_ORDEN = 1;
+let maxCambiosActual = MAX_CAMBIOS_ORDEN;
+const maxCambiosOrden = () => maxCambiosActual;
+// Solo para pruebas: simula otro máximo (1 o 2) y devuelve la función que lo deja como estaba
+function fijarMaxCambiosOrdenParaPruebas(n) {
+  const antes = maxCambiosActual;
+  maxCambiosActual = Math.max(1, Math.min(CAMBIOS_ORDEN_DEFINIDOS.length, Math.floor(Number(n)) || 1));
+  return () => { maxCambiosActual = antes; };
+}
+const cambiosOrdenVigentes = () => CAMBIOS_ORDEN_DEFINIDOS.slice(0, maxCambiosActual);
 
 // XP máximo que pueden dar los retos en toda la vida de la cuenta (para el balance de niveles).
 const XP_MAXIMO_RETOS = TOPE_XP_PRACTICA +
@@ -83,13 +96,21 @@ const INSIGNIAS = [
   { id: 'r10', nombre: 'Leyenda de los retos', desc: 'Superaste 100 retos', xp: 70, criterio: 'Supera 100 retos',
     cumple: e => e.superados >= 100 },
   // Cambio del orden de los cursos (el estado guarda cuántos cambios se usaron; solo el servidor los registra)
-  { id: 'r11', nombre: 'Calendario a tu medida', desc: 'Cambiaste el orden de tu calendario por primera vez', xp: 40,
-    criterio: 'Resuelve 35 retos nuevos (8 de cada tipo) y cambia el orden de tus cursos cerrados. Solo hay 2 cambios por miembro: mueves 2 cursos en total',
+  // r12 solo existe cuando hay 2 cambios (vigente): con 1 cambio no se muestra, no cuenta en el total de logros y no se puede ganar.
+  { id: 'r11', nombre: 'Calendario a tu medida', xp: 40,
+    get desc() { return maxCambiosActual >= 2 ? 'Cambiaste el orden de tu calendario por primera vez' : 'Cambiaste el orden de tu calendario'; },
+    get criterio() {
+      return maxCambiosActual >= 2
+        ? 'Resuelve 35 retos nuevos (8 de cada tipo) y cambia el orden de tus cursos cerrados. Solo hay 2 cambios por miembro: mueves 2 cursos en total'
+        : 'Resuelve 35 retos nuevos (8 de cada tipo) y cambia el orden de tus cursos cerrados. Es un solo cambio por miembro';
+    },
     cumple: e => e.cambiosOrden >= 1 },
-  { id: 'r12', nombre: 'Rumbo propio', desc: 'Usaste tu segundo y último cambio de orden', xp: 60,
+  { id: 'r12', nombre: 'Rumbo propio', desc: 'Usaste tu segundo y último cambio de orden', xp: 60, vigente: () => maxCambiosActual >= 2,
     criterio: 'Llega a 55 retos nuevos (14 de cada tipo) y usa tu segundo cambio. Es el último: solo hay 2 cambios por miembro',
     cumple: e => e.cambiosOrden >= 2 }
 ];
+// Las insignias que existen hoy (r12 solo con 2 cambios). INSIGNIAS es la lista completa; toda la interfaz usa esta.
+const insigniasVigentes = () => INSIGNIAS.filter(i => !i.vigente || i.vigente());
 
 function estadoInicial() {
   return {
@@ -167,7 +188,7 @@ function normalizarEstado(guardado) {
     camino,
     caminoHechos,
     ordenRetos: normalizarOrdenRetos(guardado.ordenRetos),
-    cambiosOrden: Math.min(MAX_CAMBIOS_ORDEN, entero(guardado.cambiosOrden))
+    cambiosOrden: Math.min(maxCambiosActual, entero(guardado.cambiosOrden))
   };
 }
 
@@ -278,9 +299,9 @@ function progresoCambioOrden(estado) {
     const libresHechos = Math.min(metaLibres, CAMINO_MODOS.reduce((t, m) => t + Math.max(0, contados[m] - tramo.porTipo), 0));
     return { n: tramo.n, total: tramo.total, porTipo: tramo.porTipo, usado: e.cambiosOrden >= tramo.n, cumple, libres: { hechos: libresHechos, meta: metaLibres }, faltan: { total: faltanTotal, ...faltan, libres: metaLibres - libresHechos } };
   };
-  const tramos = CAMBIOS_ORDEN.map(detalle);
+  const tramos = cambiosOrdenVigentes().map(detalle);
   const siguiente = tramos.find(t => !t.usado) || null;
-  return { usados: e.cambiosOrden, maximo: MAX_CAMBIOS_ORDEN, contados, siguiente, tramos };
+  return { usados: e.cambiosOrden, maximo: maxCambiosActual, contados, siguiente, tramos };
 }
 
 // Avance hacia abrir el primer curso: { tipos: { quiz: {hechos, meta}, ... }, libres: {hechos, meta}, hechos, meta, completo }
@@ -302,7 +323,7 @@ function progresoPrimerCurso(estado) {
 
 function insignias(estado) {
   const e = normalizarEstado(estado);
-  return INSIGNIAS.map(i => ({ id: i.id, nombre: i.nombre, desc: i.desc, xp: i.xp, criterio: i.criterio, desbloqueada: Boolean(i.cumple(e)) }));
+  return insigniasVigentes().map(i => ({ id: i.id, nombre: i.nombre, desc: i.desc, xp: i.xp, criterio: i.criterio, desbloqueada: Boolean(i.cumple(e)) }));
 }
 
 // Insignias que se ganaron justo con este avance (antes no, ahora sí)
@@ -322,8 +343,9 @@ function resumenPorReto(estado) {
 }
 
 module.exports = {
+  get CAMBIOS_ORDEN() { return cambiosOrdenVigentes(); },
   RETOS_VALIDOS, RETOS_BASE, RETOS_SIN_XP, MINIMO_APROBAR, XP_SUPERADO, XP_PERFECTO, TOPE_XP_PRACTICA,
-  CAMINO_MODOS, TOTALES_CAMINO, PRIMER_CURSO_RETOS, progresoPrimerCurso, CAMBIOS_ORDEN, MAX_CAMBIOS_ORDEN, progresoCambioOrden, XP_CAMINO, XP_CAMINO_PERFECTO, XP_MAXIMO_RETOS, INSIGNIAS,
+  CAMINO_MODOS, TOTALES_CAMINO, PRIMER_CURSO_RETOS, progresoPrimerCurso, CAMBIOS_ORDEN_DEFINIDOS, MAX_CAMBIOS_ORDEN, maxCambiosOrden, cambiosOrdenVigentes, fijarMaxCambiosOrdenParaPruebas, progresoCambioOrden, XP_CAMINO, XP_CAMINO_PERFECTO, XP_MAXIMO_RETOS, INSIGNIAS, insigniasVigentes,
   estadoInicial, normalizarEstado, fechaMexico, validarResultado, aplicarResultado,
   validarCaminoResultado, aplicarCaminoResultado, insignias, insigniasNuevas, resumenPorReto
 };

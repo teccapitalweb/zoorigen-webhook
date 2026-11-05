@@ -1,6 +1,9 @@
 'use strict';
 
-// Cambiar el orden de los cursos cerrados con retos (services/retos.js · CAMBIOS_ORDEN, services/calendario.js ·
+// MODO DE 2 CAMBIOS (simulado). La función sale con UN solo cambio (MAX_CAMBIOS_ORDEN = 1, ver test/cambio-orden-uno.test.js); este archivo
+// prueba lo que pasará cuando se amplíe a 2, con fijarMaxCambiosOrdenParaPruebas(2). Es la misma regla, solo que con un número más.
+//
+// Cambiar el orden de los cursos cerrados con retos (services/retos.js · CAMBIOS_ORDEN_DEFINIDOS, services/calendario.js ·
 // moverCursoAlSiguiente y rutas en services/rutas-club.js). Reglas:
 //   · 2 cambios por miembro: el 1.º con 35 retos y el 2.º con 55 (acumulados, no se gastan), mínimo 8 / 14 de cada tipo
 //     (quiz, detective y ordena; historia no cuenta).
@@ -14,6 +17,8 @@ const { cargarServidor, ts, dias } = require('./helpers/cargar-servidor');
 const { miembroConPlan, miembroSinPlan, auth, tokensDe } = require('./helpers/club');
 const R = require('../services/retos');
 const cal = require('../services/calendario');
+
+R.fijarMaxCambiosOrdenParaPruebas(2);
 
 const DIA = 86400000;
 const tokens = tokensDe('ana', 'vencida', 'sinplan', 'admin');
@@ -348,7 +353,7 @@ test('admin: GET /api/admin/cambios-orden es solo para administradores y lista l
   const r = await request(app).get('/api/admin/cambios-orden').set(auth('token-admin'));
   assert.equal(r.status, 200);
   assert.equal(r.body.total, 1);
-  assert.deepEqual([r.body.cambios[0].uid, r.body.cambios[0].cursoId, r.body.cambios[0].n, r.body.cambios[0].titulo], ['ana', 'c4', 1, 'Curso 4']);
+  assert.deepEqual([r.body.cambios[0].uid, r.body.cambios[0].cursoId, r.body.cambios[0].n, r.body.cambios[0].curso], ['ana', 'c4', 1, 'Curso 4']);
 });
 
 /* ───────────── La oferta va ligada al SIGUIENTE curso por abrirse ───────────── */

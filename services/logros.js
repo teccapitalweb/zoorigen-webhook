@@ -130,7 +130,7 @@ function infoNivel(xp) {
 // Vista previa (sin membresía): todos los logros, sin XP ni "ganado"
 function logrosVistaPrevia() {
   const base = LOGROS.map(l => ({ id: l.id, nombre: l.nombre, descripcion: l.descripcion, categoria: l.categoria }));
-  const ins = retos.INSIGNIAS.map(i => ({ id: i.id, nombre: i.nombre, descripcion: i.desc, categoria: 'Retos' }));
+  const ins = retos.insigniasVigentes().map(i => ({ id: i.id, nombre: i.nombre, descripcion: i.desc, categoria: 'Retos' }));
   return [...base, ...ins];
 }
 
@@ -151,7 +151,7 @@ function evaluar(datos, estadoRetos, xpReferidos = 0, ahora = new Date()) {
   const ganados = new Set([...ganadosL.map(l => l.id), ...insigniasGanadas.map(i => i.id)]);
   const logros = [
     ...LOGROS.map(l => ({ id: l.id, nombre: l.nombre, descripcion: l.descripcion, categoria: l.categoria, xp: l.xp, ganado: ganados.has(l.id) })),
-    ...retos.INSIGNIAS.map(i => ({ id: i.id, nombre: i.nombre, descripcion: i.desc, categoria: 'Retos', xp: i.xp, ganado: ganados.has(i.id) }))
+    ...retos.insigniasVigentes().map(i => ({ id: i.id, nombre: i.nombre, descripcion: i.desc, categoria: 'Retos', xp: i.xp, ganado: ganados.has(i.id) }))
   ];
   return {
     xp: { total, logros: xpLogros, retos: xpRetos, referidos: xpRef, cursos: xpCursos, bienvenida: xpBienvenida },
@@ -167,7 +167,7 @@ function evaluar(datos, estadoRetos, xpReferidos = 0, ahora = new Date()) {
 function xpMaximo() {
   const m = {
     logros: LOGROS.reduce((t, l) => t + l.xp, 0),
-    insignias: retos.INSIGNIAS.reduce((t, i) => t + i.xp, 0),
+    insignias: retos.insigniasVigentes().reduce((t, i) => t + i.xp, 0),
     retos: retos.XP_MAXIMO_RETOS,
     referidos: referidos.XP_MAXIMO_REFERIDOS,
     cursos: Array.from({ length: TOTAL_CURSOS }, (_, i) => xpDeCurso(i + 1)).reduce((t, x) => t + x, 0),

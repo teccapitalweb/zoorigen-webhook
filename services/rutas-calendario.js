@@ -218,15 +218,15 @@ function crearServicioCalendario(deps) {
   }
 
   /* ── Cambiar el orden de los cursos cerrados con retos ──
-     Reglas en services/retos.js (CAMBIOS_ORDEN: 35 y 55 retos acumulados, 8 y 14 de cada tipo, solo retos nuevos) y en
+     Reglas en services/retos.js (CAMBIOS_ORDEN_DEFINIDOS: 35 y 55 retos acumulados, 8 y 14 de cada tipo, solo retos nuevos; MAX_CAMBIOS_ORDEN dice cuántos están vigentes) y en
      services/calendario.js (moverCursoAlSiguiente: las mismas fechas con otro curso en cada lugar). Todo es del servidor. */
   const MENSAJES_CAMBIO = {
-    'sin-cambios': 'Ya usaste tus 2 cambios de orden. No hay más.',
     'ya-es-el-siguiente': 'Ese curso ya es el siguiente en abrirse. Elige otro curso cerrado.',
     'no-cerrado': 'Solo puedes mover cursos que todavía están cerrados.'
   };
   // XP de las insignias del cambio de orden (fuente única: retos.INSIGNIAS)
-  const xpInsigniasCambio = () => ({ 1: (retos.INSIGNIAS.find(i => i.id === 'r11') || {}).xp || 0, 2: (retos.INSIGNIAS.find(i => i.id === 'r12') || {}).xp || 0 });
+  const xpInsigniasCambio = () => ({ 1: (retos.insigniasVigentes().find(i => i.id === 'r11') || {}).xp || 0, 2: (retos.insigniasVigentes().find(i => i.id === 'r12') || {}).xp || 0 });
+  const mensajeSinCambios = () => retos.maxCambiosOrden() >= 2 ? 'Ya usaste tus ' + retos.maxCambiosOrden() + ' cambios de orden. No hay más.' : 'Ya usaste tu cambio de orden. Solo hay uno por miembro.';
   const faltanTexto = tramo => {
     const partes = [];
     [['quiz', 'quiz'], ['detective', 'detective'], ['orden', 'ordena']].forEach(([k, nombre]) => { if (tramo.faltan[k] > 0) partes.push(tramo.faltan[k] + ' de ' + nombre); });
@@ -277,7 +277,7 @@ function crearServicioCalendario(deps) {
       const antes = retos.normalizarEstado(snapRetos.exists ? snapRetos.data() : null);
       const progreso = retos.progresoCambioOrden(antes);
       const tramo = progreso.siguiente;
-      if (!tramo) throw Object.assign(errorHttp(409, MENSAJES_CAMBIO['sin-cambios']), { codigo: 'sin-cambios' });
+      if (!tramo) throw Object.assign(errorHttp(409, mensajeSinCambios()), { codigo: 'sin-cambios' });
       if (!tramo.cumple) {
         const falta = faltanTexto(tramo);
         throw Object.assign(errorHttp(403, `Todavía no puedes hacer el cambio ${tramo.n}: necesitas ${tramo.total} retos nuevos (mínimo ${tramo.porTipo} de cada tipo).` + (falta ? ` Te faltan: ${falta}.` : '')), { codigo: 'retos-insuficientes', faltan: tramo.faltan });
@@ -293,6 +293,8 @@ function crearServicioCalendario(deps) {
       const primerCursoId = !doc.cursoAdelantado && doc.primerCursoId && cerrados.some(c => c.cursoId === doc.primerCursoId) ? cursoId : (doc.primerCursoId || null);
       const registro = {
         n: tramo.n, cursoId, titulo: tituloDe(cuadro.lista, cursoId), deLugar: m.deLugar, aLugar: m.aLugar, desbloqueoEn: m.fecha,
+        // El curso que iba primero (el siguiente por abrirse) antes de este cambio: el panel de administración muestra «de cuál a cuál»
+        anteriorCursoId: cerrados[0] ? cerrados[0].cursoId : null, anteriorTitulo: cerrados[0] ? tituloDe(cuadro.lista, cerrados[0].cursoId) : '',
         en: new Date(ahoraMs).toISOString(), retos: { ...progreso.contados }
       };
       const despues = { ...antes, cambiosOrden: tramo.n };
@@ -305,7 +307,7 @@ function crearServicioCalendario(deps) {
     try {
       await avisos.crearAviso(db, uid, {
         id: 'cambio_orden_' + salida.registro.n, tipo: 'curso', titulo: 'Cambiaste el orden de tu calendario',
-        texto: '«' + (salida.registro.titulo || 'Tu curso').slice(0, 80) + '» ahora es el siguiente en abrirse.' + (salida.registro.n < retos.MAX_CAMBIOS_ORDEN ? ' Te queda 1 cambio más.' : ' Usaste tus 2 cambios.'),
+        texto: '«' + (salida.registro.titulo || 'Tu curso').slice(0, 80) + '» ahora es el siguiente en abrirse.' + (salida.registro.n < retos.maxCambiosOrden() ? ' Te queda ' + (retos.maxCambiosOrden() - salida.registro.n) + ' cambio más.' : (retos.maxCambiosOrden() >= 2 ? ' Usaste tus ' + retos.maxCambiosOrden() + ' cambios.' : ' Ya usaste tu cambio.')),
         enlace: 'club-biblioteca.html'
       });
     } catch (error) { console.warn('[Calendario] No se pudo avisar del cambio de orden:', error && error.message); }
@@ -439,12 +441,7 @@ function crearServicioCalendario(deps) {
       try { nuevoDesde = await leerNuevoDesde(Date.now()); } catch (error) { nuevoDesde = null; }
       return res.json({ ok: true, modo: estricto ? 'estricto' : 'transicion', nuevoDesde: nuevoDesde !== null ? new Date(nuevoDesde).toISOString() : null, ...estadisticas });
     }));
-    // Cambios de orden hechos por los miembros (más recientes primero)
-    app.get('/api/admin/cambios-orden', conAdmin(async (req, res) => {
-      const snap = await db.collection('calendarioCambios').orderBy('fecha', 'desc').limit(200).get().catch(() => ({ docs: [] }));
-      const cambios = snap.docs.map(d => { const c = d.data() || {}; const f = cal.aMs(c.fecha); return { id: d.id, uid: String(c.uid || ''), n: c.n, cursoId: String(c.cursoId || ''), titulo: String(c.titulo || '').slice(0, 160), deLugar: c.deLugar, aLugar: c.aLugar, en: f !== null ? new Date(f).toISOString() : (c.en || null), retos: c.retos || null }; });
-      return res.json({ ok: true, total: cambios.length, cambios });
-    }));
+    // GET /api/admin/cambios-orden vive en rutas-admin-comunidad.js (junto a las demás cifras de Retos: ahí están los miembros y sus retos)
     app.get('/api/admin/calendario/:uid', conAdmin(async (req, res) => {
       const uid = String(req.params.uid || '');
       if (!/^[A-Za-z0-9_-]{6,128}$/.test(uid)) throw errorHttp(400, 'Esa cuenta no es válida');

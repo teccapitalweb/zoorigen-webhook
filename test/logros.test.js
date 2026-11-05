@@ -14,7 +14,7 @@ const diasSeguidos = (desde, hasta) => Array.from({ length: hasta - desde + 1 },
 const sinNada = { esVIP: false, completados: 0, areas: 0, dias: [], tarjetaDir: false, foroPosts: 0, foroRespuestas: 0, foroLikes: 0, invitadosValidos: 0 };
 const evaluar = (datos, estado = null, xpRef = 0, ahora = dia(30)) => L.evaluar({ ...sinNada, ...datos }, estado, xpRef, ahora);
 
-test('la tabla trae 26 logros (l1..l26) y 12 insignias de retos (r1..r12), todos con texto en español y XP entero', () => {
+test('la tabla trae 26 logros (l1..l26) y 12 insignias de retos definidas (r1..r12; r12 solo existe con 2 cambios de orden), todos con texto en español y XP entero', () => {
   assert.deepEqual(L.LOGROS.map(l => l.id), Array.from({ length: 26 }, (_, i) => `l${i + 1}`));
   assert.deepEqual(R.INSIGNIAS.map(i => i.id), Array.from({ length: 12 }, (_, i) => `r${i + 1}`));
   for (const l of L.LOGROS) {
@@ -138,12 +138,13 @@ test('los logros de cursos suben por cantidad de cursos y de áreas', () => {
 
 test('vista previa: lista todos los logros sin XP ni "ganado"', () => {
   const lista = L.logrosVistaPrevia();
-  assert.equal(lista.length, 38);
+  assert.equal(lista.length, 37, '26 logros + 11 insignias vigentes (con 1 solo cambio de orden no existe «Rumbo propio»)');
   for (const l of lista) {
     assert.ok(l.id && l.nombre && l.descripcion && l.categoria);
     assert.ok(!('xp' in l) && !('ganado' in l));
   }
-  assert.equal(lista.filter(l => l.categoria === 'Retos').length, 12);
+  assert.equal(lista.filter(l => l.categoria === 'Retos').length, 11);
+  assert.equal(lista.some(l => l.id === 'r12'), false);
 });
 
 // ── Premios (reglas puras) ──
