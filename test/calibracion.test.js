@@ -43,9 +43,11 @@ test('calibración: Profesional ~25 % y Maestro ~75 % del XP máximo, y Maestro 
   // Al agregar 24 retos al camino (+240 XP de máximo) y luego 30 escenas de Detective (+300 XP) los umbrales NO se movieron a propósito:
   // subirlos haría bajar de nivel a quien ya lo tiene. Con 15 preguntas de quiz y 15 secuencias más (+300 XP), Profesional pide 21.9 % y Maestro 65.6 % del
   // máximo (antes 25 % y 74.5 %), por eso las tolerancias son de 5 y 10 puntos. Si algún día se quiere devolver la dificultad, se hará con cuidado de no bajar a nadie.
-  assert.ok(Math.abs(MAESTRO / MAX.total - 0.75) <= 0.10, `Maestro pide ${(MAESTRO / MAX.total * 100).toFixed(1)} % del máximo`);
+  // Con 20 preguntas de quiz y 20 secuencias de ordena más (+400 XP, máximo 8180), Profesional pide 20.8 % y Maestro 62.3 % del máximo: por eso la
+  // tolerancia de Maestro pasa a 13 puntos y el techo del máximo a 8500. Los umbrales de nivel siguen igual y el XP de cada reto también.
+  assert.ok(Math.abs(MAESTRO / MAX.total - 0.75) <= 0.13, `Maestro pide ${(MAESTRO / MAX.total * 100).toFixed(1)} % del máximo`);
   assert.ok(MAESTRO / MAX.total <= 0.9);
-  assert.ok(MAX.total >= 6000 && MAX.total <= 8000, `máximo ${MAX.total}`);
+  assert.ok(MAX.total >= 6000 && MAX.total <= 8500, `máximo ${MAX.total}`);
 });
 
 test('los logros de cursos no pagan dos veces lo mismo: todos juntos valen menos que el XP por terminar los 15 cursos', () => {

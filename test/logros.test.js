@@ -39,10 +39,10 @@ test('niveles: 5 niveles recalibrados (Profesional ~25 % y Maestro ~75 % del má
   assert.deepEqual(L.listaNiveles().map(n => n.id), [1, 2, 3, 4, 5]);
 });
 
-test('balance: el XP máximo alcanzable en toda la vida de la cuenta queda entre 6000 y 7500', () => {
+test('balance: el XP máximo alcanzable en toda la vida de la cuenta queda entre 6000 y 8500', () => {
   const m = L.xpMaximo();
   assert.equal(m.total, m.logros + m.insignias + m.retos + m.referidos + m.cursos + m.bienvenida);
-  assert.ok(m.total >= 6000 && m.total <= 8000, `máximo ${m.total}`);
+  assert.ok(m.total >= 6000 && m.total <= 8500, `máximo ${m.total}`);
   // Y evaluar() con TODO cumplido y los techos de retos y referidos da exactamente ese máximo
   const todosLosRetos = { ...R.estadoInicial(), xp: R.XP_MAXIMO_RETOS, xpPractica: R.TOPE_XP_PRACTICA, superados: 200,
     dias: Array.from({ length: 20 }, (_, i) => fecha(i + 1)),

@@ -4,15 +4,15 @@
 // de lo más básico a lo más completo. Los retos se cuentan igual que los de los libros (5, 15 y 30): retos superados de la cuenta
 // (services/retos.js), solo para miembros con membresía vigente. Los créditos son otra vía independiente (100 créditos = 1 material).
 //
-// Regla aplicada: el total de retos distintos que un miembro puede superar hoy es 146 (camino: 47 quiz + 60 detective + 39 ordena, con el
-// Detective visual y su segunda tanda de 30 escenas; la práctica diaria suma además 1 por tipo y por día). Con paso de 3 el último material pide 60, que es menos
-// que el 90 % del total (131), así que se conserva el paso de 3 y todos son alcanzables con holgura.
+// Regla aplicada: el total de retos distintos que un miembro puede superar hoy es 186 (camino: 67 quiz + 60 detective + 59 ordena, con el
+// Detective visual y tres tandas de quiz y de ordena; la práctica diaria suma además 1 por tipo y por día). Con paso de 3 el último material pide 60, que es menos
+// que el 90 % del total (167), así que se conserva el paso de 3 y todos son alcanzables con holgura.
 //
 // Orden: primero lo sencillo (carteles, hojas de observación y registros), luego controles de salud y administración, luego lo clínico
 // (cuarentena, necropsia, auditoría, rotulado de muestras), después las presentaciones y al final lo legal y más completo.
 
 const PASO = 3;
-const TOTAL_RETOS_ALCANZABLES = 146;
+const TOTAL_RETOS_ALCANZABLES = 186;
 const ORDEN = [
   'carteles-visitantes-senales',            //  3  carteles listos para imprimir
   'etograma-hoja-observacion',              //  6  hoja de observación sencilla
