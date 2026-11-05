@@ -1,6 +1,7 @@
 'use strict';
 
-// ESCALERA DE RETOS con el catálogo REAL (data/materiales y data/libros): los 20 materiales nuevos se abren con 3, 6, 9... 60 retos
+// ESCALERA DE RETOS con el catálogo REAL (data/materiales y data/libros): los 20 materiales nuevos se abren con 3, 6, 9... 30 retos (los primeros 10)
+// y con 36, 42, 50, 58, 66, 76, 86, 96, 108 y 120 retos (los últimos 10, de dificultad mayor)
 // (solo miembros con membresía vigente) o canjeándolos con 100 créditos; los antiguos conservan sus reglas y además se canjean.
 // Retos y créditos son vías independientes: cualquiera que se cumpla abre el material, y si ya abre por una no se ofrece ni se cobra la otra.
 // Ejecutar: node --test test/materiales-escalera.test.js
@@ -9,7 +10,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const { request, cargarServidor, miembroConPlan, miembroSinPlan, auth, tokensDe, ts, dias } = require('./helpers/club');
-const { ESCALERA, ORDEN, PASO, TOTAL_RETOS_ALCANZABLES } = require('../tools/materiales/generador-office/escalera');
+const { ESCALERA, ORDEN, PASO, UMBRALES, TOTAL_RETOS_ALCANZABLES } = require('../tools/materiales/generador-office/escalera');
 const creditos = require('../services/creditos');
 const retosServicio = require('../services/retos');
 
@@ -46,12 +47,15 @@ const camino = (app, cuerpoReto, t = 'token-ana') => request(app).post('/api/ret
 
 /* ───────────────────────── La escalera en el catálogo ───────────────────────── */
 
-test('escalera: los 20 materiales nuevos piden 3, 6, 9 ... 60 retos, todos por retos y sin repetir umbral', () => {
+test('escalera: los primeros 10 piden 3, 6 ... 30 retos y los ÚLTIMOS 10 suben la dificultad (36 ... 120); todos por retos y sin repetir umbral', () => {
   assert.equal(NUEVOS.length, 20);
   assert.equal(ORDEN.length, 20);
   assert.equal(PASO, 3);
   const umbrales = NUEVOS.map(m => m.requiereRetos).sort((a, b) => a - b);
-  assert.deepEqual(umbrales, Array.from({ length: 20 }, (_, i) => (i + 1) * 3));
+  assert.deepEqual(umbrales, [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 36, 42, 50, 58, 66, 76, 86, 96, 108, 120]);
+  assert.deepEqual([...UMBRALES], umbrales, 'la escalera y el catálogo dicen lo mismo');
+  assert.deepEqual(umbrales.slice(0, 10), Array.from({ length: 10 }, (_, i) => (i + 1) * 3), 'los primeros 10 no cambian');
+  assert.ok(umbrales.slice(10).every((n, i) => n > umbrales[9 + i] + 3 - 1), 'cada uno de los últimos 10 sube más que 3 sobre el anterior');
   for (const m of NUEVOS) {
     assert.equal(m.acceso, 'retos', m.id);
     assert.equal(m.requiereRetos, ESCALERA[m.id], m.id);
@@ -64,8 +68,10 @@ test('escalera: lo más básico abre primero y lo legal y más completo al final
   const por = Object.fromEntries(NUEVOS.map(m => [m.id, m.requiereRetos]));
   assert.equal(por['carteles-visitantes-senales'], 3);
   assert.equal(por['etograma-hoja-observacion'], 6);
-  assert.equal(por['plantilla-plan-manejo-uma'], 57);
-  assert.equal(por['ppt-uma-pimvs-zoologicos'], 60);
+  assert.equal(por['plantilla-plan-manejo-uma'], 108);
+  assert.equal(por['ppt-uma-pimvs-zoologicos'], 120);
+  assert.equal(por['cuarentena-recepcion-ejemplares'], 36);
+  assert.equal(por['ppt-observacion-conductual-etogramas'], 96);
   assert.ok(por['inventario-botiquin-caducidad'] < por['cuarentena-recepcion-ejemplares'], 'los registros sencillos antes que la cuarentena');
   assert.ok(por['cuarentena-recepcion-ejemplares'] < por['ppt-bioseguridad-recintos'], 'los formatos antes que las presentaciones');
   for (const id of ['plantilla-plan-manejo-uma', 'ppt-uma-pimvs-zoologicos']) assert.ok(por[id] > por['ppt-observacion-conductual-etogramas'] - 1, id + ' al final');
@@ -77,6 +83,11 @@ test('escalera: TODOS son alcanzables con holgura (el último pide menos del 90 
   assert.equal(camino.quiz + camino.detective + camino.orden, TOTAL_RETOS_ALCANZABLES);
   assert.ok(Math.max(...NUEVOS.map(m => m.requiereRetos)) <= Math.floor(TOTAL_RETOS_ALCANZABLES * 0.9), 'último umbral <= 90 % del total');
   assert.ok(Math.max(...NUEVOS.map(m => m.requiereRetos)) < TOTAL_RETOS_ALCANZABLES);
+  assert.equal(Math.max(...NUEVOS.map(m => m.requiereRetos)), 120);
+  assert.ok(TOTAL_RETOS_ALCANZABLES - 120 >= 60, 'queda un margen de al menos 60 retos sobre el material más difícil');
+  // XP aproximado para llegar a 120 retos del camino: 6 por reto (720 XP) y hasta 10 si todos son perfectos (1,200 XP)
+  assert.equal(120 * retosServicio.XP_CAMINO, 720);
+  assert.equal(120 * retosServicio.XP_CAMINO_PERFECTO, 1200);
 });
 
 test('los antiguos conservan EXACTAMENTE sus reglas: 6 por membresía y presentaciones con 3, 10 y 20 retos; libros con 5, 15 y 30', () => {
@@ -121,12 +132,16 @@ test('la lista dice cuántos retos faltan por material y cuáles ya están desbl
     assert.equal(x.soloMiembros, false);
   }
   assert.equal(por['carteles-visitantes-senales'].desbloqueado, true);
-  assert.equal(por['plantilla-plan-manejo-uma'].faltan, 47);
-  assert.equal(por['ppt-uma-pimvs-zoologicos'].faltan, 50);
+  assert.equal(por['plantilla-plan-manejo-uma'].faltan, 98);
+  assert.equal(por['ppt-uma-pimvs-zoologicos'].faltan, 110);
+  assert.equal(por['cuarentena-recepcion-ejemplares'].desbloqueado, false, 'el primero de los últimos 10 pide 36');
 });
 
-test('un miembro con muchos retos (60) abre los 20; el administrador abre todo con 0 retos', async () => {
-  const { app } = servidor(retosDe('ana', 60));
+test('un miembro con 120 retos abre los 20 (con 119 el último sigue cerrado); el administrador abre todo con 0 retos', async () => {
+  const { app: casi } = servidor(retosDe('ana', 119));
+  assert.equal((await bajar(casi, 'ppt-uma-pimvs-zoologicos')).status, 403);
+  assert.equal((await bajar(casi, 'plantilla-plan-manejo-uma')).status, 200, 'el penúltimo (108) ya abre con 119');
+  const { app } = servidor(retosDe('ana', 120));
   const r = await lista(app);
   assert.equal(r.body.materiales.filter(m => ESCALERA[m.id]).every(m => m.desbloqueado && m.faltan === 0), true);
   for (const id of ['ppt-uma-pimvs-zoologicos', 'plantilla-plan-manejo-uma']) assert.equal((await bajar(app, id)).status, 200, id);
