@@ -31,6 +31,7 @@ const retosReglas = require('./retos');
 const bitacora = require('./bitacora-memoria');
 const { montarRutasAdminExtra } = require('./rutas-admin-extra');
 const { montarRutasAdminComunidad } = require('./rutas-admin-comunidad');
+const { montarRutasMetricasVisitas } = require('./rutas-metricas-visitas');
 const { montarRutasAdminServidor } = require('./rutas-admin-servidor');
 const { montarRutasAdminCreditos } = require('./rutas-creditos');
 const { montarRutasAdminResenas } = require('./rutas-resenas');
@@ -103,6 +104,15 @@ function montarRutasAdmin(app, deps) {
   const cursos = refrescar => conCache('cursos', async () => {
     const snap = await db.collection('cursos').get();
     return new Map(snap.docs.map(d => [d.id, String((d.data() || {}).title || (d.data() || {}).titulo || d.id).slice(0, 140)]));
+  }, refrescar);
+
+  // Cursos con su número de clases (para el avance «N/M» de la ficha). Una lectura compartida y en caché
+  const cursosConClases = refrescar => conCache('cursosClases', async () => {
+    const snap = await db.collection('cursos').get();
+    return snap.docs.map(d => {
+      const c = d.data() || {};
+      return { id: d.id, titulo: String(c.title || c.titulo || d.id).slice(0, 140), clases: Array.isArray(c.lecciones) ? c.lecciones.length : 0, orden: Number.isFinite(c.ordenVip) ? c.ordenVip : 9999 };
+    }).sort((a, b) => a.orden - b.orden || a.titulo.localeCompare(b.titulo, 'es'));
   }, refrescar);
 
   const refrescar = req => req.query.refrescar === '1';
@@ -248,14 +258,15 @@ function montarRutasAdmin(app, deps) {
     const snap = await db.collection('miembros').doc(uid).get();
     if (!snap.exists) throw errorHttp(404, 'No encontramos a esa persona');
     const m = snap.data() || {};
-    const [progresoSnap, certSnap, refSnap, retosSnap, nombresCursos, histSnap, calSnap] = await Promise.all([
+    const [progresoSnap, certSnap, refSnap, retosSnap, nombresCursos, histSnap, calSnap, listaCursos] = await Promise.all([
       db.collection('miembros').doc(uid).collection('progresoCursos').get().catch(() => ({ docs: [] })),
       db.collection('certificados').where('uid', '==', uid).limit(50).get().catch(() => ({ docs: [] })),
       db.collection('referidos').where('anfitrionUid', '==', uid).limit(100).get().catch(() => ({ docs: [] })),
       db.collection('retosUsuario').doc(uid).get().catch(() => ({ exists: false })),
       cursos(),
       db.collection('retosHistorial').where('uid', '==', uid).limit(300).get().catch(() => ({ docs: [] })),
-      db.collection('calendariosCursos').doc(uid).get().catch(() => ({ exists: false }))
+      db.collection('calendariosCursos').doc(uid).get().catch(() => ({ exists: false })),
+      cursosConClases(false).catch(() => [])
     ]);
     const progreso = progresoSnap.docs.map(d => {
       const p = d.data() || {};
@@ -283,7 +294,7 @@ function montarRutasAdmin(app, deps) {
     return res.json({
       ok: true,
       miembro: panel.fichaMiembro(uid, m, tieneAcceso),
-      progreso, certificados: certs, referidos,
+      progreso, avance: panel.avanceDeCursos(listaCursos, progreso), certificados: certs, referidos,
       retos: {
         xp: Number.isFinite(r.xp) ? r.xp : 0, superados: Number.isFinite(r.superados) ? r.superados : 0,
         cambioOrden: { usados: progresoOrden.usados, maximo: progresoOrden.maximo, contados: progresoOrden.contados, cambios: cambiosOrden },
@@ -707,6 +718,9 @@ function montarRutasAdmin(app, deps) {
   montarRutasAdminComunidad(app, deps, {
     conAdmin, anotarAccion, cache, conCache, miembros, leerColeccion, refrescar, tieneAcceso, nombreDe, analizadorJson
   });
+
+  // ── Métricas de visitas (contador anónimo público + lectura para el panel) ──
+  montarRutasMetricasVisitas(app, deps, { conAdmin, conCache, miembros, tieneAcceso, refrescar });
 
   // ── Cuarta parte: precios (solo lectura), contacto, estado de servicios e historial del servidor ──
   montarRutasAdminServidor(app, deps, { conAdmin, anotarAccion, miembros, refrescar, tieneAcceso, analizadorJson });

@@ -4,15 +4,17 @@
 // Corre dentro del propio proceso, sin dependencias nuevas:
 //   · una corrida a los 20 s de arrancar (si la última sincronización tiene más de 6 horas), y
 //   · después cada día a las 13:00 UTC (7:00 a.m. de Ciudad de México).
-// Pasos (cada uno aislado: si uno falla, el otro corre igual):
+// Pasos (cada uno aislado: si uno falla, los otros corren igual):
 //   1) syncNoticias -> si guardó alguna, aviso global "📰 Nuevas noticias del sector" (id noticias_<fecha>, uno por día)
 //   2) enviarDatoCuriosoSiToca -> martes y viernes (fecha de México), una vez por día
+//   3) limpiarAntiguos (métricas de visitas) -> borra los identificadores anónimos de más de 45 días y el registro de más de 400 (para que no crezca sin límite)
 // Los temporizadores no mantienen vivo el proceso (unref) y se pueden detener con detener().
 // Se desactiva con NOTICIAS_TAREA=off (o pasando activa:false); las pruebas nunca la arrancan.
 
 const { syncNoticias } = require('./noticias');
 const { enviarDatoCuriosoSiToca, fechaMexico } = require('./datos-curiosos');
 const { crearNotificacionGlobal } = require('./avisos');
+const metricasVisitas = require('./metricas-visitas');
 
 const HORA_UTC = 13;
 const RETRASO_ARRANQUE_MS = 20 * 1000;
@@ -48,7 +50,7 @@ async function avisarNoticiasNuevas(db, resultado, { ahora = new Date() } = {}) 
 
 // Ejecuta la tarea una vez. `minHoras`: si la última sincronización es más reciente, se salta el paso de noticias.
 async function ejecutarTareaDiaria(db, { ahora = new Date(), minHoras = 0, sync = syncNoticias, syncOpciones = {} } = {}) {
-  const salida = { noticias: null, aviso: null, dato: null };
+  const salida = { noticias: null, aviso: null, dato: null, visitas: null };
 
   try {
     const ultima = minHoras > 0 ? await ultimaSync(db) : null;
@@ -69,6 +71,13 @@ async function ejecutarTareaDiaria(db, { ahora = new Date(), minHoras = 0, sync 
   } catch (error) {
     console.error('[Tarea diaria] Falló el dato curioso:', error && error.message);
     salida.dato = { enviado: false, motivo: 'error' };
+  }
+
+  try {
+    salida.visitas = await metricasVisitas.limpiarAntiguos(db, { ahora });
+  } catch (error) {
+    console.error('[Tarea diaria] Falló la limpieza de métricas de visitas:', error && error.message);
+    salida.visitas = { error: true };
   }
   return salida;
 }
