@@ -1,7 +1,7 @@
 'use strict';
 
 // ESCALERA DE RETOS con el catálogo REAL (data/materiales y data/libros): los 20 materiales nuevos se abren con 3, 6, 9... 30 retos (los primeros 10)
-// y con 36, 42, 50, 58, 66, 76, 86, 96, 108 y 120 retos (los últimos 10, de dificultad mayor)
+// Escalera vigente: 3, 6 y 9 (no cambian) y luego una curva suave y creciente hasta 150 (ver escalera.js)
 // (solo miembros con membresía vigente) o canjeándolos con 100 créditos; los antiguos conservan sus reglas y además se canjean.
 // Retos y créditos son vías independientes: cualquiera que se cumpla abre el material, y si ya abre por una no se ofrece ni se cobra la otra.
 // Ejecutar: node --test test/materiales-escalera.test.js
@@ -47,15 +47,16 @@ const camino = (app, cuerpoReto, t = 'token-ana') => request(app).post('/api/ret
 
 /* ───────────────────────── La escalera en el catálogo ───────────────────────── */
 
-test('escalera: los primeros 10 piden 3, 6 ... 30 retos y los ÚLTIMOS 10 suben la dificultad (36 ... 120); todos por retos y sin repetir umbral', () => {
+test('escalera: 3, 6 y 9 no cambian y el resto sube con una curva suave y creciente hasta 150; todos por retos y sin repetir umbral', () => {
   assert.equal(NUEVOS.length, 20);
   assert.equal(ORDEN.length, 20);
   assert.equal(PASO, 3);
   const umbrales = NUEVOS.map(m => m.requiereRetos).sort((a, b) => a - b);
-  assert.deepEqual(umbrales, [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 36, 42, 50, 58, 66, 76, 86, 96, 108, 120]);
+  assert.deepEqual(umbrales, [3, 6, 9, 14, 19, 25, 31, 38, 45, 52, 60, 69, 79, 90, 101, 113, 124, 134, 142, 150]);
   assert.deepEqual([...UMBRALES], umbrales, 'la escalera y el catálogo dicen lo mismo');
-  assert.deepEqual(umbrales.slice(0, 10), Array.from({ length: 10 }, (_, i) => (i + 1) * 3), 'los primeros 10 no cambian');
-  assert.ok(umbrales.slice(10).every((n, i) => n > umbrales[9 + i] + 3 - 1), 'cada uno de los últimos 10 sube más que 3 sobre el anterior');
+  for (let i = 1; i < umbrales.length; i++) assert.ok(umbrales[i] > umbrales[i - 1], 'estrictamente creciente en ' + umbrales[i]);
+  const pasos = umbrales.slice(3).map((n, i) => n - umbrales[2 + i]);
+  assert.ok(pasos.every(p => p >= 5 && p <= 12), 'curva suave: pasos de 5 a 12 → ' + pasos.join(','));
   for (const m of NUEVOS) {
     assert.equal(m.acceso, 'retos', m.id);
     assert.equal(m.requiereRetos, ESCALERA[m.id], m.id);
@@ -68,10 +69,10 @@ test('escalera: lo más básico abre primero y lo legal y más completo al final
   const por = Object.fromEntries(NUEVOS.map(m => [m.id, m.requiereRetos]));
   assert.equal(por['carteles-visitantes-senales'], 3);
   assert.equal(por['etograma-hoja-observacion'], 6);
-  assert.equal(por['plantilla-plan-manejo-uma'], 108);
-  assert.equal(por['ppt-uma-pimvs-zoologicos'], 120);
-  assert.equal(por['cuarentena-recepcion-ejemplares'], 36);
-  assert.equal(por['ppt-observacion-conductual-etogramas'], 96);
+  assert.equal(por['plantilla-plan-manejo-uma'], 142);
+  assert.equal(por['ppt-uma-pimvs-zoologicos'], 150);
+  assert.equal(por['cuarentena-recepcion-ejemplares'], 60);
+  assert.equal(por['ppt-observacion-conductual-etogramas'], 134);
   assert.ok(por['inventario-botiquin-caducidad'] < por['cuarentena-recepcion-ejemplares'], 'los registros sencillos antes que la cuarentena');
   assert.ok(por['cuarentena-recepcion-ejemplares'] < por['ppt-bioseguridad-recintos'], 'los formatos antes que las presentaciones');
   for (const id of ['plantilla-plan-manejo-uma', 'ppt-uma-pimvs-zoologicos']) assert.ok(por[id] > por['ppt-observacion-conductual-etogramas'] - 1, id + ' al final');
@@ -83,11 +84,11 @@ test('escalera: TODOS son alcanzables con holgura (el último pide menos del 90 
   assert.equal(camino.quiz + camino.detective + camino.orden, TOTAL_RETOS_ALCANZABLES);
   assert.ok(Math.max(...NUEVOS.map(m => m.requiereRetos)) <= Math.floor(TOTAL_RETOS_ALCANZABLES * 0.9), 'último umbral <= 90 % del total');
   assert.ok(Math.max(...NUEVOS.map(m => m.requiereRetos)) < TOTAL_RETOS_ALCANZABLES);
-  assert.equal(Math.max(...NUEVOS.map(m => m.requiereRetos)), 120);
-  assert.ok(TOTAL_RETOS_ALCANZABLES - 120 >= 60, 'queda un margen de al menos 60 retos sobre el material más difícil');
-  // XP aproximado para llegar a 120 retos del camino: 6 por reto (720 XP) y hasta 10 si todos son perfectos (1,200 XP)
-  assert.equal(120 * retosServicio.XP_CAMINO, 720);
-  assert.equal(120 * retosServicio.XP_CAMINO_PERFECTO, 1200);
+  assert.equal(Math.max(...NUEVOS.map(m => m.requiereRetos)), 150);
+  assert.ok(TOTAL_RETOS_ALCANZABLES - 150 >= 30, 'queda un margen de al menos 30 retos sobre el material más difícil');
+  // XP aproximado para llegar a 150 retos del camino: 6 por reto (900 XP) y hasta 10 si todos son perfectos (1,500 XP)
+  assert.equal(150 * retosServicio.XP_CAMINO, 900);
+  assert.equal(150 * retosServicio.XP_CAMINO_PERFECTO, 1500);
 });
 
 test('los antiguos conservan EXACTAMENTE sus reglas: 6 por membresía y presentaciones con 3, 10 y 20 retos; libros con 5, 15 y 30', () => {
@@ -132,16 +133,16 @@ test('la lista dice cuántos retos faltan por material y cuáles ya están desbl
     assert.equal(x.soloMiembros, false);
   }
   assert.equal(por['carteles-visitantes-senales'].desbloqueado, true);
-  assert.equal(por['plantilla-plan-manejo-uma'].faltan, 98);
-  assert.equal(por['ppt-uma-pimvs-zoologicos'].faltan, 110);
-  assert.equal(por['cuarentena-recepcion-ejemplares'].desbloqueado, false, 'el primero de los últimos 10 pide 36');
+  assert.equal(por['plantilla-plan-manejo-uma'].faltan, 132);
+  assert.equal(por['ppt-uma-pimvs-zoologicos'].faltan, 140);
+  assert.equal(por['libro-entradas-salidas-insumos'].desbloqueado, false, 'pide 14 y con 10 sigue cerrado');
 });
 
-test('un miembro con 120 retos abre los 20 (con 119 el último sigue cerrado); el administrador abre todo con 0 retos', async () => {
-  const { app: casi } = servidor(retosDe('ana', 119));
+test('un miembro con 150 retos abre los 20 (con 149 el último sigue cerrado); el administrador abre todo con 0 retos', async () => {
+  const { app: casi } = servidor(retosDe('ana', 149));
   assert.equal((await bajar(casi, 'ppt-uma-pimvs-zoologicos')).status, 403);
-  assert.equal((await bajar(casi, 'plantilla-plan-manejo-uma')).status, 200, 'el penúltimo (108) ya abre con 119');
-  const { app } = servidor(retosDe('ana', 120));
+  assert.equal((await bajar(casi, 'plantilla-plan-manejo-uma')).status, 200, 'el penúltimo (142) ya abre con 149');
+  const { app } = servidor(retosDe('ana', 150));
   const r = await lista(app);
   assert.equal(r.body.materiales.filter(m => ESCALERA[m.id]).every(m => m.desbloqueado && m.faltan === 0), true);
   for (const id of ['ppt-uma-pimvs-zoologicos', 'plantilla-plan-manejo-uma']) assert.equal((await bajar(app, id)).status, 200, id);
@@ -227,24 +228,24 @@ test('créditos: un miembro con pocos retos puede canjear lo que todavía no abr
   const e = await estado(app);
   const claves = e.body.materiales.map(m => m.clave);
   assert.ok(!claves.includes('pdf:carteles-visitantes-senales'), 'abre con 3 retos: no se ofrece');
-  assert.ok(!claves.includes('pdf:control-alimentacion-recintos'), 'abre con 18: no se ofrece');
-  assert.ok(claves.includes('pdf:bitacora-enriquecimiento-semanal'), 'pide 21 (tiene 20): sí se ofrece');
+  assert.ok(!claves.includes('pdf:peso-curva-crecimiento'), 'abre con 19: no se ofrece');
+  assert.ok(claves.includes('pdf:control-alimentacion-recintos'), 'pide 25 (tiene 20): sí se ofrece');
   assert.ok(claves.includes('pdf:ppt-uma-pimvs-zoologicos'));
-  const yaAbre = await canjear(app, 'pdf:control-alimentacion-recintos');
+  const yaAbre = await canjear(app, 'pdf:peso-curva-crecimiento');
   assert.equal(yaAbre.status, 409); assert.equal(yaAbre.body.codigo, 'ya-accesible');
   assert.equal(db.value('creditosCuentas/ana').saldo, 200, 'no se cobró');
-  const falta = await canjear(app, 'pdf:bitacora-enriquecimiento-semanal');
+  const falta = await canjear(app, 'pdf:control-alimentacion-recintos');
   assert.equal(falta.status, 200); assert.equal(falta.body.saldo, 100);
-  assert.equal((await bajar(app, 'bitacora-enriquecimiento-semanal')).status, 200);
+  assert.equal((await bajar(app, 'control-alimentacion-recintos')).status, 200);
 });
 
 test('créditos y retos son independientes: con créditos canjeados y luego retos suficientes, sigue abierto por ambas vías', async () => {
-  const { app } = servidor({ ...retosDe('ana', 20), ...conSaldo('ana', 100) });
-  assert.equal((await canjear(app, 'pdf:bitacora-enriquecimiento-semanal')).status, 200);
-  assert.equal((await bajar(app, 'bitacora-enriquecimiento-semanal')).status, 200);
+  const { app } = servidor({ ...retosDe('ana', 24), ...conSaldo('ana', 100) });
+  assert.equal((await canjear(app, 'pdf:control-alimentacion-recintos')).status, 200);
+  assert.equal((await bajar(app, 'control-alimentacion-recintos')).status, 200);
   const r = await camino(app, { modo: 'quiz', indice: 5, puntaje: 5, total: 5 });
-  assert.equal(r.body.aceptado, true);   // ya tiene 21 retos: también abre por retos
-  assert.equal((await bajar(app, 'bitacora-enriquecimiento-semanal')).status, 200);
+  assert.equal(r.body.aceptado, true);   // ya tiene 25 retos: también abre por retos
+  assert.equal((await bajar(app, 'control-alimentacion-recintos')).status, 200);
 });
 
 /* ───────────────────────── Los antiguos: retos y créditos como siempre ───────────────────────── */
@@ -305,4 +306,32 @@ test('constantes de créditos intactas: 100 por material, y un material de la es
   const lista = creditos.catalogoCanjeable({ materiales: CATALOGO.map(m => ({ ...m })) });
   assert.equal(lista.length, 29);
   assert.ok(lista.every(x => x.tipo === 'pdf'));
+});
+
+test('GARANTÍA: ningún umbral de 9 o menos cambia (3, 6 y 9 en los nuevos; 3 y 5 en los antiguos), así que con hasta 9 retos nadie pierde nada', async () => {
+  const hasta9 = CATALOGO.filter(m => m.acceso === 'retos' && m.requiereRetos <= 9).map(m => [m.id, m.requiereRetos]).sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1));
+  assert.deepEqual(hasta9, [['carteles-visitantes-senales', 3], ['intro-nom-059', 3], ['etograma-hoja-observacion', 6], ['inventario-botiquin-caducidad', 9]]);
+  const libro5 = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'libros', 'ley-fauna-mx.json'), 'utf8')).requiereRetos;
+  assert.equal(libro5, 5);
+  // Con 9 retos (lo máximo que hoy tiene un miembro) se abre exactamente lo mismo que antes: 4 materiales por retos + los 6 de membresía
+  const { app } = servidor(retosDe('ana', 9));
+  const r = await lista(app);
+  const abiertos = r.body.materiales.filter(m => m.desbloqueado).map(m => m.id).sort();
+  assert.deepEqual(abiertos, ['calendario-colmenas', 'carteles-visitantes-senales', 'checklist-bioseguridad', 'etograma-hoja-observacion', 'fauna-herida', 'ficha-registro-ejemplar', 'glosario-vida-silvestre', 'intro-nom-059', 'inventario-botiquin-caducidad', 'marco-normativo-uno']);
+});
+
+test('el desbloqueo es DINÁMICO (cuenta de retos al momento de pedir): no se guarda nada por material, así que un umbral solo importa a quien está por encima', async () => {
+  const { app, db } = servidor(retosDe('ana', 9));
+  await lista(app);
+  const guardado = JSON.stringify([...db._data.entries()].filter(([k]) => !/^(cursos|miembros|usuarios|config)\//.test(k)));
+  assert.equal(/desbloque|materialesAbiertos|materialesDesbloqueados/i.test(guardado), false, 'ninguna marca de material desbloqueado en la base');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'services', 'materiales.js'), 'utf8');
+  assert.match(src, /superados >= material\.requiereRetos/, 'se decide comparando el conteo actual con el umbral');
+});
+
+test('cuántos de los 20 nuevos abre cada cantidad de retos: 9→3, 15→4, 35→7, 55→10 (la mitad como máximo), 80→13, 120→16, 150→20', () => {
+  const abre = n => NUEVOS.filter(m => m.requiereRetos <= n).length;
+  assert.deepEqual([9, 15, 35, 55, 80, 120, 150].map(abre), [3, 4, 7, 10, 13, 16, 20]);
+  assert.ok(abre(35) >= 7 && abre(35) <= 8, 'a los 35 retos del primer cambio: 7 u 8 de 20');
+  assert.ok(abre(55) >= 10 && abre(55) <= 11 && abre(55) <= 10, 'a los 55 retos del segundo cambio: 10 u 11 y nunca más de la mitad');
 });

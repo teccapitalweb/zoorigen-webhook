@@ -34,7 +34,7 @@
     "contenido": "3 hojas, 1900 fórmulas, 2700 listas, 0 gráficas",
     "paraQuien": "Administradores y responsables de UMA, zoológicos, centros y clínicas",
     "acceso": "retos",
-    "requiereRetos": 12,
+    "requiereRetos": 14,
     "nivelRevision": "bajo",
     "revisar": [],
     "revision": [
@@ -56,7 +56,7 @@
     "contenido": "4 hojas, 3200 fórmulas, 1742 listas, 1 gráficas",
     "paraQuien": "Cuidadores, biólogos y médicos veterinarios",
     "acceso": "retos",
-    "requiereRetos": 15,
+    "requiereRetos": 19,
     "nivelRevision": "bajo",
     "revisar": [
       "biólogo"
@@ -80,7 +80,7 @@
     "contenido": "4 hojas, 2600 fórmulas, 1200 listas, 0 gráficas",
     "paraQuien": "Médicos veterinarios y responsables de la salud de colecciones o planteles",
     "acceso": "retos",
-    "requiereRetos": 24,
+    "requiereRetos": 38,
     "nivelRevision": "medio",
     "revisar": [
       "médico veterinario"
@@ -109,7 +109,7 @@
     "contenido": "4 hojas, 2016 fórmulas, 2700 listas, 1 gráficas",
     "paraQuien": "Responsables de UMA, PIMVS, zoológicos y centros",
     "acceso": "retos",
-    "requiereRetos": 27,
+    "requiereRetos": 45,
     "nivelRevision": "medio",
     "revisar": [
       "abogado"
@@ -133,7 +133,7 @@
     "contenido": "4 hojas, 378 fórmulas, 2600 listas, 2 gráficas",
     "paraQuien": "Administradores, responsables de UMA, zoológicos y centros, y consultores",
     "acceso": "retos",
-    "requiereRetos": 30,
+    "requiereRetos": 52,
     "nivelRevision": "bajo",
     "revisar": [],
     "revision": [
@@ -155,7 +155,7 @@
     "contenido": "4 hojas, 297 fórmulas, 2500 listas, 2 gráficas",
     "paraQuien": "Cuidadores, biólogos y personal de bienestar",
     "acceso": "retos",
-    "requiereRetos": 21,
+    "requiereRetos": 31,
     "nivelRevision": "bajo",
     "revisar": [
       "biólogo"
@@ -179,7 +179,7 @@
     "contenido": "5 hojas, 3320 fórmulas, 4250 listas, 1 gráficas",
     "paraQuien": "Cuidadores, nutriólogos y responsables de zoológicos, UMA y centros",
     "acceso": "retos",
-    "requiereRetos": 18,
+    "requiereRetos": 25,
     "nivelRevision": "bajo",
     "revisar": [
       "médico veterinario"
@@ -203,7 +203,7 @@
     "contenido": "16 diapositivas con notas",
     "paraQuien": "Personal de UMA, PIMVS, zoológicos y centros; médicos veterinarios y biólogos",
     "acceso": "retos",
-    "requiereRetos": 66,
+    "requiereRetos": 101,
     "nivelRevision": "medio",
     "revisar": [
       "médico veterinario"
@@ -257,7 +257,7 @@
     "contenido": "16 diapositivas con notas",
     "paraQuien": "Cuidadores, biólogos, médicos veterinarios y personal de zoológicos, UMA y centros",
     "acceso": "retos",
-    "requiereRetos": 76,
+    "requiereRetos": 113,
     "nivelRevision": "medio",
     "revisar": [
       "biólogo",
@@ -307,7 +307,7 @@
     "contenido": "16 diapositivas con notas",
     "paraQuien": "Biólogos, consultores ambientales, personal de UMA y áreas naturales",
     "acceso": "retos",
-    "requiereRetos": 86,
+    "requiereRetos": 124,
     "nivelRevision": "medio",
     "revisar": [
       "biólogo"
@@ -346,7 +346,7 @@
     "contenido": "16 diapositivas con notas",
     "paraQuien": "Responsables de UMA, PIMVS y zoológicos, consultores y estudiantes",
     "acceso": "retos",
-    "requiereRetos": 120,
+    "requiereRetos": 150,
     "nivelRevision": "medio",
     "revisar": [
       "abogado",
@@ -401,7 +401,7 @@
     "contenido": "14 diapositivas con notas",
     "paraQuien": "Biólogos, cuidadores, estudiantes y personal de bienestar",
     "acceso": "retos",
-    "requiereRetos": 96,
+    "requiereRetos": 134,
     "nivelRevision": "medio",
     "revisar": [
       "biólogo"
@@ -435,7 +435,7 @@
     "contenido": "6 páginas",
     "paraQuien": "Personal de UMA, PIMVS, zoológicos y centros; médicos veterinarios",
     "acceso": "retos",
-    "requiereRetos": 36,
+    "requiereRetos": 60,
     "nivelRevision": "medio",
     "revisar": [
       "médico veterinario"
@@ -469,7 +469,7 @@
     "contenido": "6 páginas",
     "paraQuien": "Médicos veterinarios, responsables de UMA, zoológicos y centros",
     "acceso": "retos",
-    "requiereRetos": 42,
+    "requiereRetos": 69,
     "nivelRevision": "medio",
     "revisar": [
       "médico veterinario"
@@ -503,7 +503,7 @@
     "contenido": "8 páginas",
     "paraQuien": "Responsables técnicos de UMA, consultores y estudiantes",
     "acceso": "retos",
-    "requiereRetos": 108,
+    "requiereRetos": 142,
     "nivelRevision": "medio",
     "revisar": [
       "abogado",
@@ -589,7 +589,7 @@
     "contenido": "7 páginas",
     "paraQuien": "Personal de UMA, zoológicos y centros; biólogos y médicos veterinarios",
     "acceso": "retos",
-    "requiereRetos": 50,
+    "requiereRetos": 79,
     "nivelRevision": "medio",
     "revisar": [
       "médico veterinario",
@@ -619,7 +619,7 @@
     "contenido": "5 páginas",
     "paraQuien": "Biólogos, médicos veterinarios, técnicos de campo y personal de laboratorio",
     "acceso": "retos",
-    "requiereRetos": 58,
+    "requiereRetos": 90,
     "nivelRevision": "medio",
     "revisar": [
       "biólogo",
