@@ -5,7 +5,8 @@
 // Firebase + ADMIN_EMAILS o marca, límite de peticiones y sin caché) y lo que cambia datos queda en adminAcciones.
 //
 //   GET  /api/admin/retos/historial   quién resolvió qué reto: tipo, fecha y hora, XP (filtros y paginación)
-//   GET  /api/admin/retos/usuarios    totales reales por persona (retosUsuario): retos superados, XP y último día
+//   GET  /api/admin/retos/usuarios    TODAS las personas (también con 0 retos): XP total y de retos, nivel, retos superados por tipo, días activos,
+//                                     último día, cambios de orden de cursos; y los datos de las gráficas (por tipo, por nivel, por día)
 //   GET  /api/admin/foro              publicaciones recientes con su texto y sus respuestas
 //   POST /api/admin/foro/publicar     publica como cuenta oficial «Zoorigen» (texto de hasta 1,500 caracteres; sin imagen)
 //   POST /api/admin/foro/:id/eliminar                     borra la publicación y sus respuestas
@@ -19,6 +20,8 @@
 
 const panel = require('./admin-panel');
 const directorio = require('./directorio');
+const logros = require('./logros');
+const retosReglas = require('./retos');
 
 const AUTOR_OFICIAL_UID = 'zoorigen-oficial';
 const AUTOR_OFICIAL_NOMBRE = 'Zoorigen';
@@ -149,24 +152,73 @@ function montarRutasAdminComunidad(app, deps, a) {
     });
   }));
 
+  // Cada persona con su XP real. El XP TOTAL es el que ve la persona (retos + logros + cursos + bienvenida + invitados): sale de
+  // premiosUsuario.xpTotal, que el servidor guarda cada vez que la persona abre Retos o Logros. Si todavía no lo ha guardado se usa el XP de retos.
+  const TIPOS_GRAFICA = ['quiz', 'detective', 'orden', 'historia', 'flashcards'];
   app.get('/api/admin/retos/usuarios', conAdmin('No se pudieron cargar los retos por persona', 'retos-usuarios', async (req, res) => {
-    const [rt, mi] = await Promise.all([conCache('retosUsuario', () => leerColeccion('retosUsuario'), refrescar(req)), miembros(false)]);
+    const forzar = refrescar(req);
+    const [rt, mi, pr, h] = await Promise.all([
+      conCache('retosUsuario', () => leerColeccion('retosUsuario'), forzar), miembros(false),
+      conCache('premiosUsuario', () => leerColeccion('premiosUsuario'), forzar),
+      leerHistorial(forzar).catch(() => ({ docs: [], truncado: false }))
+    ]);
+    const retosPorUid = new Map(rt.docs.map(({ id, data }) => [id, data]));
+    const xpTotalPorUid = new Map(pr.docs.map(({ id, data }) => [id, Number.isFinite(data.xpTotal) ? data.xpTotal : null]));
     const nombres = new Map(mi.docs.map(({ id, data }) => [id, nombreDe(data)]));
-    const filas = rt.docs.map(({ id, data }) => {
+    const filaDe = (id, perfil, data) => {
       const porReto = {};
       for (const k of Object.keys(data.porReto && typeof data.porReto === 'object' ? data.porReto : {})) {
         const r = data.porReto[k] || {};
         if (NOMBRES_RETO[k]) porReto[k] = { veces: Number(r.veces) || 0, superados: Number(r.superados) || 0, perfectos: Number(r.perfectos) || 0 };
       }
+      const xpRetos = Number.isFinite(data.xp) ? data.xp : 0;
+      const guardado = xpTotalPorUid.get(id);
+      const xpTotal = guardado !== null && guardado !== undefined ? guardado : xpRetos;
+      const nivel = logros.infoNivel(xpTotal);
       const ultima = panel.aFecha(data.actualizadoEn);
+      const orden = retosReglas.normalizarEstado(data);
+      const progresoOrden = retosReglas.progresoCambioOrden(orden);
       return {
-        uid: id, nombre: nombres.get(id) || 'Sin nombre', xp: Number.isFinite(data.xp) ? data.xp : 0,
+        uid: id, nombre: perfil ? nombreDe(perfil) : (nombres.get(id) || 'Sin nombre'), esMiembro: Boolean(perfil),
+        membresia: perfil ? (tieneAcceso(perfil) ? 'activa' : 'sin') : 'sin', admin: Boolean(perfil && perfil.role === 'admin'),
+        xp: xpRetos, xpTotal, nivel: { id: nivel.id, nombre: nivel.nombre },
         superados: Number.isFinite(data.superados) ? data.superados : 0, dias: Array.isArray(data.dias) ? data.dias.length : 0,
-        ultimaVez: ultima ? ultima.toISOString() : null, porReto
+        ultimaVez: ultima ? ultima.toISOString() : null, porReto,
+        cambioOrden: { usados: progresoOrden.usados, contados: progresoOrden.contados.total }
       };
-    }).filter(f => f.xp > 0 || f.superados > 0 || Object.keys(f.porReto).length);
-    filas.sort((x, y) => y.xp - x.xp || y.superados - x.superados);
-    return res.json({ ok: true, truncado: rt.truncado, total: filas.length, usuarios: filas });
+    };
+    const filas = [];
+    const vistos = new Set();
+    for (const { id, data: perfil } of mi.docs) { vistos.add(id); filas.push(filaDe(id, perfil, retosPorUid.get(id) || {})); }
+    // Quien tiene retos pero ya no tiene ficha de miembro también se muestra
+    for (const { id, data } of rt.docs) if (!vistos.has(id)) filas.push(filaDe(id, null, data));
+    filas.sort((x, y) => y.xpTotal - x.xpTotal || y.superados - x.superados || x.nombre.localeCompare(y.nombre, 'es'));
+
+    // Gráficas: por tipo (totales de todos, también de antes del historial), por nivel y por día (solo historial detallado)
+    const porTipo = Object.fromEntries(TIPOS_GRAFICA.map(k => [k, 0]));
+    for (const f of filas) for (const k of Object.keys(f.porReto)) if (k in porTipo) porTipo[k] += f.porReto[k].superados;
+    const niveles = logros.listaNiveles().map(n => ({ id: n.id, nombre: n.nombre, desde: n.desde, personas: filas.filter(f => f.nivel.id === n.id && !f.admin).length }));
+    const HOY = Date.now();
+    const dias = [];
+    for (let i = 29; i >= 0; i--) dias.push(retosReglas.fechaMexico(new Date(HOY - i * 86400000)));
+    const porDia = new Map(dias.map(d => [d, 0]));
+    let eventosEnDias = 0;
+    for (const { data } of h.docs) {
+      const dia = typeof data.dia === 'string' ? data.dia : null;
+      if (dia && porDia.has(dia)) { porDia.set(dia, porDia.get(dia) + 1); eventosEnDias += 1; }
+    }
+    const fechas = h.docs.map(({ data }) => panel.aFecha(data.fecha)).filter(Boolean);
+    const desde = fechas.length ? new Date(Math.min(...fechas.map(f => f.getTime()))).toISOString() : null;
+    const conRetos = filas.filter(f => f.xp > 0 || f.superados > 0 || Object.keys(f.porReto).length).length;
+    return res.json({
+      ok: true, truncado: rt.truncado || mi.truncado, total: filas.length, conRetos, usuarios: filas,
+      graficas: {
+        porTipo: TIPOS_GRAFICA.map(id => ({ id, nombre: NOMBRES_RETO[id], superados: porTipo[id] })),
+        niveles,
+        porDia: dias.map(d => ({ dia: d, retos: porDia.get(d) })),
+        eventosEnDias, historialDesde: desde
+      }
+    });
   }));
 
   // ════════════════════════════════════════════════════════════

@@ -23,6 +23,8 @@ El frontend vive en el repo `teccapitalweb/ZOORIGEN` (GitHub Pages, www.zoorigen
 | `GET /api/admin/calendario`, `GET /api/admin/calendario/:uid` | Modo (`transicion` / `estricto`), cuántas veces se habría rechazado un video y el calendario guardado de una persona (solo lectura) | Token de Firebase + administrador |
 | `GET /api/retos` | Progreso de retos, camino y nivel (vista previa sin membresía) | Token de Firebase |
 | `POST /api/retos/resultado` | Resultado de un reto de práctica (`{ retoId, puntaje, total }`) | Token de Firebase + membresía |
+| `GET /api/calendario/cambio-orden` | Cambio de orden de los cursos: avance (retos nuevos contados por tipo hacia 35 y 55), cambios usados (máximo 2), cursos cerrados que se pueden mover y cambios hechos | Token de Firebase |
+| `POST /api/calendario/cambiar-orden` | `{ cursoId, confirmar: true }`: pone un curso cerrado como el siguiente en abrirse (mismas fechas, otro curso en cada lugar). Exige 35 (1.er cambio) o 55 (2.º) retos nuevos del camino con mínimo 8 o 14 de cada tipo; solo 2 por miembro | Token de Firebase + membresía |
 | `POST /api/retos/camino` | Resultado de un reto del camino (`{ modo, indice, puntaje, total }`); cualquier reto, en cualquier orden, XP una sola vez por reto | Token de Firebase + membresía |
 | `GET /api/retos/clasificacion` | Top 20 por XP total (solo alias) y mi posición | Token de Firebase + membresía |
 | `POST /api/referidos/registrar` | El invitado se registra con el código (`{ codigo, deviceId, huella }`), idempotente | Token de Firebase |
@@ -136,7 +138,7 @@ y `miembros` por rango de id (solo para códigos viejos que nadie ha abierto). R
 
 ### Niveles
 
-XP total = logros (l1..l26) + insignias de retos (r1..r10) + XP de los retos + XP por referidos + XP por cursos terminados + premio de bienvenida. **El nivel no se guarda: se recalcula en cada consulta.**
+XP total = logros (l1..l26) + insignias de retos (r1..r12) + XP de los retos + XP por referidos + XP por cursos terminados + premio de bienvenida. **El nivel no se guarda: se recalcula en cada consulta.**
 
 **Los umbrales se recalibraron** al agregar las fuentes nuevas de XP (cursos y bienvenida): Profesional queda en ~25 % del XP máximo posible y Maestro en ~75 % (y Maestro sigue siendo alcanzable: pide menos del 90 %). El sitio no copia esta tabla: la lee de `niveles` en `GET /api/premios`.
 
@@ -192,6 +194,8 @@ XP total = logros (l1..l26) + insignias de retos (r1..r10) + XP de los retos + X
 | r8 | Retos | Explorador de mundos | superar 3 casos del modo historia | 40 |
 | r9 | Retos | Constancia de campo | retos superados en 15 días distintos | 60 |
 | r10 | Retos | Leyenda de los retos | superar 100 retos | 70 |
+| r11 | Retos | Calendario a tu medida | usar el 1.er cambio de orden de cursos | 40 |
+| r12 | Retos | Rumbo propio | usar el 2.º cambio de orden de cursos | 60 |
 
 Otras fuentes de XP: **XP de retos** (6 si se aprueba con 60 %, 10 si es perfecto; práctica una vez por reto por día de México, flashcards no da;
 techo de por vida de 600 XP en práctica + el camino: 22 quiz + 13 detective + 18 orden = 53 retos × 10 = 530) y **XP por referidos**
@@ -200,7 +204,7 @@ techo de por vida de 600 XP en práctica + el camino: 22 quiz + 13 detective + 1
 | Fuente | XP máximo |
 |---|---|
 | Logros l1..l26 (los 9 de cursos suman solo 790) | 2,760 |
-| Insignias r1..r10 | 500 |
+| Insignias r1..r12 | 600 |
 | XP de retos (práctica 600 + camino 530) | 1,130 |
 | XP por referidos (6 invitados × 240) | 1,440 |
 | XP por cursos terminados (los 15 cursos: 20 a 100, el décimo 180) | 920 |
@@ -731,3 +735,10 @@ Antes el calendario (1 curso nuevo cada 8 días desde que la persona es miembro)
 - **15 retos:** solo el primer curso de la fila que seguía cerrado al armar el calendario (`primerCursoId`), una sola vez. Cuentan retos del camino (quiz, detective, ordena) con mínimo 4 de cada tipo y 3 más de cualquiera; flashcards, historia y práctica diaria no cuentan. Lo verifica el servidor con `retosUsuario.caminoHechos`; `GET /api/retos`, `POST /api/retos/camino` y `GET /api/calendario` devuelven `primerCurso` ({ aplica, estado: pendiente | abierto-ahora, progreso }) y al cumplirse crean el aviso de la campana.
 - **Video y progreso:** `POST /api/bunny/embed-token`, `POST /api/cursos/:id/progreso` y `POST /api/cursos/:id/quiz` revisan que el curso esté abierto (una clase gratis siempre se puede ver; administrador y sin plan no cambian). Con `CALENDARIO_MODO=estricto` un curso cerrado responde 403 `{ error, codigo: 'curso-bloqueado', cursoId, desbloqueoEn, diasFalta }`. **Sin definir (modo transición) no rechaza nada**: solo anota "(modo transición) habría rechazado..." en la bitácora y cuenta los casos en `GET /api/admin/calendario`. Cualquier error interno deja pasar.
 - **Totales del camino** (`TOTALES_CAMINO` en services/retos.js): quiz 32, detective 21, ordena 24. Deben ser iguales a la cantidad de retos de assets/js/club-retos-datos.js del sitio.
+
+### Cambio de orden de los cursos con retos
+
+- **Qué hace:** un miembro con membresía vigente puede poner un curso que sigue cerrado como el siguiente en abrirse. Las fechas son las mismas (el curso elegido toma la más cercana y los que estaban antes se recorren un lugar); los cursos abiertos y el progreso no se tocan. Solo 2 cambios por miembro.
+- **Cuándo:** 1.er cambio con 35 retos del camino y 2.º con 55 (umbrales acumulados, no se gastan), con mínimo 8 y 14 de cada tipo (quiz, detective y ordena; el modo historia no cuenta porque su avance vive en el navegador).
+- **Qué cuenta:** solo retos del camino superados DESPUÉS de activar la función: `retosUsuario.ordenRetos` nace vacío para todos (los retos viejos no cuentan). Un reto ya superado antes SÍ cuenta si se supera otra vez, una sola vez y sin XP (el XP sigue siendo la primera vez).
+- **Dónde se guarda:** `retosUsuario.cambiosOrden` (cuántos se usaron; de ahí salen las insignias r11 y r12), `calendariosCursos/{uid}.cambiosOrden` y la colección `calendarioCambios` (auditoría; la lista el administrador en `GET /api/admin/cambios-orden` y en la ficha del miembro). Todo se escribe en una transacción: dos clics a la vez gastan un solo cambio.

@@ -175,20 +175,76 @@ test('historial vacío: dice desde cuándo existirá y no inventa nada', async (
   assert.deepEqual(r.body.totales, { eventos: 0, personas: 0, xp: 0 });
 });
 
-test('GET /api/admin/retos/usuarios: totales reales por persona de retosUsuario (también de antes del historial)', async () => {
+test('GET /api/admin/retos/usuarios: TODAS las personas (también con 0 retos), con XP total, nivel y desglose por tipo', async () => {
   const { app } = montar({
-    'retosUsuario/ana': { uid: 'ana', xp: 120, superados: 8, dias: ['2026-01-01', '2026-01-02'], porReto: { quiz: { veces: 6, superados: 4, perfectos: 1 }, raro: { veces: 9 } }, actualizadoEn: ts(Date.now() - DIA) },
+    'retosUsuario/ana': { uid: 'ana', xp: 120, superados: 8, dias: ['2026-01-01', '2026-01-02'], porReto: { quiz: { veces: 6, superados: 4, perfectos: 1 }, raro: { veces: 9 } }, actualizadoEn: ts(Date.now() - DIA), cambiosOrden: 1, ordenRetos: { quiz: [0, 1, 2], detective: [0], orden: [] } },
     'retosUsuario/beto': { uid: 'beto', xp: 300, superados: 20, dias: [], porReto: {} },
-    'retosUsuario/cata': { uid: 'cata', xp: 0, superados: 0 }
+    'retosUsuario/cata': { uid: 'cata', xp: 0, superados: 0 },
+    'premiosUsuario/ana': { uid: 'ana', xpTotal: 560 }
   });
   const r = await get(app, '/api/admin/retos/usuarios');
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body.usuarios.map(u => u.uid), ['beto', 'ana'], 'ordenados por XP y sin quien no ha jugado');
-  const ana = r.body.usuarios[1];
+  assert.deepEqual(r.body.usuarios.map(u => u.uid), ['ana', 'beto', 'admin', 'cata'], 'por XP total (el que ve la persona); quien no ha jugado también aparece');
+  assert.equal(r.body.total, 4);
+  assert.equal(r.body.conRetos, 2, 'dos personas con retos');
+  const ana = r.body.usuarios[0];
   assert.equal(ana.nombre, 'Ana Pérez');
+  assert.deepEqual([ana.xp, ana.xpTotal, ana.nivel.nombre], [120, 560, 'Técnico']);
   assert.deepEqual(ana.porReto, { quiz: { veces: 6, superados: 4, perfectos: 1 } }, 'solo retos conocidos');
   assert.equal(ana.dias, 2);
   assert.ok(ana.ultimaVez);
+  assert.deepEqual(ana.cambioOrden, { usados: 1, contados: 4 });
+  assert.deepEqual([ana.membresia, ana.esMiembro, ana.admin], ['activa', true, false]);
+  const beto = r.body.usuarios[1];
+  assert.deepEqual([beto.xpTotal, beto.nivel.nombre], [300, 'Aprendiz'], 'sin XP guardado se usa el de retos');
+  const cata = r.body.usuarios[3];
+  assert.deepEqual([cata.xp, cata.xpTotal, cata.superados, cata.dias, cata.ultimaVez, cata.membresia], [0, 0, 0, 0, null, 'sin']);
+  assert.equal(r.body.usuarios[2].admin, true);
+  assert.equal(/@example.com/.test(JSON.stringify(r.body)), false, 'sin correos');
+});
+
+test('GET /api/admin/retos/usuarios: gráficas por tipo, por nivel y por día', async () => {
+  const hoy = new Date(Date.now() - 6 * 3600000).toISOString().slice(0, 10);
+  const { app } = montar({
+    'retosUsuario/ana': { uid: 'ana', xp: 120, superados: 8, porReto: { quiz: { veces: 6, superados: 4, perfectos: 1 }, historia: { veces: 5, superados: 3, perfectos: 0 } } },
+    'retosUsuario/beto': { uid: 'beto', xp: 300, superados: 20, porReto: { quiz: { veces: 3, superados: 2, perfectos: 0 }, detective: { veces: 9, superados: 9, perfectos: 1 }, orden: { veces: 4, superados: 4, perfectos: 0 } } },
+    'premiosUsuario/ana': { uid: 'ana', xpTotal: 560 },
+    'retosHistorial/e1': { uid: 'ana', tipo: 'camino', retoId: 'quiz', indice: 1, puntaje: 5, total: 5, perfecto: true, xp: 10, fecha: ts(Date.now() - 3600000), dia: hoy },
+    'retosHistorial/e2': { uid: 'beto', tipo: 'camino', retoId: 'orden', indice: 2, puntaje: 5, total: 5, perfecto: true, xp: 10, fecha: ts(Date.now() - 7200000), dia: hoy },
+    'retosHistorial/e3': { uid: 'beto', tipo: 'camino', retoId: 'orden', indice: 1, puntaje: 5, total: 5, perfecto: true, xp: 10, fecha: ts(Date.now() - 90 * DIA), dia: '2020-01-01' }
+  });
+  const g = (await get(app, '/api/admin/retos/usuarios')).body.graficas;
+  assert.deepEqual(g.porTipo.map(t => [t.id, t.superados]), [['quiz', 6], ['detective', 9], ['orden', 4], ['historia', 3], ['flashcards', 0]]);
+  assert.equal(g.porTipo[0].nombre, 'Quiz relámpago');
+  assert.deepEqual(g.niveles.map(n => [n.nombre, n.personas]), [['Aprendiz', 2], ['Técnico', 1], ['Profesional', 0], ['Líder', 0], ['Maestro', 0]], 'sin contar al administrador');
+  assert.equal(g.porDia.length, 30);
+  assert.equal(g.porDia[29].dia, hoy);
+  assert.equal(g.porDia[29].retos, 2);
+  assert.equal(g.eventosEnDias, 2, 'el evento de 2020 queda fuera de los 30 días');
+  assert.ok(g.historialDesde);
+});
+
+test('GET /api/admin/retos/usuarios: sin historial ni retos las gráficas salen en cero y no falla', async () => {
+  const { app } = montar();
+  const r = await get(app, '/api/admin/retos/usuarios');
+  assert.equal(r.status, 200);
+  assert.equal(r.body.conRetos, 0);
+  assert.equal(r.body.usuarios.length, 4);
+  assert.deepEqual(r.body.graficas.porTipo.map(t => t.superados), [0, 0, 0, 0, 0]);
+  assert.equal(r.body.graficas.historialDesde, null);
+});
+
+test('la ficha del miembro muestra sus cambios de orden de cursos', async () => {
+  const { app } = montar({
+    'retosUsuario/ana': { uid: 'ana', xp: 1, superados: 1, cambiosOrden: 1, ordenRetos: { quiz: [0, 1], detective: [], orden: [] } },
+    'calendariosCursos/ana': { uid: 'ana', entradas: [], cambiosOrden: [{ n: 1, cursoId: 'c4', titulo: 'Curso 4', deLugar: 3, aLugar: 1, en: '2026-11-05T10:00:00.000Z' }] }
+  });
+  const f = await get(app, '/api/admin/miembros/ana');
+  assert.equal(f.status, 200);
+  assert.deepEqual([f.body.retos.cambioOrden.usados, f.body.retos.cambioOrden.maximo, f.body.retos.cambioOrden.contados.total], [1, 2, 2]);
+  assert.deepEqual(f.body.retos.cambioOrden.cambios, [{ n: 1, cursoId: 'c4', curso: 'Curso 4', deLugar: 3, en: '2026-11-05T10:00:00.000Z' }]);
+  const sin = await get(app, '/api/admin/miembros/beto');
+  assert.deepEqual(sin.body.retos.cambioOrden.cambios, []);
 });
 
 test('la ficha del miembro trae su historial de retos (con total) y no el de otros', async () => {

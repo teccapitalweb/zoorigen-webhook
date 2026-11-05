@@ -27,6 +27,7 @@
 
 const { permitirSolicitud } = require('./rutas-club');
 const panel = require('./admin-panel');
+const retosReglas = require('./retos');
 const bitacora = require('./bitacora-memoria');
 const { montarRutasAdminExtra } = require('./rutas-admin-extra');
 const { montarRutasAdminComunidad } = require('./rutas-admin-comunidad');
@@ -247,13 +248,14 @@ function montarRutasAdmin(app, deps) {
     const snap = await db.collection('miembros').doc(uid).get();
     if (!snap.exists) throw errorHttp(404, 'No encontramos a esa persona');
     const m = snap.data() || {};
-    const [progresoSnap, certSnap, refSnap, retosSnap, nombresCursos, histSnap] = await Promise.all([
+    const [progresoSnap, certSnap, refSnap, retosSnap, nombresCursos, histSnap, calSnap] = await Promise.all([
       db.collection('miembros').doc(uid).collection('progresoCursos').get().catch(() => ({ docs: [] })),
       db.collection('certificados').where('uid', '==', uid).limit(50).get().catch(() => ({ docs: [] })),
       db.collection('referidos').where('anfitrionUid', '==', uid).limit(100).get().catch(() => ({ docs: [] })),
       db.collection('retosUsuario').doc(uid).get().catch(() => ({ exists: false })),
       cursos(),
-      db.collection('retosHistorial').where('uid', '==', uid).limit(300).get().catch(() => ({ docs: [] }))
+      db.collection('retosHistorial').where('uid', '==', uid).limit(300).get().catch(() => ({ docs: [] })),
+      db.collection('calendariosCursos').doc(uid).get().catch(() => ({ exists: false }))
     ]);
     const progreso = progresoSnap.docs.map(d => {
       const p = d.data() || {};
@@ -274,12 +276,17 @@ function montarRutasAdmin(app, deps) {
       if (e === 'valido') referidos.validos += 1; else if (e === 'pendiente-correo') referidos.pendientes += 1; else if (e === 'rechazado') referidos.rechazados += 1;
     }
     const r = retosSnap.exists ? (retosSnap.data() || {}) : {};
+    const progresoOrden = retosReglas.progresoCambioOrden(r);
+    const cambiosOrden = calSnap.exists && Array.isArray((calSnap.data() || {}).cambiosOrden)
+      ? calSnap.data().cambiosOrden.map(c => ({ n: Number(c.n) || 0, cursoId: String(c.cursoId || '').slice(0, 80), curso: String(c.titulo || nombresCursos.get(c.cursoId) || c.cursoId || '').slice(0, 140), deLugar: Number(c.deLugar) || null, en: c.en || null }))
+      : [];
     return res.json({
       ok: true,
       miembro: panel.fichaMiembro(uid, m, tieneAcceso),
       progreso, certificados: certs, referidos,
       retos: {
         xp: Number.isFinite(r.xp) ? r.xp : 0, superados: Number.isFinite(r.superados) ? r.superados : 0,
+        cambioOrden: { usados: progresoOrden.usados, maximo: progresoOrden.maximo, contados: progresoOrden.contados, cambios: cambiosOrden },
         historialTotal: histSnap.docs.length,
         historial: histSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) })).map(d => ({
           id: d.id, tipo: d.tipo === 'camino' ? 'camino' : 'practica', retoId: String(d.retoId || '').slice(0, 40),
