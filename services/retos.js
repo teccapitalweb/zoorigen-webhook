@@ -39,6 +39,18 @@ const TOTAL_MAXIMO = 30;
 // fecha). Es la regla de Alintec Food. Cada reto cuenta una sola vez (caminoHechos); flashcards, historia y práctica diaria no cuentan.
 const PRIMER_CURSO_RETOS = Object.freeze({ total: 15, porTipo: 4 });
 
+// Cambiar el orden en que se abren los cursos cerrados. Solo 2 cambios por miembro y son UMBRALES ACUMULADOS (no se gastan):
+// el 1.º se puede hacer con 35 retos contados y el 2.º con 55, y en cada umbral hace falta un mínimo de cada tipo
+// (quiz, detective y ordena; el modo historia NO cuenta: su avance vive en el navegador y el servidor no lo puede comprobar).
+// Solo cuentan los retos del camino superados DESPUÉS de activar esta función (campo ordenRetos de retosUsuario, que
+// nace vacío para todos). Un reto que la persona ya había superado antes SÍ cuenta si lo vuelve a superar después,
+// una sola vez, pero sin dar XP de nuevo (el XP del camino sigue siendo solo la primera vez).
+const CAMBIOS_ORDEN = Object.freeze([
+  Object.freeze({ n: 1, total: 35, porTipo: 8 }),
+  Object.freeze({ n: 2, total: 55, porTipo: 14 })
+]);
+const MAX_CAMBIOS_ORDEN = CAMBIOS_ORDEN.length;
+
 // XP máximo que pueden dar los retos en toda la vida de la cuenta (para el balance de niveles).
 const XP_MAXIMO_RETOS = TOPE_XP_PRACTICA +
   CAMINO_MODOS.reduce((t, m) => t + TOTALES_CAMINO[m] * XP_CAMINO_PERFECTO, 0);
@@ -69,15 +81,33 @@ const INSIGNIAS = [
   { id: 'r9', nombre: 'Constancia de campo', desc: 'Retos superados en 15 días distintos', xp: 60,
     criterio: 'Supera retos en 15 días distintos', cumple: e => e.dias.length >= 15 },
   { id: 'r10', nombre: 'Leyenda de los retos', desc: 'Superaste 100 retos', xp: 70, criterio: 'Supera 100 retos',
-    cumple: e => e.superados >= 100 }
+    cumple: e => e.superados >= 100 },
+  // Cambio del orden de los cursos (el estado guarda cuántos cambios se usaron; solo el servidor los registra)
+  { id: 'r11', nombre: 'Calendario a tu medida', desc: 'Cambiaste el orden de tu calendario por primera vez', xp: 40,
+    criterio: 'Resuelve 35 retos nuevos (8 de cada tipo) y cambia el orden de tus cursos cerrados. Solo hay 2 cambios por miembro: mueves 2 cursos en total',
+    cumple: e => e.cambiosOrden >= 1 },
+  { id: 'r12', nombre: 'Rumbo propio', desc: 'Usaste tu segundo cambio de orden', xp: 60,
+    criterio: 'Llega a 55 retos nuevos (14 de cada tipo) y usa tu segundo cambio. Es el último: solo hay 2 cambios por miembro',
+    cumple: e => e.cambiosOrden >= 2 }
 ];
 
 function estadoInicial() {
   return {
     xp: 0, xpPractica: 0, superados: 0, porReto: {}, dias: [],
     retosHoy: { fecha: '', ids: [] }, camino: { quiz: 0, detective: 0, orden: 0 },
-    caminoHechos: { quiz: [], detective: [], orden: [] }
+    caminoHechos: { quiz: [], detective: [], orden: [] },
+    ordenRetos: { quiz: [], detective: [], orden: [] }, cambiosOrden: 0
   };
+}
+
+// Índices del camino superados DESPUÉS de activar el cambio de orden (sin lista guardada no hay ninguno: nadie hereda retos viejos)
+function normalizarOrdenRetos(guardado) {
+  const out = {};
+  CAMINO_MODOS.forEach(m => {
+    const lista = guardado && typeof guardado === 'object' && Array.isArray(guardado[m]) ? guardado[m] : [];
+    out[m] = [...new Set(lista.filter(n => Number.isInteger(n) && n >= 0 && n < TOTALES_CAMINO[m]))].sort((a, b) => a - b);
+  });
+  return out;
 }
 
 const entero = v => (Number.isInteger(v) && v >= 0 ? v : 0);
@@ -135,7 +165,9 @@ function normalizarEstado(guardado) {
     dias: Array.isArray(guardado.dias) ? guardado.dias.filter(d => typeof d === 'string') : [],
     retosHoy,
     camino,
-    caminoHechos
+    caminoHechos,
+    ordenRetos: normalizarOrdenRetos(guardado.ordenRetos),
+    cambiosOrden: Math.min(MAX_CAMBIOS_ORDEN, entero(guardado.cambiosOrden))
   };
 }
 
@@ -197,8 +229,14 @@ function aplicarResultado(estadoPrevio, { retoId, puntaje, total }, ahora = new 
 function aplicarCaminoResultado(estadoPrevio, { modo, indice, puntaje, total }, ahora = new Date()) {
   const estado = normalizarEstado(estadoPrevio);
   const aprobado = puntaje / total >= MINIMO_APROBAR;
-  if (estado.caminoHechos[modo].includes(indice) || indice >= TOTALES_CAMINO[modo] || !aprobado) {
-    return { estado, xpGanado: 0, aceptado: false, aprobado };
+  if (indice >= TOTALES_CAMINO[modo] || !aprobado) {
+    return { estado, xpGanado: 0, aceptado: false, aprobado, cuentaOrden: false };
+  }
+  if (estado.caminoHechos[modo].includes(indice)) {
+    // Ya superado antes: no da XP ni suma al historial, pero si aún no cuenta para el cambio de orden, cuenta (una sola vez)
+    const cuentaOrden = !estado.ordenRetos[modo].includes(indice);
+    if (cuentaOrden) estado.ordenRetos[modo] = [...estado.ordenRetos[modo], indice].sort((a, b) => a - b);
+    return { estado, xpGanado: 0, aceptado: false, aprobado, cuentaOrden };
   }
 
   const hoy = fechaMexico(ahora);
@@ -215,8 +253,30 @@ function aplicarCaminoResultado(estadoPrevio, { modo, indice, puntaje, total }, 
   estado.superados += 1;
   estado.caminoHechos[modo] = [...estado.caminoHechos[modo], indice].sort((a, b) => a - b);
   estado.camino[modo] = estado.caminoHechos[modo].length;
+  if (!estado.ordenRetos[modo].includes(indice)) estado.ordenRetos[modo] = [...estado.ordenRetos[modo], indice].sort((a, b) => a - b);
   if (!estado.dias.includes(hoy)) estado.dias = [...estado.dias, hoy].slice(-400);
-  return { estado, xpGanado, aceptado: true, aprobado };
+  return { estado, xpGanado, aceptado: true, aprobado, cuentaOrden: true };
+}
+
+// Avance hacia el cambio de orden de los cursos:
+// { usados, maximo, contados: { quiz, detective, orden, total }, siguiente: null | { n, total, porTipo, faltan: { total, quiz, detective, orden }, cumple }, tramos: [...] }
+// "contados" son los retos del camino superados desde que existe la función (ver CAMBIOS_ORDEN). Cada tramo trae sus metas y su estado.
+function progresoCambioOrden(estado) {
+  const e = normalizarEstado(estado);
+  const contados = {};
+  CAMINO_MODOS.forEach(m => { contados[m] = e.ordenRetos[m].length; });
+  contados.total = CAMINO_MODOS.reduce((t, m) => t + contados[m], 0);
+  const detalle = tramo => {
+    const faltan = { quiz: 0, detective: 0, orden: 0 };
+    CAMINO_MODOS.forEach(m => { faltan[m] = Math.max(0, tramo.porTipo - contados[m]); });
+    // Falta lo que pida la variedad por tipo o el total, lo que sea más grande (el resto libre se completa con cualquier tipo)
+    const faltanTotal = Math.max(0, tramo.total - contados.total, CAMINO_MODOS.reduce((t, m) => t + faltan[m], 0));
+    const cumple = contados.total >= tramo.total && CAMINO_MODOS.every(m => contados[m] >= tramo.porTipo);
+    return { n: tramo.n, total: tramo.total, porTipo: tramo.porTipo, usado: e.cambiosOrden >= tramo.n, cumple, faltan: { total: faltanTotal, ...faltan } };
+  };
+  const tramos = CAMBIOS_ORDEN.map(detalle);
+  const siguiente = tramos.find(t => !t.usado) || null;
+  return { usados: e.cambiosOrden, maximo: MAX_CAMBIOS_ORDEN, contados, siguiente, tramos };
 }
 
 // Avance hacia abrir el primer curso: { tipos: { quiz: {hechos, meta}, ... }, libres: {hechos, meta}, hechos, meta, completo }
@@ -259,7 +319,7 @@ function resumenPorReto(estado) {
 
 module.exports = {
   RETOS_VALIDOS, RETOS_BASE, RETOS_SIN_XP, MINIMO_APROBAR, XP_SUPERADO, XP_PERFECTO, TOPE_XP_PRACTICA,
-  CAMINO_MODOS, TOTALES_CAMINO, PRIMER_CURSO_RETOS, progresoPrimerCurso, XP_CAMINO, XP_CAMINO_PERFECTO, XP_MAXIMO_RETOS, INSIGNIAS,
+  CAMINO_MODOS, TOTALES_CAMINO, PRIMER_CURSO_RETOS, progresoPrimerCurso, CAMBIOS_ORDEN, MAX_CAMBIOS_ORDEN, progresoCambioOrden, XP_CAMINO, XP_CAMINO_PERFECTO, XP_MAXIMO_RETOS, INSIGNIAS,
   estadoInicial, normalizarEstado, fechaMexico, validarResultado, aplicarResultado,
   validarCaminoResultado, aplicarCaminoResultado, insignias, insigniasNuevas, resumenPorReto
 };

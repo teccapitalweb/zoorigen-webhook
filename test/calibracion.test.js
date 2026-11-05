@@ -45,7 +45,9 @@ test('calibración: Profesional ~25 % y Maestro ~75 % del XP máximo, y Maestro 
   // máximo (antes 25 % y 74.5 %), por eso las tolerancias son de 5 y 10 puntos. Si algún día se quiere devolver la dificultad, se hará con cuidado de no bajar a nadie.
   // Con 20 preguntas de quiz y 20 secuencias de ordena más (+400 XP, máximo 8180), Profesional pide 20.8 % y Maestro 62.3 % del máximo: por eso la
   // tolerancia de Maestro pasa a 13 puntos y el techo del máximo a 8500. Los umbrales de nivel siguen igual y el XP de cada reto también.
-  assert.ok(Math.abs(MAESTRO / MAX.total - 0.75) <= 0.13, `Maestro pide ${(MAESTRO / MAX.total * 100).toFixed(1)} % del máximo`);
+  // Con las dos insignias del cambio de orden de cursos (+40 y +60 XP, máximo 8280), Maestro pide 61.6 % y Profesional 20.5 %: la tolerancia de Maestro
+  // pasa a 14 puntos (los umbrales de nivel no se mueven: nadie baja de nivel).
+  assert.ok(Math.abs(MAESTRO / MAX.total - 0.75) <= 0.14, `Maestro pide ${(MAESTRO / MAX.total * 100).toFixed(1)} % del máximo`);
   assert.ok(MAESTRO / MAX.total <= 0.9);
   assert.ok(MAX.total >= 6000 && MAX.total <= 8500, `máximo ${MAX.total}`);
 });
@@ -58,7 +60,7 @@ test('los logros de cursos no pagan dos veces lo mismo: todos juntos valen menos
 
 test('el máximo se puede alcanzar de verdad: la persona que lo hace todo suma exactamente el XP máximo y es Maestro', () => {
   // Solo el escenario máximo hace todos los retos; las rutas de dificultad conservan sus 77.
-  const ev = ruta({ ...TODO, retos: { ...TODO.retos, camino: Object.values(R.TOTALES_CAMINO).reduce((suma, n) => suma + n, 0) } });
+  const ev = ruta({ ...TODO, retos: { ...TODO.retos, camino: Object.values(R.TOTALES_CAMINO).reduce((suma, n) => suma + n, 0), cambiosOrden: 2 } });
   assert.equal(ev.xp.total, MAX.total);
   assert.equal(ev.nivel.id, 5);
   assert.deepEqual(ev.xp, { total: MAX.total, logros: MAX.logros, retos: MAX.insignias + MAX.retos, referidos: MAX.referidos, cursos: MAX.cursos, bienvenida: MAX.bienvenida });

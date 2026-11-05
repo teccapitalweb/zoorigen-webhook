@@ -50,6 +50,7 @@ function montarRutasClub(app, deps) {
     if (err && err.status) {
       const cuerpo = { error: err.message };
       if (err.codigo) cuerpo.codigo = err.codigo;
+      if (err.faltan) cuerpo.faltan = err.faltan;
       return res.status(err.status).json(cuerpo);
     }
     console.error(`[Club ${etiqueta || 'api'}]`, err);
@@ -528,7 +529,8 @@ function montarRutasClub(app, deps) {
       camino: estado.camino,
       caminoHechos: estado.caminoHechos,
       retosHoy: estado.retosHoy.fecha === hoy ? estado.retosHoy.ids : [],
-      totales: retos.TOTALES_CAMINO
+      totales: retos.TOTALES_CAMINO,
+      cambioOrden: retos.progresoCambioOrden(estado)
     };
   }
 
@@ -546,7 +548,7 @@ function montarRutasClub(app, deps) {
         if (lectura) return res.json({ ok: true, membresia: false, nivel: lectura.ev.nivel, xp: lectura.ev.xp.total, ...vistaRetos(lectura.estadoRetos), primerCurso: SIN_PRIMER_CURSO });
         return res.json({
           ok: true, membresia: false, nivel: NIVEL_VISTA_PREVIA, xp: 0, superados: 0, porReto: {},
-          camino: { ...CAMINO_VACIO }, caminoHechos: HECHOS_VACIO(), retosHoy: [], totales: retos.TOTALES_CAMINO, primerCurso: SIN_PRIMER_CURSO
+          camino: { ...CAMINO_VACIO }, caminoHechos: HECHOS_VACIO(), retosHoy: [], totales: retos.TOTALES_CAMINO, cambioOrden: retos.progresoCambioOrden(retos.estadoInicial()), primerCurso: SIN_PRIMER_CURSO
         });
       }
       const { ev, estadoRetos } = await calcularResumen(ctx);
@@ -649,12 +651,13 @@ function montarRutasClub(app, deps) {
 
       const r = await guardarRetos(decoded.uid, antes => {
         const o = retos.aplicarCaminoResultado(antes, datos);
-        return { ...o, guardar: o.aceptado };
+        // También se guarda cuando un reto ya superado antes cuenta por primera vez para el cambio de orden (sin XP)
+        return { ...o, guardar: o.aceptado || o.cuentaOrden };
       }, (antes, res) => ({
         tipo: 'camino', retoId: datos.modo, indice: datos.indice, puntaje: datos.puntaje, total: datos.total,
         perfecto: datos.puntaje === datos.total, xp: res.xpGanado
       }));
-      const salida = { ok: true, aceptado: r.aceptado, aprobado: r.aprobado, xpGanado: r.xpGanado, camino: r.estado.camino, caminoHechos: r.estado.caminoHechos };
+      const salida = { ok: true, aceptado: r.aceptado, aprobado: r.aprobado, xpGanado: r.xpGanado, camino: r.estado.camino, caminoHechos: r.estado.caminoHechos, cambioOrden: retos.progresoCambioOrden(r.estado) };
       // Con 15 retos del camino superados se abre el primer curso de la fila (la verificación es siempre del servidor)
       salida.primerCurso = await primerCursoDe(ctx, r.estado);
       if (r.aceptado) {
@@ -665,6 +668,52 @@ function montarRutasClub(app, deps) {
       return res.json(salida);
     } catch (error) {
       return responderError(res, error, 'No se pudo guardar tu avance en el camino', 'retos');
+    }
+  });
+
+  // GET /api/calendario/cambio-orden — avance (N de 35 / 55 retos nuevos, por tipo), cursos cerrados que se pueden mover y cambios hechos
+  app.get('/api/calendario/cambio-orden', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarFirebase(req, res);
+      if (!decoded) return;
+      limitar(limites.lecturas, decoded.uid, LECTURAS_POR_MINUTO);
+      const ctx = await leerContexto(decoded.uid);
+      const estadoRetos = await leerEstadoRetos(decoded.uid);
+      if (!calendario) return res.json({ ...(await sinCambioOrden(estadoRetos)) });
+      return res.json(await calendario.estadoCambioOrden(decoded.uid, ctx, estadoRetos));
+    } catch (error) {
+      return responderError(res, error, 'No se pudo cargar el cambio de orden de tus cursos', 'cambio-orden');
+    }
+  });
+  async function sinCambioOrden(estadoRetos) {
+    return { ok: true, aplica: false, ...retos.progresoCambioOrden(estadoRetos), disponible: false, cursosCerrados: [], cambios: [] };
+  }
+
+  // POST /api/calendario/cambiar-orden { cursoId, confirmar: true } — pone un curso cerrado como el siguiente en abrirse.
+  // Exige 35 (1.er cambio) o 55 (2.º) retos nuevos con mínimo 8 o 14 de cada tipo; solo 2 cambios por miembro (todo lo decide el servidor).
+  app.post('/api/calendario/cambiar-orden', express.json(), async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const decoded = await autenticarFirebase(req, res);
+      if (!decoded) return;
+      limitar(limites.premios, decoded.uid, CANJES_POR_MINUTO);
+      const cuerpo = req.body && typeof req.body === 'object' ? req.body : {};
+      if (cuerpo.confirmar !== true) throw errorHttp(400, 'Falta confirmar el cambio: es definitivo y no se puede deshacer');
+      const cursoId = typeof cuerpo.cursoId === 'string' ? cuerpo.cursoId.trim() : '';
+      if (!cursoId || cursoId.length > 200) throw errorHttp(400, 'Falta el curso que quieres adelantar');
+      if (!calendario) throw errorHttp(503, 'El calendario no está disponible por ahora');
+      const ctx = await leerContexto(decoded.uid);
+      if (!ctx.esAdmin && !ctx.tienePlan) throw sinMembresia('Necesitas una membresía activa para cambiar el orden de tus cursos');
+      const r = await calendario.cambiarOrden(decoded.uid, cursoId, ctx);
+      const { ev } = await calcularResumen(ctx, { estadoRetos: r.despues });
+      return res.json({
+        ok: true, cambio: r.registro, xp: ev.xp.total, nivel: ev.nivel,
+        insigniasNuevas: resumenInsignias(retos.insigniasNuevas(r.antes, r.despues)),
+        cambioOrden: await calendario.estadoCambioOrden(decoded.uid, ctx, r.despues)
+      });
+    } catch (error) {
+      return responderError(res, error, 'No se pudo cambiar el orden de tus cursos', 'cambio-orden');
     }
   });
 

@@ -11,8 +11,8 @@ const fechaDe = n => new Date(AHORA.getTime() - n * 86400000).toISOString().slic
 const diaN = n => new Date(AHORA.getTime() - n * 86400000);
 
 // retos: { camino: cuántos retos del camino (perfectos), practicaDias: días en que se hace práctica (4 retos/día perfectos) }
-function estadoRetos({ camino = 0, practicaDias = 0, practicaRetos = ['quiz', 'orden', 'detective', 'historia'] }) {
-  let e = R.estadoInicial();
+function estadoRetos({ camino = 0, practicaDias = 0, practicaRetos = ['quiz', 'orden', 'detective', 'historia'], cambiosOrden = 0 }) {
+  let e = { ...R.estadoInicial(), cambiosOrden };
   let hecho = 0;
   const modos = ['quiz', 'orden', 'detective'];
   let k = 0;

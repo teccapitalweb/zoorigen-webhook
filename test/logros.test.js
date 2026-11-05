@@ -14,9 +14,9 @@ const diasSeguidos = (desde, hasta) => Array.from({ length: hasta - desde + 1 },
 const sinNada = { esVIP: false, completados: 0, areas: 0, dias: [], tarjetaDir: false, foroPosts: 0, foroRespuestas: 0, foroLikes: 0, invitadosValidos: 0 };
 const evaluar = (datos, estado = null, xpRef = 0, ahora = dia(30)) => L.evaluar({ ...sinNada, ...datos }, estado, xpRef, ahora);
 
-test('la tabla trae 26 logros (l1..l26) y 10 insignias de retos (r1..r10), todos con texto en español y XP entero', () => {
+test('la tabla trae 26 logros (l1..l26) y 12 insignias de retos (r1..r12), todos con texto en español y XP entero', () => {
   assert.deepEqual(L.LOGROS.map(l => l.id), Array.from({ length: 26 }, (_, i) => `l${i + 1}`));
-  assert.deepEqual(R.INSIGNIAS.map(i => i.id), Array.from({ length: 10 }, (_, i) => `r${i + 1}`));
+  assert.deepEqual(R.INSIGNIAS.map(i => i.id), Array.from({ length: 12 }, (_, i) => `r${i + 1}`));
   for (const l of L.LOGROS) {
     assert.ok(l.nombre && l.descripcion, `${l.id} necesita nombre y descripción`);
     assert.ok(L.CATEGORIAS.includes(l.categoria) && l.categoria !== 'Retos', `${l.id}: categoría ${l.categoria}`);
@@ -44,7 +44,7 @@ test('balance: el XP máximo alcanzable en toda la vida de la cuenta queda entre
   assert.equal(m.total, m.logros + m.insignias + m.retos + m.referidos + m.cursos + m.bienvenida);
   assert.ok(m.total >= 6000 && m.total <= 8500, `máximo ${m.total}`);
   // Y evaluar() con TODO cumplido y los techos de retos y referidos da exactamente ese máximo
-  const todosLosRetos = { ...R.estadoInicial(), xp: R.XP_MAXIMO_RETOS, xpPractica: R.TOPE_XP_PRACTICA, superados: 200,
+  const todosLosRetos = { ...R.estadoInicial(), xp: R.XP_MAXIMO_RETOS, xpPractica: R.TOPE_XP_PRACTICA, superados: 200, cambiosOrden: 2,
     dias: Array.from({ length: 20 }, (_, i) => fecha(i + 1)),
     porReto: { detective: { veces: 9, mejor: 5, total: 5, superados: 9, perfectos: 9 }, quiz: { veces: 9, mejor: 5, total: 5, superados: 9, perfectos: 9 },
       orden: { veces: 9, mejor: 5, total: 5, superados: 9, perfectos: 0 }, historia: { veces: 5, mejor: 4, total: 4, superados: 5, perfectos: 0 } } };
@@ -138,12 +138,12 @@ test('los logros de cursos suben por cantidad de cursos y de áreas', () => {
 
 test('vista previa: lista todos los logros sin XP ni "ganado"', () => {
   const lista = L.logrosVistaPrevia();
-  assert.equal(lista.length, 36);
+  assert.equal(lista.length, 38);
   for (const l of lista) {
     assert.ok(l.id && l.nombre && l.descripcion && l.categoria);
     assert.ok(!('xp' in l) && !('ganado' in l));
   }
-  assert.equal(lista.filter(l => l.categoria === 'Retos').length, 10);
+  assert.equal(lista.filter(l => l.categoria === 'Retos').length, 12);
 });
 
 // ── Premios (reglas puras) ──

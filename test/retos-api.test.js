@@ -39,7 +39,8 @@ test('GET /api/retos sin membresía: vista previa sin escribir nada', async () =
   assert.deepEqual(res.body, {
     ok: true, membresia: false, nivel: { id: 1, nombre: 'Aprendiz', xp: 0, desde: 0, hasta: 500, faltan: 500 }, xp: 0, superados: 0,
     porReto: {}, camino: { quiz: 0, detective: 0, orden: 0 }, caminoHechos: { quiz: [], detective: [], orden: [] },
-    retosHoy: [], totales: { quiz: 67, detective: 60, orden: 59 }, primerCurso: { aplica: false, estado: 'ninguno' }
+    retosHoy: [], totales: { quiz: 67, detective: 60, orden: 59 }, cambioOrden: require('../services/retos').progresoCambioOrden(null),
+    primerCurso: { aplica: false, estado: 'ninguno' }
   });
   assert.equal(db.value('actividadUsuario/sinplan'), undefined);
   assert.equal(db.value('retosUsuario/sinplan'), undefined);

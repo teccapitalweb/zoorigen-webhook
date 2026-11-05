@@ -217,6 +217,99 @@ function crearServicioCalendario(deps) {
     }
   }
 
+  /* ── Cambiar el orden de los cursos cerrados con retos ──
+     Reglas en services/retos.js (CAMBIOS_ORDEN: 35 y 55 retos acumulados, 8 y 14 de cada tipo, solo retos nuevos) y en
+     services/calendario.js (moverCursoAlSiguiente: las mismas fechas con otro curso en cada lugar). Todo es del servidor. */
+  const MENSAJES_CAMBIO = {
+    'sin-cambios': 'Ya usaste tus 2 cambios de orden. No hay más.',
+    'ya-es-el-siguiente': 'Ese curso ya es el siguiente en abrirse. Elige otro curso cerrado.',
+    'no-cerrado': 'Solo puedes mover cursos que todavía están cerrados.'
+  };
+  // XP de las insignias del cambio de orden (fuente única: retos.INSIGNIAS)
+  const xpInsigniasCambio = () => ({ 1: (retos.INSIGNIAS.find(i => i.id === 'r11') || {}).xp || 0, 2: (retos.INSIGNIAS.find(i => i.id === 'r12') || {}).xp || 0 });
+  const faltanTexto = tramo => {
+    const partes = [];
+    [['quiz', 'quiz'], ['detective', 'detective'], ['orden', 'ordena']].forEach(([k, nombre]) => { if (tramo.faltan[k] > 0) partes.push(tramo.faltan[k] + ' de ' + nombre); });
+    return partes.join(', ');
+  };
+
+  // Estado para pintar el bloque "Cambia el orden de tu calendario": avance, cursos cerrados que se pueden mover y cambios ya hechos.
+  async function estadoCambioOrden(uid, ctx, estadoRetos, ahoraMs = Date.now()) {
+    const progreso = retos.progresoCambioOrden(estadoRetos);
+    const base = { ok: true, aplica: false, ...progreso, disponible: false, cursosCerrados: [], cambios: [], xpInsignias: xpInsigniasCambio() };
+    if (!ctx || ctx.esAdmin || !ctx.tienePlan) return base;
+    const cuadro = await asegurar(uid, ctx, ahoraMs);
+    if (!cuadro) return base;
+    const cerrados = cal.cursosCerradosEnOrden(cuadro.estados).map(c => {
+      const e = cuadro.estados.find(x => x.cursoId === c.cursoId) || {};
+      return { cursoId: c.cursoId, titulo: tituloDe(cuadro.lista, c.cursoId), lugar: c.lugar, desbloqueoEn: c.desbloqueoEn, diasFalta: e.diasFalta };
+    });
+    const cambios = Array.isArray(cuadro.doc.cambiosOrden) ? cuadro.doc.cambiosOrden.map(c => ({ n: c.n, cursoId: c.cursoId, titulo: c.titulo, deLugar: c.deLugar, en: c.en })) : [];
+    const siguiente = progreso.siguiente;
+    return { ...base, aplica: true, cursosCerrados: cerrados, cambios, disponible: Boolean(siguiente && siguiente.cumple && cerrados.length > 1) };
+  }
+
+  // Aplica el cambio. Todo ocurre en una transacción (calendario + retos): dos clics a la vez gastan un solo cambio.
+  // Devuelve { registro, antes, despues } (estados de retos antes y después, para las insignias).
+  async function cambiarOrden(uid, cursoId, ctx, ahoraMs = Date.now()) {
+    if (!ctx || ctx.esAdmin) throw errorHttp(400, 'Las cuentas de administrador ya tienen todos los cursos abiertos');
+    if (!ctx.tienePlan) throw errorHttp(403, 'Necesitas una membresía activa para cambiar el orden de tus cursos');
+    if (typeof cursoId !== 'string' || !cursoId.trim() || cursoId.length > 200) throw errorHttp(400, 'Falta el curso que quieres adelantar');
+    const refRetos = db.collection('retosUsuario').doc(uid);
+    // Si ya tenía los 15 retos del primer curso, se abre antes de reordenar (así el reordenamiento nunca lo estorba)
+    try {
+      const previo = await refRetos.get();
+      await evaluarPrimerCurso(uid, retos.normalizarEstado(previo.exists ? previo.data() : null), ctx, ahoraMs);
+    } catch (error) { /* si falla se sigue: el cambio solo toca cursos cerrados */ }
+    const cuadro = await asegurar(uid, ctx, ahoraMs);
+    if (!cuadro) throw errorHttp(409, 'Tu calendario todavía no está listo. Intenta de nuevo en un momento');
+    const premiosUsados = await leerPremiosUsados(uid);
+    const refCal = refCalendario(uid);
+    const idCambio = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    let salida;
+    await db.runTransaction(async tx => {
+      const snapCal = await tx.get(refCal);
+      const snapRetos = await tx.get(refRetos);
+      const doc = snapCal.exists && esObjeto(snapCal.data()) ? snapCal.data() : null;
+      if (!doc || !Array.isArray(doc.entradas)) throw errorHttp(409, 'Tu calendario todavía no está listo. Intenta de nuevo en un momento');
+      const antes = retos.normalizarEstado(snapRetos.exists ? snapRetos.data() : null);
+      const progreso = retos.progresoCambioOrden(antes);
+      const tramo = progreso.siguiente;
+      if (!tramo) throw Object.assign(errorHttp(409, MENSAJES_CAMBIO['sin-cambios']), { codigo: 'sin-cambios' });
+      if (!tramo.cumple) {
+        const falta = faltanTexto(tramo);
+        throw Object.assign(errorHttp(403, `Todavía no puedes hacer el cambio ${tramo.n}: necesitas ${tramo.total} retos nuevos (mínimo ${tramo.porTipo} de cada tipo).` + (falta ? ` Te faltan: ${falta}.` : '')), { codigo: 'retos-insuficientes', faltan: tramo.faltan });
+      }
+      const estados = cal.estadoDeCursos({
+        lista: cuadro.lista, entradas: doc.entradas, eleccion: doc.eleccion || null, premios: premiosUsados,
+        adelantado: doc.cursoAdelantado && doc.cursoAdelantado.cursoId, esAdmin: false, ahoraMs
+      });
+      const cerrados = cal.cursosCerradosEnOrden(estados);
+      const m = cal.moverCursoAlSiguiente(doc.entradas, cerrados, cursoId);
+      if (!m.ok) throw Object.assign(errorHttp(m.motivo === 'ya-es-el-siguiente' ? 409 : 400, MENSAJES_CAMBIO[m.motivo]), { codigo: m.motivo });
+      // El curso que se abre con 15 retos es "el siguiente en abrirse": si todavía no se usó, la ventaja sigue a ese lugar
+      const primerCursoId = !doc.cursoAdelantado && doc.primerCursoId && cerrados.some(c => c.cursoId === doc.primerCursoId) ? cursoId : (doc.primerCursoId || null);
+      const registro = {
+        n: tramo.n, cursoId, titulo: tituloDe(cuadro.lista, cursoId), deLugar: m.deLugar, aLugar: m.aLugar, desbloqueoEn: m.fecha,
+        en: new Date(ahoraMs).toISOString(), retos: { ...progreso.contados }
+      };
+      const despues = { ...antes, cambiosOrden: tramo.n };
+      tx.set(refCal, { entradas: m.entradas, primerCursoId, cambiosOrden: [...(Array.isArray(doc.cambiosOrden) ? doc.cambiosOrden : []), registro], actualizadoEn: FieldValue.serverTimestamp() }, { merge: true });
+      tx.set(refRetos, { ...despues, uid, actualizadoEn: FieldValue.serverTimestamp() });
+      // Copia para el panel de administración (quién cambió qué y cuándo)
+      tx.set(db.collection('calendarioCambios').doc(idCambio), { uid, ...registro, fecha: FieldValue.serverTimestamp() });
+      salida = { registro, antes, despues };
+    });
+    try {
+      await avisos.crearAviso(db, uid, {
+        id: 'cambio_orden_' + salida.registro.n, tipo: 'curso', titulo: 'Cambiaste el orden de tu calendario',
+        texto: '«' + (salida.registro.titulo || 'Tu curso').slice(0, 80) + '» ahora es el siguiente en abrirse.' + (salida.registro.n < retos.MAX_CAMBIOS_ORDEN ? ' Te queda 1 cambio más.' : ' Usaste tus 2 cambios.'),
+        enlace: 'club-biblioteca.html'
+      });
+    } catch (error) { console.warn('[Calendario] No se pudo avisar del cambio de orden:', error && error.message); }
+    return salida;
+  }
+
   /* ── Vista para el sitio ── */
   const vistaCurso = (e, lista) => ({
     cursoId: e.cursoId, titulo: tituloDe(lista, e.cursoId), abierto: e.abierto, motivo: e.motivo, desbloqueoEn: e.desbloqueoEn,
@@ -344,6 +437,12 @@ function crearServicioCalendario(deps) {
       try { nuevoDesde = await leerNuevoDesde(Date.now()); } catch (error) { nuevoDesde = null; }
       return res.json({ ok: true, modo: estricto ? 'estricto' : 'transicion', nuevoDesde: nuevoDesde !== null ? new Date(nuevoDesde).toISOString() : null, ...estadisticas });
     }));
+    // Cambios de orden hechos por los miembros (más recientes primero)
+    app.get('/api/admin/cambios-orden', conAdmin(async (req, res) => {
+      const snap = await db.collection('calendarioCambios').orderBy('fecha', 'desc').limit(200).get().catch(() => ({ docs: [] }));
+      const cambios = snap.docs.map(d => { const c = d.data() || {}; const f = cal.aMs(c.fecha); return { id: d.id, uid: String(c.uid || ''), n: c.n, cursoId: String(c.cursoId || ''), titulo: String(c.titulo || '').slice(0, 160), deLugar: c.deLugar, aLugar: c.aLugar, en: f !== null ? new Date(f).toISOString() : (c.en || null), retos: c.retos || null }; });
+      return res.json({ ok: true, total: cambios.length, cambios });
+    }));
     app.get('/api/admin/calendario/:uid', conAdmin(async (req, res) => {
       const uid = String(req.params.uid || '');
       if (!/^[A-Za-z0-9_-]{6,128}$/.test(uid)) throw errorHttp(400, 'Esa cuenta no es válida');
@@ -354,7 +453,7 @@ function crearServicioCalendario(deps) {
   }
 
   return {
-    montarAdmin, asegurar, evaluarPrimerCurso, vista, accesoCurso, accesoVideo, exigirCurso, exigirVideo, leerContexto, montar,
+    montarAdmin, asegurar, evaluarPrimerCurso, estadoCambioOrden, cambiarOrden, vista, accesoCurso, accesoVideo, exigirCurso, exigirVideo, leerContexto, montar,
     estadisticas, get estricto() { return estricto; }, get modo() { return estricto ? 'estricto' : 'transicion'; }
   };
 }

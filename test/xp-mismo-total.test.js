@@ -161,7 +161,7 @@ test('la lista de logros de quien no es miembro sigue siendo vista previa (sin X
   const { app } = montar();
   await reclamar(app, 'gratis');
   const p = (await premios(app, 'gratis')).body;
-  assert.equal(p.logros.length, L.LOGROS.length + 10);
+  assert.equal(p.logros.length, L.LOGROS.length + 12);
   for (const l of p.logros) assert.ok(!('ganado' in l) && !('xp' in l), l.id);
   assert.equal(p.racha, 0);
   assert.equal(p.disponibles, 0);

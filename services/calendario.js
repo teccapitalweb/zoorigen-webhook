@@ -186,6 +186,36 @@ function primerCursoCerrado(entradas, ahoraMs) {
   return cerradas.length ? cerradas[0].cursoId : null;
 }
 
+/* ───────────────────────── Cambio de orden (con retos) ───────────────────────── */
+
+// Cursos cerrados con fecha, del que se abre antes al que se abre después:
+// [{ cursoId, desbloqueoEn, lugar }] (lugar: 1 = el siguiente en abrirse). `estados` viene de estadoDeCursos.
+function cursosCerradosEnOrden(estados) {
+  return (Array.isArray(estados) ? estados : [])
+    .filter(e => e && !e.abierto && e.motivo === 'tiempo' && aMs(e.desbloqueoEn) !== null)
+    .sort((a, b) => aMs(a.desbloqueoEn) - aMs(b.desbloqueoEn) || (a.cursoId < b.cursoId ? -1 : 1))
+    .map((e, i) => ({ cursoId: e.cursoId, desbloqueoEn: iso(aMs(e.desbloqueoEn)), lugar: i + 1 }));
+}
+
+// Pone `cursoId` como el siguiente en abrirse entre los cursos cerrados. Las fechas NO cambian: son las mismas, repartidas de
+// otra manera (el curso elegido toma la fecha más cercana y los que estaban antes de él se recorren un lugar). Los cursos
+// abiertos no se tocan. Devuelve { ok, motivo, entradas, deLugar, aLugar, fecha }.
+//   cerrados : resultado de cursosCerradosEnOrden
+function moverCursoAlSiguiente(entradas, cerrados, cursoId) {
+  const lista = Array.isArray(entradas) ? entradas : [];
+  const orden = Array.isArray(cerrados) ? cerrados : [];
+  const k = orden.findIndex(c => c.cursoId === cursoId);
+  if (k < 0) return { ok: false, motivo: 'no-cerrado', entradas: lista };
+  if (k === 0) return { ok: false, motivo: 'ya-es-el-siguiente', entradas: lista };
+  const fechas = orden.map(c => c.desbloqueoEn);
+  const nuevoOrden = [orden[k], ...orden.slice(0, k), ...orden.slice(k + 1)];
+  const fechaDe = new Map(nuevoOrden.map((c, i) => [c.cursoId, fechas[i]]));
+  return {
+    ok: true, motivo: null, deLugar: k + 1, aLugar: 1, fecha: fechas[0],
+    entradas: lista.map(e => (e && fechaDe.has(e.cursoId) ? { ...e, desbloqueoEn: fechaDe.get(e.cursoId) } : e))
+  };
+}
+
 /* ───────────────────────── Estado de cada curso ───────────────────────── */
 
 // Estado de TODOS los cursos para una persona. Entradas:
@@ -235,5 +265,6 @@ module.exports = {
   DIA_MS, DIAS_POR_CURSO, VIDEO_GRATIS_FIJO, aMs,
   resumirCursoCalendario, ordenPorCreacion, ordenParaDesbloqueo, inicioDePlanMs, inicioDelCalendario,
   colaDeDesbloqueo, construirEntradas, completarEntradas, reanudarEntradas, primerCursoCerrado, elegibleParaAdelanto,
+  cursosCerradosEnOrden, moverCursoAlSiguiente,
   estadoDeCursos, proximoDesbloqueo, textoBloqueado
 };
