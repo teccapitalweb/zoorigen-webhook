@@ -79,8 +79,8 @@ test('retos: umbrales y variedad (34/35, 7/8 de cada tipo, 54/55, 13/14)', () =>
   assert.equal(cumple(19, 8, 8).cumple, true, '35 retos con 8 de cada tipo');
   assert.equal(cumple(20, 8, 7).cumple, false, '35 retos pero solo 7 de ordena');
   assert.equal(cumple(13, 11, 11).cumple, true);
-  assert.deepEqual(cumple(18, 8, 8).faltan, { total: 1, quiz: 0, detective: 0, orden: 0 });
-  assert.deepEqual(cumple(20, 8, 7).faltan, { total: 1, quiz: 0, detective: 0, orden: 1 });
+  assert.deepEqual(cumple(18, 8, 8).faltan, { total: 1, quiz: 0, detective: 0, orden: 0, libres: 1 });
+  assert.deepEqual(cumple(20, 8, 7).faltan, { total: 1, quiz: 0, detective: 0, orden: 1, libres: 0 });
   assert.equal(cumple(26, 14, 14, 1).cumple, false, '54 retos');
   assert.equal(cumple(27, 14, 14, 1).cumple, true, '55 retos con 14 de cada tipo');
   assert.equal(cumple(28, 14, 13, 1).cumple, false, '55 retos pero 13 de ordena');
@@ -207,7 +207,7 @@ test('variedad: 35 retos pero solo 7 de ordena (o 7 de detective) no alcanza par
   const { app } = servidor(base({ 'retosUsuario/ana': retosCon(20, 8, 7) }));
   const r = await cambiar(app, { cursoId: 'c4', confirmar: true });
   assert.equal(r.status, 403);
-  assert.deepEqual(r.body.faltan, { total: 1, quiz: 0, detective: 0, orden: 1 });
+  assert.deepEqual(r.body.faltan, { total: 1, quiz: 0, detective: 0, orden: 1, libres: 0 });
   assert.match(r.body.error, /1 de ordena/);
   const { app: app2 } = servidor(base({ 'retosUsuario/ana': retosCon(20, 7, 8) }));
   assert.equal((await cambiar(app2, { cursoId: 'c4', confirmar: true })).status, 403);
@@ -444,4 +444,51 @@ test('insignias r11 y r12: descripción corta, XP otorgado (+40 y +60) y el avis
   const l = premios.logros.find(x => x.id === 'r11');
   assert.deepEqual([l.ganado, l.xp, l.categoria], [true, 40, 'Retos'], 'el servidor sigue otorgando el XP');
   assert.equal(premios.logros.length, 38, '26 logros + 12 insignias de retos');
+});
+
+/* ───────────── Retos «de cualquier tipo» (los libres) ───────────── */
+
+test('libres: 35 - 3 × 8 = 11 en el primer cambio y 55 - 3 × 14 = 13 en el segundo; 8/8/8 son 24 de 35 y no alcanza', () => {
+  const p = R.progresoCambioOrden(retosCon(8, 8, 8));
+  assert.deepEqual([p.contados.total, p.tramos[0].libres, p.tramos[0].cumple], [24, { hechos: 0, meta: 11 }, false]);
+  assert.deepEqual(p.tramos[1].libres, { hechos: 0, meta: 13 });
+  assert.equal(p.tramos[0].faltan.libres, 11);
+  assert.equal(p.tramos[0].faltan.total, 11, 'faltan 11 para llegar a 35');
+});
+
+test('libres: lo que pasa del mínimo de cada tipo llena los libres (20 quiz + 8 + 8 = 36 sí alcanza; los 12 extras de quiz llenan los 11)', () => {
+  const p = R.progresoCambioOrden(retosCon(20, 8, 8));
+  assert.deepEqual([p.contados.total, p.tramos[0].libres, p.tramos[0].cumple], [36, { hechos: 11, meta: 11 }, true], 'tope en 11');
+  const medio = R.progresoCambioOrden(retosCon(12, 9, 8));
+  assert.deepEqual(medio.tramos[0].libres, { hechos: 5, meta: 11 }, '4 de quiz + 1 de detective');
+  assert.equal(medio.tramos[0].faltan.libres, 6);
+  assert.equal(medio.tramos[0].cumple, false);
+  const dos = R.progresoCambioOrden(retosCon(26, 14, 14, { usados: 1 }));
+  assert.deepEqual(dos.tramos[1].libres, { hechos: 12, meta: 13 }, '54 retos: falta 1 libre');
+  assert.equal(dos.siguiente.cumple, false);
+  assert.deepEqual(R.progresoCambioOrden(retosCon(27, 14, 14, { usados: 1 })).tramos[1].libres, { hechos: 13, meta: 13 });
+});
+
+test('libres: coinciden con la regla real de elegibilidad en todas las combinaciones (cumple ⇔ cada tipo en su mínimo y libres completos)', () => {
+  let revisadas = 0;
+  for (let q = 0; q <= 40; q += 3) for (let d = 0; d <= 40; d += 3) for (let o = 0; o <= 40; o += 3) {
+    const tr = R.progresoCambioOrden(retosCon(q, d, o)).tramos;
+    for (const t of tr) {
+      const porTipoOk = q >= t.porTipo && d >= t.porTipo && o >= t.porTipo;
+      assert.equal(t.cumple, porTipoOk && t.libres.hechos >= t.libres.meta, `${q}/${d}/${o} cambio ${t.n}`);
+      assert.ok(t.libres.hechos >= 0 && t.libres.hechos <= t.libres.meta);
+      assert.equal(t.libres.meta, t.total - 3 * t.porTipo);
+    }
+    revisadas++;
+  }
+  assert.ok(revisadas > 2000);
+});
+
+test('estado: el servidor devuelve los libres por cambio (no se calculan solo en el navegador)', async () => {
+  const { app } = servidor(base({ 'retosUsuario/ana': retosCon(8, 8, 8) }));
+  const r = (await estado(app)).body;
+  assert.deepEqual(r.tramos.map(t => t.libres), [{ hechos: 0, meta: 11 }, { hechos: 0, meta: 13 }]);
+  assert.equal(r.siguiente.libres.meta, 11);
+  const camino = await request(app).post('/api/retos/camino').set(auth('token-ana')).send({ modo: 'quiz', indice: 30, puntaje: 5, total: 5 });
+  assert.deepEqual(camino.body.cambioOrden.tramos[0].libres, { hechos: 1, meta: 11 }, 'un quiz más de los ya 8 cuenta como libre');
 });

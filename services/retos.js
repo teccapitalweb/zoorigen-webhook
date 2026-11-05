@@ -272,7 +272,11 @@ function progresoCambioOrden(estado) {
     // Falta lo que pida la variedad por tipo o el total, lo que sea más grande (el resto libre se completa con cualquier tipo)
     const faltanTotal = Math.max(0, tramo.total - contados.total, CAMINO_MODOS.reduce((t, m) => t + faltan[m], 0));
     const cumple = contados.total >= tramo.total && CAMINO_MODOS.every(m => contados[m] >= tramo.porTipo);
-    return { n: tramo.n, total: tramo.total, porTipo: tramo.porTipo, usado: e.cambiosOrden >= tramo.n, cumple, faltan: { total: faltanTotal, ...faltan } };
+    // Retos «de cualquier tipo»: los que pasan del mínimo de cada tipo (35 - 3 × 8 = 11 en el primer cambio y 55 - 3 × 14 = 13 en el segundo).
+    // Es la misma regla de elegibilidad vista por partes: con cada tipo en su mínimo, el total alcanza justo cuando los libres se llenan.
+    const metaLibres = tramo.total - tramo.porTipo * CAMINO_MODOS.length;
+    const libresHechos = Math.min(metaLibres, CAMINO_MODOS.reduce((t, m) => t + Math.max(0, contados[m] - tramo.porTipo), 0));
+    return { n: tramo.n, total: tramo.total, porTipo: tramo.porTipo, usado: e.cambiosOrden >= tramo.n, cumple, libres: { hechos: libresHechos, meta: metaLibres }, faltan: { total: faltanTotal, ...faltan, libres: metaLibres - libresHechos } };
   };
   const tramos = CAMBIOS_ORDEN.map(detalle);
   const siguiente = tramos.find(t => !t.usado) || null;
