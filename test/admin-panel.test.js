@@ -54,6 +54,20 @@ test('vistaMiembro no lleva teléfono, ids de Stripe ni datos de pago; fichaMiem
   assert.equal(v.planTipo, 'anual');
 });
 
+test('construirResumen: las cuentas de administración no cuentan como membresías activas (se cuentan aparte en administradores)', () => {
+  const mk = (id, data) => ({ id, data });
+  const miembros = [
+    mk('a', { name: 'A', planActivo: true, planTipo: 'mensual', planVence: hace(-3), ultimoPago: hace(2), createdAt: hace(1).toISOString(), stripeSubscriptionId: 's' }),
+    mk('adm', { name: 'Admin', role: 'admin', planActivo: true, planTipo: 'anual', planVence: hace(-3), ultimoPago: hace(2), createdAt: hace(40).toISOString() })
+  ];
+  const r = panel.construirResumen({ miembros, ahora: AHORA, tieneAcceso });
+  assert.equal(r.kpis.miembros, 2);
+  assert.equal(r.kpis.activos, 1, 'solo la membresía real');
+  assert.equal(r.kpis.administradores, 1);
+  assert.equal(r.kpis.vencenPronto, 1);
+  assert.equal(r.porPlan.anual, 0);
+});
+
 test('vistaMiembro trae desde cuándo tiene su plan (inicioPlan) para la lista de usuarios activos, y nulo si no hay', () => {
   const conInicio = panel.vistaMiembro('u1', { name: 'Ana', email: 'a@example.com', planActivo: true, planTipo: 'mensual', planInicio: hace(20), planVence: hace(-10), stripeSubscriptionId: 'sub_x' }, tieneAcceso);
   assert.equal(conInicio.inicioPlan, hace(20).toISOString());

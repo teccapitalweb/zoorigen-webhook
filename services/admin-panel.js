@@ -172,7 +172,8 @@ function construirResumen({ miembros, certificados = { total: 0, completados: 0 
     porEstado[vista.estado] += 1;
     if (vista.esAdmin) k.administradores += 1;
     if (vista.registro && new Date(vista.registro).getTime() >= haceSemana) k.nuevosSemana += 1;
-    if (vista.conAcceso) {
+    // Las cuentas de administración tienen acceso al Club pero no son membresías: no entran en «activos» (ni en origen, plan ni vencimientos)
+    if (vista.conAcceso && !vista.esAdmin) {
       k.activos += 1;
       if (porOrigen[vista.origen] !== undefined) porOrigen[vista.origen] += 1;
       porPlan[vista.planTipo || 'otro'] += 1;
