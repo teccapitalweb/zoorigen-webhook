@@ -264,6 +264,15 @@ test('API: valida limite, cursor, tipo y administrador; trae los tipos, los admi
   assert.ok(ok.body.administradores.some(a => a.nombre === 'Erick Admin'));
 });
 
+test('anotar: deja a la persona en la lista de administradores del filtro (una sola escritura por arranque) y la API la devuelve', async () => {
+  const { app, db } = montar();
+  assert.equal((await request(app).post('/api/admin/historial/registrar').set(adm('token-otroadmin')).send({ accion: 'curso-crear', nombre: 'Uno' })).status, 200);
+  assert.equal((await request(app).post('/api/admin/historial/registrar').set(adm('token-otroadmin')).send({ accion: 'curso-crear', nombre: 'Dos' })).status, 200);
+  assert.deepEqual(db.value('config/historialAdmins'), { otroadmin: { correo: 'otro@example.com', nombre: 'Marcela Coordinación' } });
+  const r = await get(app, '/api/admin/historial');
+  assert.ok(r.body.administradores.some(a => a.correo === 'otro@example.com' && a.nombre === 'Marcela Coordinación'));
+});
+
 test('API: todo lo que hace la administración queda en el historial con quién (del token), qué, a quién y cuándo', async () => {
   const { app, db } = montar({ 'miembros/beto': miembroSinPlan({ name: 'Beto Sin Plan', email: 'beto@example.com', createdAt: new Date(Date.now() - 10 * DIA).toISOString() }) });
   // 1) regalar 30 días  2) activar plan  3) créditos  4) config  5) cupón  6) registrar curso desde el panel  7) aviso  8) noticia
