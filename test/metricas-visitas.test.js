@@ -364,6 +364,24 @@ test('admin: días consecutivos con ceros, 24 horas, claves conocidas, tope de 7
   assert.equal(JSON.stringify(r).includes('187.'), false);
 });
 
+test('admin: «altas» trae las cuentas nuevas por día (todas, sin administradores) y cuántas ya tienen plan', async () => {
+  const hoyId = V.claveDia(new Date());
+  const ayer = V.restarDias(hoyId, 1);
+  const { app } = montar({
+    'miembros/dani': miembroConPlan({ name: 'Dani', email: 'dani@example.com', createdAt: new Date(Date.now() - 3600000).toISOString() }),
+    'miembros/eli': miembroSinPlan({ name: 'Eli', email: 'eli@example.com', createdAt: new Date(Date.now() - 3 * 3600000).toISOString() }),
+    'miembros/fer': miembroSinPlan({ name: 'Fer', email: 'fer@example.com', createdAt: new Date(Date.now() - 400 * DIA).toISOString() })
+  });
+  const r = (await request(app).get('/api/admin/visitas/metricas?dias=7&refrescar=1').set(adm)).body;
+  const total = Object.values(r.altas).reduce((t, x) => t + x.n, 0);
+  assert.ok(total >= 2, 'las cuentas de hoy están');
+  const dias = Object.keys(r.altas);
+  assert.ok(dias.every(d => d >= r.dias[0].dia && d <= r.hoy), 'solo días de la ventana');
+  assert.equal(r.altas[hoyId] ? r.altas[hoyId].vip >= 1 : r.altas[ayer].vip >= 1, true, 'Dani ya tiene plan');
+  assert.equal(JSON.stringify(r.altas).includes('@'), false, 'sin correos ni nombres');
+  assert.equal(Object.keys(r.altas).some(d => d < r.dias[0].dia), false, 'la cuenta de hace 400 días no cuenta');
+});
+
 test('admin: el panel dice si el contador está apagado y trae el estado (última visita)', async () => {
   V.reiniciarEstado();
   const { app } = montar({}, { encendido: false });

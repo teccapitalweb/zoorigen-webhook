@@ -19,6 +19,7 @@ const crypto = require('crypto');
 const visitas = require('./metricas-visitas');
 const configAdm = require('./admin-config');
 const { permitirSolicitud } = require('./rutas-club');
+const panel = require('./admin-panel');
 
 const VENTANA_MS = 10 * 60 * 1000;
 const POR_IP = 60;
@@ -111,7 +112,21 @@ function montarRutasMetricasVisitas(app, deps, a = {}) {
     const activo = await contadorEncendido();
     // Última visita: el último día con actividad (sale de los agregados, no del reinicio del servidor)
     const conVisitas = r.dias.filter(d => d.total > 0).pop();
-    return res.json({ ok: true, ...r, activo, ultimoDia: conVisitas ? conVisitas.dia : null, ultimaVisita: visitas.estado().ultimoOk || (conVisitas && conVisitas.actualizado) || null });
+    // Cuentas nuevas por día (TODAS las cuentas, sin administradores) y cuántas ya tienen plan: es la cifra de «Cuentas nuevas» de la pantalla
+    // (la versión completa; el origen solo se conoce de las cuentas que entraron con el contador encendido).
+    const primero = r.dias.length ? r.dias[0].dia : null;
+    const altas = {};
+    for (const { id, data } of mi.docs) {
+      if (data.role === 'admin') continue;
+      const f = panel.aFecha(data.createdAt);
+      if (!f) continue;
+      const dia = visitas.claveDia(f);
+      if (primero && dia < primero) continue;
+      altas[dia] = altas[dia] || { n: 0, vip: 0 };
+      altas[dia].n += 1;
+      if (vip.get(id) === true) altas[dia].vip += 1;
+    }
+    return res.json({ ok: true, ...r, altas, activo, ultimoDia: conVisitas ? conVisitas.dia : null, ultimaVisita: visitas.estado().ultimoOk || (conVisitas && conVisitas.actualizado) || null });
   }));
 
   app.get('/api/admin/visitas/registro', conAdmin('No se pudo cargar el registro de visitas', 'visitas-registro', async (req, res) => {
