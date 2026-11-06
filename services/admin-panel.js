@@ -107,6 +107,8 @@ function vistaMiembro(id, m = {}, tieneAcceso) {
     planTipo: m.planTipo === 'anual' ? 'anual' : (m.planTipo === 'mensual' ? 'mensual' : null),
     origen: origenPlan(m),
     vence: aIso(m.planVence || m.fechaExpiracion),
+    // «Desde cuándo»: cuándo empezó el plan que tiene ahora (lo usa la lista «Usuarios activos» de Suscripciones y pagos)
+    inicioPlan: aIso(m.planInicio),
     ultimoPago: aIso(m.ultimoPago),
     registro: registro ? registro.toISOString() : null
   };

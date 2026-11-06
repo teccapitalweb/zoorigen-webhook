@@ -54,6 +54,12 @@ test('vistaMiembro no lleva teléfono, ids de Stripe ni datos de pago; fichaMiem
   assert.equal(v.planTipo, 'anual');
 });
 
+test('vistaMiembro trae desde cuándo tiene su plan (inicioPlan) para la lista de usuarios activos, y nulo si no hay', () => {
+  const conInicio = panel.vistaMiembro('u1', { name: 'Ana', email: 'a@example.com', planActivo: true, planTipo: 'mensual', planInicio: hace(20), planVence: hace(-10), stripeSubscriptionId: 'sub_x' }, tieneAcceso);
+  assert.equal(conInicio.inicioPlan, hace(20).toISOString());
+  assert.equal(panel.vistaMiembro('u2', { name: 'Beto', email: 'b@example.com' }, tieneAcceso).inicioPlan, null);
+});
+
 test('construirResumen: KPIs, altas por semana, vencimientos y estimación de ingresos sin inventar cifras', () => {
   const mk = (id, data) => ({ id, data });
   const miembros = [
@@ -174,7 +180,7 @@ test('GET /api/admin/miembros: lista mínima (sin teléfono ni ids de pago)', as
   assert.equal(ana.estado, 'activo');
   assert.equal(ana.conAcceso, true);
   assert.equal(ana.correo, 'ana@example.com');
-  assert.deepEqual(Object.keys(ana).sort(), ['conAcceso', 'correo', 'esAdmin', 'esRegalo', 'estado', 'nombre', 'origen', 'planTipo', 'registro', 'registroOrigen', 'stripeActiva', 'uid', 'ultimoPago', 'vence']);
+  assert.deepEqual(Object.keys(ana).sort(), ['conAcceso', 'correo', 'esAdmin', 'esRegalo', 'estado', 'inicioPlan', 'nombre', 'origen', 'planTipo', 'registro', 'registroOrigen', 'stripeActiva', 'uid', 'ultimoPago', 'vence']);
   assert.equal(JSON.stringify(r.body).includes('5555'), false);
   assert.equal(r.body.miembros.find(m => m.uid === 'cata').estado, 'vencido');
 });
