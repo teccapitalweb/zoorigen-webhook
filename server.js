@@ -91,6 +91,8 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 // Historial de movimientos del panel (quién hizo qué y cuándo): una sola instancia para todas las rutas de administración
 const historialAdmin = require('./services/historial-admin').crearHistorial({ db, admin });
+// Materiales que la persona ya había desbloqueado con retos antes de la escalera nueva: siguen abiertos (services/materiales-conservados.js)
+const conservacionMateriales = require('./services/materiales-conservados').crearConservacion({ db, admin, historial: historialAdmin });
 const auth = admin.auth();
 
 const app = express();
@@ -1209,18 +1211,18 @@ const catalogoLibros = libros.cargarLibros(process.env.LIBROS_DIR || path.join(_
 const catalogoMateriales = materiales.cargarMateriales(process.env.MATERIALES_DIR || path.join(__dirname, 'data', 'materiales'));
 const club = montarRutasClub(app, {
   express, db, auth, admin, autenticarFirebase, esAdminPorDocumentos, tienePlanVigente,
-  obtenerIndiceVideos, leerEleccionPrueba, errorHttp, catalogoLibros, calendario
+  obtenerIndiceVideos, leerEleccionPrueba, errorHttp, catalogoLibros, calendario, conservacion: conservacionMateriales
 });
 
 // ── Libros de lectura y materiales PDF que se abren con membresía y retos (services/rutas-materiales.js) ──
 // importarLegado se resuelve al usarse: las rutas de certificados se montan más abajo (traen el avance anterior antes de leer las clases vistas).
 montarRutasMateriales(app, {
-  db, autenticarFirebase, autenticarAdmin, errorHttp, club, catalogoLibros, catalogoMateriales,
+  db, autenticarFirebase, autenticarAdmin, errorHttp, club, catalogoLibros, catalogoMateriales, conservacion: conservacionMateriales,
   importarLegado: uid => (app.certificados && typeof app.certificados.importarLegado === 'function' ? app.certificados.importarLegado(uid) : null)
 });
 // ── Créditos: el administrador los regala (100 por regalo) y la persona los canjea por un material sin curso (services/rutas-creditos.js) ──
 // creditosCuentas, creditosMovimientos y creditosDesbloqueos solo los escribe este servidor.
-montarRutasCreditos(app, { db, admin, autenticarFirebase, errorHttp, club, catalogoLibros, catalogoMateriales, analizadorJson: express.json({ limit: '2kb' }) });
+montarRutasCreditos(app, { db, admin, autenticarFirebase, errorHttp, club, catalogoLibros, catalogoMateriales, conservacion: conservacionMateriales, analizadorJson: express.json({ limit: '2kb' }) });
 // ── Cupones de créditos: la administración crea una clave y la comparte por el canal de WhatsApp; la persona la canjea (services/rutas-cupones.js) ──
 // creditosCupones y creditosCuponCanjes solo las escribe este servidor. La tarjeta de aviso nunca recibe la clave.
 montarRutasCupones(app, { db, admin, auth, autenticarFirebase, errorHttp, club, analizadorJson: express.json({ limit: '2kb' }) });
@@ -1294,6 +1296,8 @@ if (require.main === module) {
       console.log('📧 Recordatorios de pago: revisión cada 20 minutos (envía solo si el panel los activó)');
     }
     const tarea = iniciarProgramador(db);
+    // Migración única de los materiales conservados: en segundo plano, unos segundos después de arrancar; si falla se reintenta en el siguiente arranque
+    conservacionMateriales.iniciar();
     console.log(tarea.activo ? '📰 Tarea diaria de noticias: activa (13:00 UTC y al arrancar)' : '📰 Tarea diaria de noticias: apagada');
   });
 }

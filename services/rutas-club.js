@@ -568,11 +568,16 @@ function montarRutasClub(app, deps) {
     const ref = db.collection('retosUsuario').doc(uid);
     const idHistorial = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
     let salida;
+    // Respaldo perezoso (services/materiales-conservados.js): mientras la migración única no haya terminado, quien aún no tiene su documento de
+    // materiales conservados lo recibe AQUÍ, con sus retos de ANTES de sumar el nuevo y en la misma transacción (sin carreras).
+    const conservar = deps.conservacion ? !(await deps.conservacion.migracionCompleta().catch(() => false)) : false;
     await db.runTransaction(async tx => {
       const snap = await tx.get(ref);
       const antes = retos.normalizarEstado(snap.exists ? snap.data() : null);
+      const respaldo = conservar ? await deps.conservacion.leerParaReto(tx, uid, antes.superados, true) : null;
       const r = aplicar(antes);
       salida = { antes, ...r };
+      if (respaldo) tx.set(respaldo.ref, respaldo.datos);
       if (r.guardar !== false) tx.set(ref, { ...r.estado, uid, actualizadoEn: FieldValue.serverTimestamp() });
       const evento = historial && r.estado.superados > antes.superados ? historial(antes, r) : null;
       if (evento) {

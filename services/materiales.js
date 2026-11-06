@@ -190,11 +190,17 @@ function acceso(material, estado) {
   const e = estado || {};
   const superados = Number.isInteger(e.superados) && e.superados > 0 ? e.superados : 0;
   const membresia = Boolean(e.esAdmin || e.membresia);
+  // Lo que la persona ya había desbloqueado con los umbrales de antes (services/materiales-conservados.js) sigue abierto; el acceso sigue exigiendo membresía.
+  const conservadoAntes = material.acceso === 'retos' && e.conservados instanceof Set && e.conservados.has(material.id);
   let desbloqueado = false;
+  let porConservado = false;
   if (e.esAdmin) desbloqueado = true;
-  else if (e.membresia) desbloqueado = material.acceso === 'miembros' || superados >= material.requiereRetos;
+  else if (e.membresia) {
+    desbloqueado = material.acceso === 'miembros' || superados >= material.requiereRetos;
+    if (!desbloqueado && conservadoAntes) { desbloqueado = true; porConservado = true; }
+  }
   const faltan = desbloqueado || material.acceso !== 'retos' ? 0 : Math.max(0, material.requiereRetos - (membresia ? superados : 0));
-  return { desbloqueado, faltan, soloMiembros: !membresia };
+  return { desbloqueado, faltan, soloMiembros: !membresia, ...(porConservado ? { conservado: true } : {}) };
 }
 
 // Lo que se lista (sin ruta ni nombre de archivo). `formato` dice qué se descarga (pdf, excel o powerpoint); `tamanoKb` es el tamaño aproximado en KB (el tamaño exacto no se publica).
@@ -205,6 +211,7 @@ function resumenMaterial(material, estado) {
     paginas: material.paginas, acceso: material.acceso, requiereRetos: material.requiereRetos || 0, licencia: material.licencia,
     desbloqueado: a.desbloqueado, faltan: a.faltan, soloMiembros: a.soloMiembros, formato: formatoDe(material.tipo)
   };
+  if (a.conservado) resumen.conservado = true;   // abierto con el umbral de antes (la escalera nueva pide más retos)
   if (Number.isInteger(material.bytes)) resumen.tamanoKb = Math.max(1, Math.round(material.bytes / 1024));
   if (material.version) resumen.version = material.version;
   if (material.fecha) resumen.fecha = material.fecha;

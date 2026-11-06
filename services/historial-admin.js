@@ -44,7 +44,7 @@ const TIPO_DE_ACCION = Object.freeze({
   'reinicios-normales': 'configuracion',
   'pagos-sincronizar': 'pagos', 'recordatorios-ensayo': 'pagos', 'recordatorios-prueba': 'pagos',
   'foro-eliminar': 'moderacion', 'foro-respuesta-eliminar': 'moderacion', 'directorio-eliminar': 'moderacion', 'ver-contacto-encuesta': 'moderacion',
-  'foro-publicar': 'contenido', 'certificado-emitir': 'cursos'
+  'foro-publicar': 'contenido', 'certificado-emitir': 'cursos', 'sistema-conservar-materiales': 'miembros'
 });
 const PREFIJOS = [['curso-', 'cursos'], ['video-', 'cursos'], ['pdf-', 'cursos'], ['material-', 'cursos'], ['certificado-', 'cursos'], ['sesion-', 'contenido'], ['noticia', 'contenido'],
   ['aviso-', 'contenido'], ['dato-', 'contenido'], ['creditos-', 'creditos'], ['cupon', 'creditos'], ['pagos-', 'pagos'], ['recordatorios-', 'configuracion'],

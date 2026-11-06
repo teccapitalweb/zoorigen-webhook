@@ -70,7 +70,10 @@ function montarRutasCreditos(app, deps) {
   async function estadoDeAcceso(uid) {
     const ctx = await club.leerContexto(uid);
     const superados = ctx.membresia ? (await club.leerEstadoRetos(uid)).superados : 0;
-    return { superados, membresia: ctx.membresia, esAdmin: ctx.esAdmin };
+    const estado = { superados, membresia: ctx.membresia, esAdmin: ctx.esAdmin };
+    // Lo conservado de antes de la escalera nueva cuenta como «ya lo abre por retos»: no se ofrece para canjear ni se cobra
+    estado.conservados = deps.conservacion ? await deps.conservacion.paraAcceso(uid, estado) : new Set();
+    return estado;
   }
 
   // Cada material canjeable con su estado para ESTA persona: 'canjeado', 'otra-via' (ya lo abre por membresía o retos) o 'canjeable'

@@ -35,3 +35,19 @@
 
 ## Recordatorio
 No hacer `git add .` en la raíz de `C:\TECCAPITAL\ZOORIGEN`: arrastraría `.claude/worktrees` y archivos sueltos.
+
+## Materiales conservados (escalera nueva de retos)
+
+Al publicar el servidor con la escalera nueva, los materiales que cada persona ya había desbloqueado con retos (con los umbrales de antes)
+siguen abiertos. Cómo funciona y qué revisar:
+
+- **Migración única al arrancar** (`services/materiales-conservados.js`): unos 8 segundos después de arrancar, en segundo plano, recorre
+  `retosUsuario` de 200 en 200 y guarda en `materialesConservados/{uid}` lo que cada persona ya cumplía. Al terminar marca
+  `config/migraciones.materialesConservadosV1 = true` y anota en el historial de administración «Conservó los desbloqueos de materiales de N miembros».
+  Si falla o se corta, no marca la bandera y se reintenta sola en el siguiente arranque (lo ya guardado no se repite).
+- **Costo en Firestore (una sola vez):** una lectura por persona con retos (más una por página), una lectura y una escritura por cada persona
+  que tenga algo que conservar, y 2 escrituras finales. Con 1,000 personas con retos: unas 3,000 lecturas y 1,000 escrituras, una sola vez.
+- **Después, por uso normal:** una lectura extra (`materialesConservados/{uid}`) cuando alguien abre materiales o créditos, y una lectura extra al guardar un reto
+  (solo mientras la migración no haya terminado).
+- **Comprobar que ya terminó:** en Firestore, documento `config/migraciones`, campo `materialesConservadosV1` = true (y `...Miembros` con el total).
+- **No se debe editar** `services/materiales-umbrales-previos.js` (es la fotografía de los umbrales publicados antes de la escalera nueva).

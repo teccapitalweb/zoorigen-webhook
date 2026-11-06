@@ -56,6 +56,8 @@ function montarRutasMateriales(app, deps) {
       const estado = { superados, membresia: ctx.membresia, esAdmin: ctx.esAdmin };
       // Lo que canjeó con créditos (services/creditos.js): se abre SOLO ese material, aunque no tenga membresía ni los retos
       estado.creditos = ctx.esAdmin ? new Set() : await creditos.leerDesbloqueos(db, decoded.uid).catch(() => new Set());
+      // Lo que ya tenía desbloqueado con los umbrales de antes de la escalera nueva (services/materiales-conservados.js)
+      estado.conservados = deps.conservacion ? await deps.conservacion.paraAcceso(decoded.uid, estado) : new Set();
       return await fn(req, res, decoded, estado);
     } catch (error) {
       return responderError(res, error, mensajeGenerico, etiqueta);

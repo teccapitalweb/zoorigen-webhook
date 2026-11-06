@@ -55,6 +55,9 @@ function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {}, 
     guardado[k] = process.env[k]; delete process.env[k];
   }
 
+  // Por omisión las pruebas representan el mundo DESPUÉS del lanzamiento de la escalera nueva: la migración de materiales conservados ya corrió
+  // (quien no tiene documento no tenía nada que conservar). Las pruebas de esa migración ponen su propio config/migraciones.
+  if (!('config/migraciones' in seed)) seed = { ...seed, 'config/migraciones': { materialesConservadosV1: true } };
   const db = new FakeFirestore(seed);
   const mapaSuscripciones = new Map(suscripciones.map(s => [s.id, { ...s }]));
   const registro = { sesionesCreadas: [], actualizaciones: [], cupones: new Map(), codigos: new Map(), sesionesLeibles: new Map() };
