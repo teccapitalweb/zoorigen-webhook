@@ -40,6 +40,8 @@ function montarRutasCertificados(app, deps) {
     reglasPruebaParaVideo, videoEsGratis, obtenerIndiceVideos, errorHttp, club, calendario
   } = deps;
   const firmaClave = String(deps.firmaClave || '').trim();
+  // Historial de movimientos del panel: lo mejor posible, nunca rompe la emisión
+  const anotarAdmin = (decoded, accion, destino, resumen, extra) => (deps.historial ? deps.historial.anotar(decoded, accion, destino, resumen, extra) : null);
   const corteLegado = String(deps.corteLegado || '').trim();
   // CERTIFICADOS_ANTERIORES_HASTA (ISO): los certificados anteriores sin firma solo se aceptan si se emitieron hasta
   // esa fecha. Sin definir = modo transición (sin límite). Definida pero inválida: no se acepta ningún anterior.
@@ -748,7 +750,9 @@ function montarRutasCertificados(app, deps) {
         sesiones: Number.isInteger(sesiones) && sesiones > 0 ? Math.min(sesiones, cert.MAX_LECCIONES) : undefined
       });
       const ref = colCertificados().doc(nuevo.folio);
+      let creadoAhora = false;
       const final = await db.runTransaction(async tx => {
+        creadoAhora = false;
         const actual = await tx.get(ref);
         if (actual.exists) {
           const datos = actual.data() || {};
@@ -758,8 +762,13 @@ function montarRutasCertificados(app, deps) {
           return datos;
         }
         tx.set(ref, { ...nuevo, createdAt: Timestamp.fromDate(ahora) });
+        creadoAhora = true;
         return nuevo;
       });
+      if (creadoAhora) {
+        const quien = String((final && final.nombre) || '').slice(0, 80) || 'una persona';
+        await anotarAdmin(decoded, 'certificado-emitir', uid, `Emitió el certificado del curso «${String(curso.title || curso.titulo || cursoId).slice(0, 100)}» a ${quien}`, { destinoNombre: quien, folio: String(final.folio || '').slice(0, 40) });
+      }
       return res.json({ ok: true, certificado: cert.certificadoPublico(final) });
     } catch (error) {
       return responderError(res, error, 'No se pudo emitir el certificado', 'admin');

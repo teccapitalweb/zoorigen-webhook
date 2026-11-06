@@ -38,6 +38,8 @@ const { montarRutasAdminResenas } = require('./rutas-resenas');
 const { montarRutasAdminCupones } = require('./rutas-cupones');
 const { montarRutasAdminPagos } = require('./rutas-pagos');
 const { montarRutasAdminRecordatorios } = require('./rutas-recordatorios');
+const { montarRutasAdminHistorial } = require('./rutas-admin-historial');
+const { crearHistorial } = require('./historial-admin');
 
 const LECTURAS_POR_MINUTO = 90;
 const ESCRITURAS_POR_MINUTO = 20;
@@ -309,17 +311,11 @@ function montarRutasAdmin(app, deps) {
     });
   }));
 
-  async function anotarAccion(decoded, accion, uidDestino, resumen, extra = {}) {
-    try {
-      const id = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-      await db.collection('adminAcciones').doc(id).set({
-        accion, uidDestino, por: decoded.uid, porCorreo: String(decoded.email || '').toLowerCase().slice(0, 160),
-        resumen: panel.limpiarTexto(resumen, 200), en: FieldValue.serverTimestamp(), ...extra
-      });
-    } catch (e) {
-      console.error('[Admin acciones] No se pudo anotar la acción:', e.message);
-    }
-  }
+  // Bitácora de todo lo que hace la administración (services/historial-admin.js): quién (del token verificado), qué, sobre quién y cuándo.
+  // «Lo mejor posible»: si falla avisa en el registro del servidor y la acción principal sigue.
+  const historial = deps.historial || crearHistorial({ db, admin });
+  app.historialAdmin = historial;
+  const anotarAccion = (decoded, accion, uidDestino, resumen, extra = {}) => historial.anotar(decoded, accion, uidDestino, resumen, extra);
 
   // Activar o ampliar el plan a mano. Mismos campos que escribía el panel anterior desde el navegador, pero ahora
   // con validación y con el administrador verificado en el servidor. Escribe también el espejo en `usuarios`.
@@ -731,6 +727,9 @@ function montarRutasAdmin(app, deps) {
   montarRutasAdminCupones(app, deps, { conAdmin, anotarAccion, analizadorJson });
   if (deps.pagos) montarRutasAdminPagos(app, deps, { conAdmin, anotarAccion, analizadorJson });
   if (deps.recordatorios) montarRutasAdminRecordatorios(app, deps, { conAdmin, anotarAccion, analizadorJson });
+
+  // ── Historial de movimientos (Configuración): lectura paginada y aviso de lo que el panel guarda directo en Firestore ──
+  montarRutasAdminHistorial(app, deps, { conAdmin, historial, analizadorJson });
 
   return { limpiarCache: () => cache.clear() };
 }

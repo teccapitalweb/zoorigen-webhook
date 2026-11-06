@@ -28,6 +28,8 @@ function clavesIguales(a, b) {
 function montarRutasNoticias(app, deps) {
   const { express, db, autenticarFirebase, autenticarAdmin, errorHttp } = deps;
   const cronKey = String(deps.cronKey || '').trim();
+  // Historial de movimientos del panel (services/historial-admin.js): lo mejor posible, nunca rompe la acción
+  const anotar = (decoded, accion, destino, resumen, extra) => (deps.historial ? deps.historial.anotar(decoded, accion, destino, resumen, extra) : null);
   const limites = { lecturas: new Map(), admin: new Map(), sync: new Map(), cron: new Map() };
 
   const limitar = (mapa, clave, maximo) => {
@@ -92,7 +94,7 @@ function montarRutasNoticias(app, deps) {
     return res.json({ ok: true, noticias: await noticias.listarNoticiasAdmin(db) });
   }));
 
-  app.post('/api/admin/noticias', express.json(), administrador('No se pudo publicar la noticia', 'admin-noticias', async (req, res) => {
+  app.post('/api/admin/noticias', express.json(), administrador('No se pudo publicar la noticia', 'admin-noticias', async (req, res, decoded) => {
     const r = noticias.validarNoticiaAdmin(req.body);
     if (r.error) throw errorHttp(400, r.error);
     const noticia = await noticias.publicarNoticiaAdmin(db, r.datos);
@@ -103,18 +105,23 @@ function montarRutasNoticias(app, deps) {
         enlace: ENLACE_NOTICIAS, origen: 'admin'
       });
     }
+    await anotar(decoded, 'noticia-publicar', noticia.id, `Publicó la noticia «${noticia.titulo}»${aviso && aviso.creado ? ' y avisó a los miembros' : ''}`, { destinoNombre: noticia.titulo });
     return res.json({ ok: true, noticia, avisoCreado: Boolean(aviso && aviso.creado) });
   }));
 
-  app.post('/api/admin/noticias/sync', administrador('No se pudo sincronizar las noticias', 'admin-sync', async (req, res) => {
+  app.post('/api/admin/noticias/sync', administrador('No se pudo sincronizar las noticias', 'admin-sync', async (req, res, decoded) => {
     const r = await noticias.syncNoticias(db);
     const aviso = await avisarNoticiasNuevas(db, r);
+    await anotar(decoded, 'noticias-sync', 'noticiasSector', `Sincronizó las noticias del sector: ${r.guardadas} nuevas`, { guardadas: Number(r.guardadas) || 0 });
     return res.json({ ok: true, guardadas: r.guardadas, omitidas: r.omitidas, fuentes: r.fuentes, eliminadas: r.eliminadas, imagenes: r.imagenes, avisoCreado: Boolean(aviso && aviso.creado) });
   }, { mapa: limites.sync, maximo: SYNC_POR_MINUTO }));
 
-  app.post('/api/admin/noticias/:id/eliminar', administrador('No se pudo eliminar la noticia', 'admin-noticias', async (req, res) => {
+  app.post('/api/admin/noticias/:id/eliminar', administrador('No se pudo eliminar la noticia', 'admin-noticias', async (req, res, decoded) => {
     const id = idDe(req);
+    let titulo = '';
+    try { const previa = await db.collection('noticiasSector').doc(id).get(); titulo = previa.exists ? String((previa.data() || {}).titulo || '') : ''; } catch (_) { /* sin título */ }
     if (!(await noticias.eliminarNoticia(db, id))) throw errorHttp(404, 'Esa noticia no existe');
+    await anotar(decoded, 'noticia-eliminar', id, titulo ? `Eliminó la noticia «${titulo}»` : 'Eliminó una noticia', { destinoNombre: titulo });
     return res.json({ ok: true });
   }));
 
@@ -126,17 +133,18 @@ function montarRutasNoticias(app, deps) {
     return res.json({ ok: true, datos: await datos.listarDatos(db) });
   }));
 
-  app.post('/api/admin/datos-curiosos', express.json(), administrador('No se pudo guardar el dato curioso', 'admin-datos', async (req, res) => {
+  app.post('/api/admin/datos-curiosos', express.json(), administrador('No se pudo guardar el dato curioso', 'admin-datos', async (req, res, decoded) => {
     const cuerpo = cuerpoDe(req);
     const r = datos.validarDato(cuerpo);
     if (r.error) throw errorHttp(400, r.error);
     const dato = await datos.crearDato(db, r.datos);
     const envio = cuerpo.enviarYa === true ? await datos.enviarDato(db, dato) : null;
     const actual = envio && envio.enviado ? (await datos.listarDatos(db)).find(d => d.id === dato.id) : null;
+    await anotar(decoded, 'dato-crear', dato.id, `Agregó un dato curioso${envio && envio.enviado ? ' y lo envió a los miembros' : ''}`);
     return res.json({ ok: true, dato: actual || dato, enviado: Boolean(envio && envio.enviado) });
   }));
 
-  app.post('/api/admin/datos-curiosos/:id/actualizar', express.json(), administrador('No se pudo actualizar el dato curioso', 'admin-datos', async (req, res) => {
+  app.post('/api/admin/datos-curiosos/:id/actualizar', express.json(), administrador('No se pudo actualizar el dato curioso', 'admin-datos', async (req, res, decoded) => {
     const id = idDe(req);
     const cuerpo = cuerpoDe(req);
     const cambios = {};
@@ -152,21 +160,24 @@ function montarRutasNoticias(app, deps) {
     if (!Object.keys(cambios).length) throw errorHttp(400, 'No hay nada que actualizar');
     const dato = await datos.actualizarDato(db, id, cambios);
     if (!dato) throw errorHttp(404, 'Ese dato curioso no existe');
+    await anotar(decoded, 'dato-editar', id, cambios.activo === undefined ? 'Editó un dato curioso' : (cambios.activo ? 'Reactivó un dato curioso' : 'Pausó un dato curioso'));
     return res.json({ ok: true, dato });
   }));
 
-  app.post('/api/admin/datos-curiosos/:id/eliminar', administrador('No se pudo eliminar el dato curioso', 'admin-datos', async (req, res) => {
+  app.post('/api/admin/datos-curiosos/:id/eliminar', administrador('No se pudo eliminar el dato curioso', 'admin-datos', async (req, res, decoded) => {
     const id = idDe(req);
     if (!(await datos.eliminarDato(db, id))) throw errorHttp(404, 'Ese dato curioso no existe');
+    await anotar(decoded, 'dato-eliminar', id, 'Eliminó un dato curioso');
     return res.json({ ok: true });
   }));
 
-  app.post('/api/admin/datos-curiosos/:id/enviar', administrador('No se pudo enviar el dato curioso', 'admin-datos', async (req, res) => {
+  app.post('/api/admin/datos-curiosos/:id/enviar', administrador('No se pudo enviar el dato curioso', 'admin-datos', async (req, res, decoded) => {
     const id = idDe(req);
     const existente = (await datos.listarDatos(db)).find(d => d.id === id);
     if (!existente) throw errorHttp(404, 'Ese dato curioso no existe');
     const envio = await datos.enviarDato(db, existente);
     if (!envio.enviado && envio.motivo !== 'ya-enviado') throw errorHttp(500, 'No se pudo crear el aviso del dato curioso');
+    if (envio.enviado) await anotar(decoded, 'dato-enviar', id, 'Envió un dato curioso a todos los miembros');
     return res.json({ ok: true, enviado: envio.enviado, ...(envio.enviado ? {} : { yaEnviado: true }) });
   }));
 
@@ -177,7 +188,7 @@ function montarRutasNoticias(app, deps) {
     return res.json({ ok: true, avisos: await avisos.listarGlobalesAdmin(db) });
   }));
 
-  app.post('/api/admin/avisos', express.json(), administrador('No se pudo crear el aviso', 'admin-avisos', async (req, res) => {
+  app.post('/api/admin/avisos', express.json(), administrador('No se pudo crear el aviso', 'admin-avisos', async (req, res, decoded) => {
     const cuerpo = cuerpoDe(req);
     if (typeof cuerpo.tipo !== 'string' || !avisos.TIPOS_GLOBALES.includes(cuerpo.tipo)) throw errorHttp(400, 'El tipo de aviso no es válido');
     if (typeof cuerpo.titulo !== 'string') throw errorHttp(400, 'El título es obligatorio (de 3 a 120 caracteres)');
@@ -194,14 +205,18 @@ function montarRutasNoticias(app, deps) {
     }
     const r = await avisos.crearNotificacionGlobal(db, { tipo: cuerpo.tipo, titulo, descripcion, enlace, origen: 'admin' });
     if (!r.creado) throw errorHttp(500, 'No se pudo crear el aviso');
+    await anotar(decoded, 'aviso-crear', r.id, `Envió el aviso «${titulo}» a todos los miembros`, { destinoNombre: titulo });
     return res.json({ ok: true, id: r.id });
   }));
 
-  app.post('/api/admin/avisos/:id/eliminar', administrador('No se pudo eliminar el aviso', 'admin-avisos', async (req, res) => {
+  app.post('/api/admin/avisos/:id/eliminar', administrador('No se pudo eliminar el aviso', 'admin-avisos', async (req, res, decoded) => {
     const id = idDe(req);
     const ref = db.collection('notificacionesGlobales').doc(id);
-    if (!(await ref.get()).exists) throw errorHttp(404, 'Ese aviso no existe');
+    const previo = await ref.get();
+    if (!previo.exists) throw errorHttp(404, 'Ese aviso no existe');
     await ref.delete();
+    const tituloAviso = String((previo.data() || {}).titulo || '');
+    await anotar(decoded, 'aviso-eliminar', id, tituloAviso ? `Eliminó el aviso «${tituloAviso}»` : 'Eliminó un aviso', { destinoNombre: tituloAviso });
     return res.json({ ok: true });
   }));
 

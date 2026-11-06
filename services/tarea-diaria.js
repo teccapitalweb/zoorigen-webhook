@@ -8,6 +8,7 @@
 //   1) syncNoticias -> si guardó alguna, aviso global "📰 Nuevas noticias del sector" (id noticias_<fecha>, uno por día)
 //   2) enviarDatoCuriosoSiToca -> martes y viernes (fecha de México), una vez por día
 //   3) limpiarAntiguos (métricas de visitas) -> borra los identificadores anónimos de más de 45 días y el registro de más de 400 (para que no crezca sin límite)
+//   4) limpiarAntiguos (historial de movimientos del panel) -> borra lo de más de 12 meses (services/historial-admin.js, RETENCION_MESES)
 // Los temporizadores no mantienen vivo el proceso (unref) y se pueden detener con detener().
 // Se desactiva con NOTICIAS_TAREA=off (o pasando activa:false); las pruebas nunca la arrancan.
 
@@ -15,6 +16,7 @@ const { syncNoticias } = require('./noticias');
 const { enviarDatoCuriosoSiToca, fechaMexico } = require('./datos-curiosos');
 const { crearNotificacionGlobal } = require('./avisos');
 const metricasVisitas = require('./metricas-visitas');
+const historialAdmin = require('./historial-admin');
 
 const HORA_UTC = 13;
 const RETRASO_ARRANQUE_MS = 20 * 1000;
@@ -50,7 +52,7 @@ async function avisarNoticiasNuevas(db, resultado, { ahora = new Date() } = {}) 
 
 // Ejecuta la tarea una vez. `minHoras`: si la última sincronización es más reciente, se salta el paso de noticias.
 async function ejecutarTareaDiaria(db, { ahora = new Date(), minHoras = 0, sync = syncNoticias, syncOpciones = {} } = {}) {
-  const salida = { noticias: null, aviso: null, dato: null, visitas: null };
+  const salida = { noticias: null, aviso: null, dato: null, visitas: null, historial: null };
 
   try {
     const ultima = minHoras > 0 ? await ultimaSync(db) : null;
@@ -78,6 +80,13 @@ async function ejecutarTareaDiaria(db, { ahora = new Date(), minHoras = 0, sync 
   } catch (error) {
     console.error('[Tarea diaria] Falló la limpieza de métricas de visitas:', error && error.message);
     salida.visitas = { error: true };
+  }
+
+  try {
+    salida.historial = await historialAdmin.limpiarAntiguos(db, { ahora });   // el historial de movimientos guarda 12 meses (RETENCION_MESES)
+  } catch (error) {
+    console.error('[Tarea diaria] Falló la limpieza del historial de movimientos:', error && error.message);
+    salida.historial = { error: true };
   }
   return salida;
 }
