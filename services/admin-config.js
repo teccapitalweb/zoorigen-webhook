@@ -71,4 +71,17 @@ function vistaPublica(config) {
   };
 }
 
-module.exports = { TONOS, CLAVES, MAX_TEXTO_AVISO, normalizarConfig, validarCambios, vistaPublica };
+// Frase legible para el historial: «Cambió el interruptor «Contador de visitas» a activado»
+const NOMBRES_CLAVES = Object.freeze({ contadorVisitas: 'Contador de visitas', clasesEnVivoPronto: 'Clases en vivo «Pronto»', avisoGlobal: 'Aviso global' });
+function fraseDeCambios(cambios) {
+  const partes = Object.keys(cambios || {}).map(k => {
+    const nombre = NOMBRES_CLAVES[k] || k;
+    const v = cambios[k];
+    if (k === 'avisoGlobal') return v && v.activo ? `Encendió el aviso global: «${String(v.texto || '').slice(0, 60)}»` : 'Apagó el aviso global';
+    if (k === 'clasesEnVivoPronto') return `Cambió «${nombre}» a ${v === true ? 'activado' : v === false ? 'desactivado' : 'automático'}`;
+    return `Cambió el interruptor «${nombre}» a ${v === true ? 'activado' : 'desactivado'}`;
+  });
+  return partes.join(' · ') || 'Cambió la configuración';
+}
+
+module.exports = { TONOS, CLAVES, MAX_TEXTO_AVISO, normalizarConfig, validarCambios, vistaPublica, fraseDeCambios };

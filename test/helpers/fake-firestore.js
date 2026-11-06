@@ -83,22 +83,27 @@ function compara(a, b) {
 const valorDe = (d, campo) => (campo === NOMBRE_DOC ? d.id : leerCampo(d.value, campo));
 
 class FakeQuery {
-  constructor(collection, filters = [], max = Infinity, orden = []) {
+  constructor(collection, filters = [], max = Infinity, orden = [], cursor = null) {
     this.collection = collection;
     this.filters = filters;
     this.max = max;
     this.orden = orden;
+    this.cursor = cursor;      // startAfter(): documento (o valores) desde donde sigue la página
   }
   where(field, operator, value) {
     if (!['==', '>', '>=', '<', '<=', 'in', 'array-contains'].includes(operator)) throw new Error(`unsupported operator ${operator}`);
-    return new FakeQuery(this.collection, [...this.filters, [field, operator, value]], this.max, this.orden);
+    return new FakeQuery(this.collection, [...this.filters, [field, operator, value]], this.max, this.orden, this.cursor);
   }
   orderBy(field, direccion = 'asc') {
-    return new FakeQuery(this.collection, this.filters, this.max, [...this.orden, [field, direccion]]);
+    return new FakeQuery(this.collection, this.filters, this.max, [...this.orden, [field, direccion]], this.cursor);
   }
-  limit(max) { return new FakeQuery(this.collection, this.filters, max, this.orden); }
+  // Pagina por cursor: acepta el documento donde se quedó o los valores de los campos de orden (como Firestore)
+  startAfter(...args) {
+    return new FakeQuery(this.collection, this.filters, this.max, this.orden, args);
+  }
+  limit(max) { return new FakeQuery(this.collection, this.filters, max, this.orden, this.cursor); }
   // select() sin campos (solo ids) o con ellos: en la fake devuelve los documentos completos
-  select() { return new FakeQuery(this.collection, this.filters, this.max, this.orden); }
+  select() { return new FakeQuery(this.collection, this.filters, this.max, this.orden, this.cursor); }
   _coincide(d, [field, operator, expected]) {
     const actual = valorDe(d, field);
     if (operator === '==') return comparable(actual) === comparable(expected);
@@ -127,6 +132,20 @@ class FakeQuery {
           if (c !== 0) return dir === 'desc' ? -c : c;
         }
         return 0;
+      });
+    }
+    if (this.cursor && this.orden.length) {
+      const [ref, ...valores] = this.cursor;
+      const dato = ref && ref.ref && typeof ref.data === 'function' ? { id: ref.id, value: ref.data() } : null;
+      const claves = this.orden.map(([campo], i) => (dato ? valorDe(dato, campo) : valores[i]));
+      docs = docs.filter(d => {
+        for (let i = 0; i < this.orden.length; i++) {
+          const [campo, dir] = this.orden[i];
+          const c = compara(valorDe(d, campo), claves[i]);
+          if (c !== 0) return dir === 'desc' ? c < 0 : c > 0;
+        }
+        const ultima = this.orden[this.orden.length - 1][1];
+        return dato ? (ultima === 'desc' ? d.id < dato.id : d.id > dato.id) : false;   // empate: desempata por id, como Firestore
       });
     }
     return docs.slice(0, this.max);

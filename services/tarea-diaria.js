@@ -7,12 +7,14 @@
 // Pasos (cada uno aislado: si uno falla, el otro corre igual):
 //   1) syncNoticias -> si guardó alguna, aviso global "📰 Nuevas noticias del sector" (id noticias_<fecha>, uno por día)
 //   2) enviarDatoCuriosoSiToca -> martes y viernes (fecha de México), una vez por día
+//   3) limpiarAntiguos (historial de movimientos del panel) -> borra lo de más de 12 meses (services/historial-admin.js, RETENCION_MESES)
 // Los temporizadores no mantienen vivo el proceso (unref) y se pueden detener con detener().
 // Se desactiva con NOTICIAS_TAREA=off (o pasando activa:false); las pruebas nunca la arrancan.
 
 const { syncNoticias } = require('./noticias');
 const { enviarDatoCuriosoSiToca, fechaMexico } = require('./datos-curiosos');
 const { crearNotificacionGlobal } = require('./avisos');
+const historialAdmin = require('./historial-admin');
 
 const HORA_UTC = 13;
 const RETRASO_ARRANQUE_MS = 20 * 1000;
@@ -69,6 +71,13 @@ async function ejecutarTareaDiaria(db, { ahora = new Date(), minHoras = 0, sync 
   } catch (error) {
     console.error('[Tarea diaria] Falló el dato curioso:', error && error.message);
     salida.dato = { enviado: false, motivo: 'error' };
+  }
+
+  try {
+    salida.historial = await historialAdmin.limpiarAntiguos(db, { ahora });
+  } catch (error) {
+    console.error('[Tarea diaria] Falló la limpieza del historial de movimientos:', error && error.message);
+    salida.historial = { error: true };
   }
   return salida;
 }

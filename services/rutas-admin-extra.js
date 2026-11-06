@@ -490,7 +490,7 @@ function montarRutasAdminExtra(app, deps, a) {
     }, { merge: true });
     configCache = null;
     const config = await leerConfig(true);
-    await anotarAccion(decoded, 'guardar-config', 'config/panel', `Cambió la configuración: ${Object.keys(v.cambios).join(', ')}`, { claves: Object.keys(v.cambios) });
+    await anotarAccion(decoded, 'guardar-config', 'config/panel', configAdm.fraseDeCambios ? configAdm.fraseDeCambios(v.cambios) : `Cambió la configuración: ${Object.keys(v.cambios).join(', ')}`, { claves: Object.keys(v.cambios) });
     return res.json({ ok: true, config });
   }, { escritura: true }));
 

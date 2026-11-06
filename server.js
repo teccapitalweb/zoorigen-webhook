@@ -89,6 +89,8 @@ if (!admin.apps.length) {
   admin.initializeApp({ credential });
 }
 const db = admin.firestore();
+// Historial de movimientos del panel (quién hizo qué y cuándo): una sola instancia para todas las rutas de administración
+const historialAdmin = require('./services/historial-admin').crearHistorial({ db, admin });
 const auth = admin.auth();
 
 const app = express();
@@ -1235,7 +1237,7 @@ montarRutasRecordatorios(app, { db, autenticarFirebase, errorHttp, recordatorios
 // El avance (miembros/{uid}/progresoCursos/{cursoId}) y certificados/{folio} los escribe solo este servidor.
 // Sin CERTIFICATE_SIGNING_KEY arranca igual: el progreso funciona y los certificados responden 503.
 app.certificados = montarRutasCertificados(app, {
-  db, admin, auth, autenticarFirebase, autenticarAdmin, esAdminPorDocumentos, tienePlanVigente,
+  historial: historialAdmin, db, admin, auth, autenticarFirebase, autenticarAdmin, esAdminPorDocumentos, tienePlanVigente,
   reglasPruebaParaVideo, videoEsGratis, obtenerIndiceVideos, errorHttp, club, calendario,
   firmaClave: CERTIFICATE_SIGNING_KEY, corteLegado: LEGACY_PROGRESS_IMPORT_BEFORE, limiteAnteriores: CERTIFICADOS_ANTERIORES_HASTA,
   panelUrl: process.env.PANEL_URL || 'https://www.zoorigen.com'
@@ -1251,14 +1253,14 @@ app.publico = montarRutasPublico(app, {
 // ── Noticias del sector, datos curiosos y avisos (services/rutas-noticias.js) ──
 // CRON_KEY abre GET /cron/noticias (sin ella esa ruta responde 401). La tarea diaria corre en este mismo proceso.
 montarRutasNoticias(app, {
-  express, db, autenticarFirebase, autenticarAdmin, errorHttp,
+  historial: historialAdmin, express, db, autenticarFirebase, autenticarAdmin, errorHttp,
   cronKey: (process.env.CRON_KEY || '').trim().replace(/^["']|["']$/g, '')
 });
 
 // ── Panel de administración: resumen, miembros, comunidad, referidos, retos y estado (services/rutas-admin.js) ──
 // Todas las rutas /api/admin/* de este archivo exigen administrador verificado en el servidor (ADMIN_EMAILS o marca en Firestore).
 montarRutasAdmin(app, {
-  express, db, admin, auth, autenticarAdmin, errorHttp, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador, bitacoraServidor, recordatorios: recordatoriosPago, pagos: pagosSvc,
+  historial: historialAdmin, express, db, admin, auth, autenticarAdmin, errorHttp, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador, bitacoraServidor, recordatorios: recordatoriosPago, pagos: pagosSvc,
   precios: { stripe, STRIPE_PRICES },
   // Ensayo e importación del avance anterior de los miembros (GET/POST /api/admin/progreso-legado): las mismas reglas que la
   // importación automática (services/rutas-certificados.js)
