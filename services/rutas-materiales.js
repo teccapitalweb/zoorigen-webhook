@@ -58,6 +58,8 @@ function montarRutasMateriales(app, deps) {
       estado.creditos = ctx.esAdmin ? new Set() : await creditos.leerDesbloqueos(db, decoded.uid).catch(() => new Set());
       // Lo que ya tenía desbloqueado con los umbrales de antes de la escalera nueva (services/materiales-conservados.js)
       estado.conservados = deps.conservacion ? await deps.conservacion.paraAcceso(decoded.uid, estado) : new Set();
+      // Lo mismo para los libros (services/libros-conservados.js)
+      estado.conservadosLibros = deps.conservacionLibros ? await deps.conservacionLibros.paraAcceso(decoded.uid, estado) : new Set();
       return await fn(req, res, decoded, estado);
     } catch (error) {
       return responderError(res, error, mensajeGenerico, etiqueta);

@@ -9,11 +9,11 @@ const materiales = require('../services/materiales');
 
 const RAIZ = path.join(__dirname, '..', 'data');
 
-test('los 3 libros reales cargan sin errores y con los umbrales 5 / 15 / 30', () => {
+test('los 3 libros reales cargan sin errores y con los umbrales 25 / 35 / 45', () => {
   const r = libros.cargarLibros(path.join(RAIZ, 'libros'));
   assert.deepEqual(r.errores, []);
   const lista = r.libros || r;
-  assert.deepEqual(lista.map(l => [l.id, l.requiereRetos]).sort(), [['bienestar-cautiverio', 15], ['conservacion-mx', 30], ['ley-fauna-mx', 5]]);
+  assert.deepEqual(lista.map(l => [l.id, l.requiereRetos]).sort(), [['bienestar-cautiverio', 35], ['conservacion-mx', 45], ['ley-fauna-mx', 25]]);
   for (const l of lista) {
     assert.ok(l.paginas.length >= 16, l.id + ' tiene pocas páginas');
     assert.equal(l.paginas[l.paginas.length - 1].titulo, 'Aviso importante', l.id + ' debe cerrar con el aviso');

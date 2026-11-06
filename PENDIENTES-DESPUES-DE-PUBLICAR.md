@@ -51,3 +51,29 @@ siguen abiertos. Cómo funciona y qué revisar:
   (solo mientras la migración no haya terminado).
 - **Comprobar que ya terminó:** en Firestore, documento `config/migraciones`, campo `materialesConservadosV1` = true (y `...Miembros` con el total).
 - **No se debe editar** `services/materiales-umbrales-previos.js` (es la fotografía de los umbrales publicados antes de la escalera nueva).
+
+## Libros: umbrales nuevos (25 / 35 / 45) y libros conservados
+
+`ley-fauna-mx` pasa de 5 a 25 retos, `bienestar-cautiverio` de 15 a 35 y `conservacion-mx` de 30 a 45. Quien YA había desbloqueado un libro con los
+umbrales de antes lo conserva. Es el mismo patrón de los materiales pero SEPARADO (otra colección, otra tabla, otra bandera): la migración de
+materiales (`materialesConservadosV1`) ya corrió y no se reabre.
+
+- **Qué se guarda:** `librosConservados/{uid}` = `{ ids, creadoEn, actualizadoEn, version }` (solo el servidor; solo se agrega). Tabla congelada de umbrales
+  anteriores: `services/libros-umbrales-previos.js` (5 / 15 / 30; no se edita).
+- **Migración única al arrancar** (`services/libros-conservados.js`): unos 20 segundos después de arrancar (después de la de materiales), en segundo plano,
+  con `try/catch`. Recorre `retosUsuario` de 200 en 200 y guarda lo que cada persona cumplía con 5 / 15 / 30 (solo si no está vacío). Al terminar marca
+  `config/migraciones.librosConservadosV1 = true` y anota en el historial de administración «Conservó los desbloqueos de libros de N miembros».
+  Si falla o se corta, no marca la bandera y se reintenta en el siguiente arranque (lo ya guardado no se repite).
+- **Mientras la migración no termine:** respaldo perezoso. Quien abre libros o créditos sin documento lo recibe con sus retos actuales, y al sumar un reto
+  se calcula ANTES de sumarlo, en la misma transacción. Una vez marcada la bandera ya no se hace (quien no tiene documento no tenía nada que conservar).
+- **Costo en Firestore (una sola vez):** una lectura por persona con retos (más una por página), una lectura + una escritura por cada persona con algún libro
+  que conservar, y 2 escrituras finales. Con 1,000 personas con retos: unas 3,000 lecturas y 1,000 escrituras, una sola vez. En el uso normal, una lectura extra
+  (`librosConservados/{uid}`) al abrir libros o créditos, y una más al guardar un reto solo mientras la migración no haya terminado.
+- **Avisos de «libro desbloqueado»:** no se disparan por el cambio de umbral. Quien conserva un libro no recibe aviso al cruzar el umbral nuevo (ya no es un
+  libro nuevo) y los avisos usan un id fijo (`libro_<id>`), así que nunca salen dos veces.
+- **Cómo verificar después de publicar:**
+  1. En Firestore, `config/migraciones` debe tener `librosConservadosV1 = true` (y `librosConservadosV1Miembros` con el total) unos minutos después de arrancar.
+  2. En el panel de administración, Configuración > Historial de movimientos debe mostrar «Conservó los desbloqueos de libros de N miembros» (acción del sistema).
+  3. Entrar como una cuenta que tenga entre 5 y 24 retos: «Fauna silvestre y ley en México» sigue abierto y «Bienestar» y «Conservación» muestran «faltan N retos».
+     Entrar como una cuenta con 0 retos: los tres libros cerrados con «faltan 25 / 35 / 45».
+- **No se debe editar** `services/libros-umbrales-previos.js` (es la fotografía de los umbrales publicados antes de la subida).

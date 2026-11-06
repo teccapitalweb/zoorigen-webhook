@@ -73,6 +73,7 @@ function montarRutasCreditos(app, deps) {
     const estado = { superados, membresia: ctx.membresia, esAdmin: ctx.esAdmin };
     // Lo conservado de antes de la escalera nueva cuenta como «ya lo abre por retos»: no se ofrece para canjear ni se cobra
     estado.conservados = deps.conservacion ? await deps.conservacion.paraAcceso(uid, estado) : new Set();
+    estado.conservadosLibros = deps.conservacionLibros ? await deps.conservacionLibros.paraAcceso(uid, estado) : new Set();   // un libro conservado tampoco se ofrece ni se cobra
     return estado;
   }
 

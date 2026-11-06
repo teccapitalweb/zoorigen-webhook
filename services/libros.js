@@ -190,9 +190,12 @@ function acceso(libro, estado) {
   const e = estado || {};
   const superados = Number.isInteger(e.superados) && e.superados > 0 ? e.superados : 0;
   const membresia = Boolean(e.esAdmin || e.membresia);
-  const desbloqueado = Boolean(e.esAdmin) || (Boolean(e.membresia) && superados >= libro.requiereRetos);
+  // Lo que la persona ya había desbloqueado con los umbrales de antes (services/libros-conservados.js) sigue abierto; el acceso sigue exigiendo membresía.
+  const conservado = e.conservadosLibros instanceof Set && e.conservadosLibros.has(libro.id);
+  const porUmbral = superados >= libro.requiereRetos;
+  const desbloqueado = Boolean(e.esAdmin) || (Boolean(e.membresia) && (porUmbral || conservado));
   const faltan = desbloqueado ? 0 : Math.max(0, libro.requiereRetos - (membresia ? superados : 0));
-  return { desbloqueado, faltan, soloMiembros: !membresia };
+  return { desbloqueado, faltan, soloMiembros: !membresia, ...(desbloqueado && !e.esAdmin && !porUmbral && conservado ? { conservado: true } : {}) };
 }
 
 // Lo que se lista: NUNCA lleva páginas, fuentes ni revisión
@@ -201,7 +204,8 @@ function resumenLibro(libro, estado) {
   return {
     id: libro.id, titulo: libro.titulo, subtitulo: libro.subtitulo, autor: libro.autor, categoria: libro.categoria,
     color: libro.color, icono: libro.icono, resumen: libro.resumen, paginasTotal: libro.paginas.length,
-    requiereRetos: libro.requiereRetos, desbloqueado: a.desbloqueado, faltan: a.faltan, soloMiembros: a.soloMiembros
+    requiereRetos: libro.requiereRetos, desbloqueado: a.desbloqueado, faltan: a.faltan, soloMiembros: a.soloMiembros,
+    ...(a.conservado ? { conservado: true } : {})   // abierto con el umbral de antes (ahora se piden más retos)
   };
 }
 
@@ -222,11 +226,12 @@ const cuantos = v => (v && typeof v === 'object' ? v.superados : v);
 
 // Libros que cruzan su umbral con este avance (antes < requiere <= despues). Acepta números o estados de retos.
 // Si se cruzan varios umbrales de golpe, salen todos, del menor al mayor.
-function librosNuevos(libros, antes, despues) {
+// `conservados` (Set de ids, opcional): lo que la persona ya tenía abierto con los umbrales de antes NO es un libro nuevo aunque cruce el umbral nuevo.
+function librosNuevos(libros, antes, despues, conservados) {
   const a = Number.isInteger(cuantos(antes)) ? cuantos(antes) : 0;
   const d = Number.isInteger(cuantos(despues)) ? cuantos(despues) : 0;
   return (libros || [])
-    .filter(l => a < l.requiereRetos && d >= l.requiereRetos)
+    .filter(l => a < l.requiereRetos && d >= l.requiereRetos && !(conservados instanceof Set && conservados.has(l.id)))
     .map(l => ({ id: l.id, titulo: l.titulo, requiereRetos: l.requiereRetos }));
 }
 

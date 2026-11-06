@@ -115,7 +115,7 @@ test('concurrencia: un libro y un Excel a la vez (con saldo para ambos): los dos
 });
 
 test('un libro que ya abre por retos NO cuenta: sigue pudiendo canjear otro con créditos, y el que ya abre no se ofrece ni se cobra', async () => {
-  const { app, db } = servidor({ ...retosDe('ana', 20), ...conSaldo('ana', 300) });   // 20 retos abren los de 5 y 15
+  const { app, db } = servidor({ ...retosDe('ana', 36), ...conSaldo('ana', 300) });   // 36 retos abren los de 25 y 35
   const e = await estado(app, 'token-ana');
   assert.equal(e.body.librosCanjeadosConCreditos, 0);
   const por = Object.fromEntries(e.body.libros.map(l => [l.id, l]));
@@ -135,16 +135,16 @@ test('un libro que ya abre por retos NO cuenta: sigue pudiendo canjear otro con 
   assert.equal((await libro(app, 'conservacion-mx', 'token-ana')).status, 200);
 });
 
-test('después de canjear un libro, los demás siguen abriéndose por retos como siempre (a los 15 retos, el de 15)', async () => {
+test('después de canjear un libro, los demás siguen abriéndose por retos como siempre (a los 35 retos, el de 35)', async () => {
   const { app } = servidor({ ...retosDe('sinplan', 99), ...conSaldo('sinplan', 100) });   // sin membresía: los retos no abren nada
   assert.equal((await canjear(app, 'libro:ley-fauna-mx')).status, 200);
   assert.equal((await libro(app, 'bienestar-cautiverio')).status, 403, 'sin membresía los retos no abren');
-  const { app: a2 } = servidor({ ...retosDe('ana', 14), ...conSaldo('ana', 100) });
+  const { app: a2 } = servidor({ ...retosDe('ana', 34), ...conSaldo('ana', 100) });
   assert.equal((await canjear(a2, 'libro:conservacion-mx', 'token-ana')).status, 200);
-  assert.equal((await libro(a2, 'bienestar-cautiverio', 'token-ana')).status, 403, 'con 14 retos aún no abre el de 15');
+  assert.equal((await libro(a2, 'bienestar-cautiverio', 'token-ana')).status, 403, 'con 34 retos aún no abre el de 35');
   const r = await request(a2).post('/api/retos/camino').set(auth('token-ana')).send({ modo: 'quiz', indice: 0, puntaje: 5, total: 5 });
   assert.equal(r.body.aceptado, true);
-  assert.equal((await libro(a2, 'bienestar-cautiverio', 'token-ana')).status, 200, 'con 15 retos se abre por retos');
+  assert.equal((await libro(a2, 'bienestar-cautiverio', 'token-ana')).status, 200, 'con 35 retos se abre por retos');
 });
 
 test('sin saldo no canjea un libro (402) y no queda marcado como canjeado', async () => {

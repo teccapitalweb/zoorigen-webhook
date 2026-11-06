@@ -93,7 +93,7 @@ test('escalera: TODOS son alcanzables con holgura (el último pide menos del 90 
   assert.equal(120 * retosServicio.XP_CAMINO_PERFECTO, 1200);
 });
 
-test('los antiguos conservan EXACTAMENTE sus reglas: 6 por membresía y presentaciones con 3, 10 y 20 retos; libros con 5, 15 y 30', () => {
+test('los antiguos conservan EXACTAMENTE sus reglas: 6 por membresía y presentaciones con 3, 10 y 20 retos; libros con 25, 35 y 45 (antes 5, 15 y 30: quien ya los abrió los conserva, ver materiales-libros-conservados)', () => {
   assert.equal(ANTIGUOS.length, 9);
   const por = Object.fromEntries(ANTIGUOS.map(m => [m.id, [m.acceso, m.requiereRetos || 0]]));
   assert.deepEqual(por, {
@@ -102,7 +102,7 @@ test('los antiguos conservan EXACTAMENTE sus reglas: 6 por membresía y presenta
     'intro-nom-059': ['retos', 3], 'bienestar-cinco-dominios': ['retos', 10], 'polinizadores-abejas': ['retos', 20]
   });
   const libros = ['ley-fauna-mx', 'bienestar-cautiverio', 'conservacion-mx'].map(id => [id, JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'libros', id + '.json'), 'utf8')).requiereRetos]);
-  assert.deepEqual(libros, [['ley-fauna-mx', 5], ['bienestar-cautiverio', 15], ['conservacion-mx', 30]]);
+  assert.deepEqual(libros, [['ley-fauna-mx', 25], ['bienestar-cautiverio', 35], ['conservacion-mx', 45]]);
 });
 
 /* ───────────────────────── Acceso por retos (servidor) ───────────────────────── */
@@ -291,13 +291,12 @@ test('antiguos: si ya los abre por retos o por membresía, no se ofrecen para ca
   const claves = new Set(e.body.materiales.map(m => m.clave));
   for (const id of ['checklist-bioseguridad', 'fauna-herida', 'intro-nom-059', 'bienestar-cinco-dominios']) assert.ok(!claves.has('pdf:' + id), id + ' ya lo abre: no se ofrece');
   assert.ok(claves.has('pdf:polinizadores-abejas'), 'pide 20 (tiene 12): se ofrece');
-  assert.ok(claves.has('libro:bienestar-cautiverio'), 'libro de 15 (tiene 12): se ofrece');
-  assert.ok(!claves.has('libro:ley-fauna-mx'), 'libro de 5: ya lo abre');
+  assert.ok(claves.has('libro:bienestar-cautiverio'), 'libro de 35 (tiene 12): se ofrece');
+  assert.ok(claves.has('libro:ley-fauna-mx'), 'libro de 25 (tiene 12): se ofrece');
   for (const id of ['checklist-bioseguridad', 'intro-nom-059']) {
     const r = await canjear(app, 'pdf:' + id);
     assert.equal(r.status, 409, id); assert.equal(r.body.codigo, 'ya-accesible');
   }
-  assert.equal((await canjear(app, 'libro:ley-fauna-mx')).status, 409);
   assert.equal(db.value('creditosCuentas/ana').saldo, 300, 'nada se cobró');
   assert.equal((await canjear(app, 'pdf:polinizadores-abejas')).body.saldo, 200);
   assert.equal((await canjear(app, 'libro:bienestar-cautiverio')).body.saldo, 100);
@@ -314,7 +313,7 @@ test('GARANTÍA: ningún umbral de 9 o menos cambia (3, 6 y 9 en los nuevos; 3 y
   const hasta9 = CATALOGO.filter(m => m.acceso === 'retos' && m.requiereRetos <= 9).map(m => [m.id, m.requiereRetos]).sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1));
   assert.deepEqual(hasta9, [['carteles-visitantes-senales', 3], ['intro-nom-059', 3], ['etograma-hoja-observacion', 6], ['inventario-botiquin-caducidad', 9]]);
   const libro5 = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'libros', 'ley-fauna-mx.json'), 'utf8')).requiereRetos;
-  assert.equal(libro5, 5);
+  assert.equal(libro5, 25, 'el libro más fácil pide ahora 25 retos (antes 5)');
   // Con 9 retos (lo máximo que hoy tiene un miembro) se abre exactamente lo mismo que antes: 4 materiales por retos + los 6 de membresía
   const { app } = servidor(retosDe('ana', 9));
   const r = await lista(app);
