@@ -10,24 +10,28 @@
 //          toma al administrador de su token, arma la frase y solo acepta los códigos de DESDE_PANEL.
 const h = require('./historial-admin');
 
-const CACHE_ADMINS_MS = 10 * 60 * 1000;
+const CACHE_ADMINS_MS = 60 * 1000;
 
 function montarRutasAdminHistorial(app, deps, a) {
   const { db, errorHttp, correosAdministrador } = deps;
   const { conAdmin, historial, analizadorJson } = a;
   let adminsCache = null;
 
-  // Los administradores para el filtro: los de ADMIN_EMAILS (con su nombre si ya tienen cuenta) más los que aparecen en la página
+  // Los administradores para el filtro: los que ya hicieron algo (config/historialAdmins), los de ADMIN_EMAILS (con su nombre si ya tienen cuenta) y los que aparecen en la página
   async function listaAdministradores(items) {
     if (!adminsCache || Date.now() - adminsCache.en > CACHE_ADMINS_MS) {
       const mapa = new Map();
+      try {
+        const roster = await db.collection('config').doc(h.DOC_ADMINISTRADORES).get();
+        for (const v of Object.values(roster.exists ? roster.data() || {} : {})) if (v && typeof v.correo === 'string' && v.correo) mapa.set(v.correo.toLowerCase(), String(v.nombre || ''));
+      } catch (_) { /* sin lista guardada */ }
       for (const correo of (typeof correosAdministrador === 'function' ? [...correosAdministrador()] : [])) {
         let nombre = '';
         try {
           const s = await db.collection('miembros').where('email', '==', correo).limit(1).get();
           if (s.docs.length) { const d = s.docs[0].data() || {}; nombre = String(d.name || d.displayName || ''); }
         } catch (_) { /* sin nombre */ }
-        mapa.set(correo, nombre || correo.split('@')[0]);
+        if (!mapa.get(correo)) mapa.set(correo, nombre || correo.split('@')[0]);
       }
       adminsCache = { en: Date.now(), mapa };
     }

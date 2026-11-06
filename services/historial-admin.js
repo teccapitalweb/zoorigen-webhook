@@ -13,6 +13,7 @@
 // Anotar es "lo mejor posible": si falla, avisa en el registro del servidor y la acción principal sigue como si nada.
 
 const COLECCION = 'adminAcciones';
+const DOC_ADMINISTRADORES = 'historialAdmins';   // config/historialAdmins: quiénes han hecho algo (para el filtro «Administrador»; una escritura por persona y por arranque)
 const RETENCION_MESES = 12;          // lo más antiguo se borra en la tarea diaria
 const POR_PAGINA = 10;               // lo que se ve al abrir
 const MAX_POR_PAGINA = 20;           // lo máximo que se pide de una vez
@@ -156,6 +157,7 @@ function crearHistorial({ db, admin } = {}) {
   const FieldValue = admin && admin.firestore && admin.firestore.FieldValue;
   const ahora = () => new Date();
   const nombres = new Map();       // uid → nombre del administrador (para no leer Firestore en cada acción)
+  const registrados = new Set();   // administradores ya anotados en config/historialAdmins durante este arranque
 
   async function nombreAdmin(decoded) {
     const uid = String((decoded && decoded.uid) || '');
@@ -195,6 +197,11 @@ function crearHistorial({ db, admin } = {}) {
         ...(destinoNombre ? { destinoNombre: limpiarTexto(destinoNombre, 120) } : {}),
         resumen: limpiarTexto(resumen, 200), en: FieldValue.serverTimestamp(), ...limpio
       });
+      if (!registrados.has(decoded.uid)) {
+        registrados.add(decoded.uid);
+        await db.collection('config').doc(DOC_ADMINISTRADORES).set({ [decoded.uid]: { correo: String(decoded.email || '').toLowerCase().slice(0, 160), nombre: await nombreAdmin(decoded) } }, { merge: true })
+          .catch(e => { registrados.delete(decoded.uid); console.error('[Admin acciones] No se pudo guardar la lista de administradores:', e && e.message); });
+      }
       return id;
     } catch (e) {
       console.error('[Admin acciones] No se pudo anotar la acción:', e && e.message);
@@ -286,6 +293,6 @@ function crearHistorial({ db, admin } = {}) {
 }
 
 module.exports = {
-  COLECCION, RETENCION_MESES, POR_PAGINA, MAX_POR_PAGINA, ESCANEO_PAGINA, ESCANEO_MAX, TIPOS, IDS_TIPOS, DESDE_PANEL,
+  COLECCION, DOC_ADMINISTRADORES, RETENCION_MESES, POR_PAGINA, MAX_POR_PAGINA, ESCANEO_PAGINA, ESCANEO_MAX, TIPOS, IDS_TIPOS, DESDE_PANEL,
   tipoDe, limpiarTexto, limpiarExtra, codificarCursor, decodificarCursor, vistaDeAccion, limpiarAntiguos, crearHistorial
 };
