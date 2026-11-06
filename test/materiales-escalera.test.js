@@ -81,13 +81,13 @@ test('escalera: lo más básico abre primero y lo legal y más completo al final
 });
 
 test('escalera: TODOS son alcanzables con holgura (el último pide menos del 90 % de los retos que se pueden superar)', () => {
-  // 186 = 67 quiz + 60 detective + 59 ordena (retos distintos del camino); la práctica diaria suma más
+  // 205 = 67 quiz + 79 detective + 59 ordena (retos distintos del camino); la práctica diaria suma más
   const camino = retosServicio.TOTALES_CAMINO;
   assert.equal(camino.quiz + camino.detective + camino.orden, TOTAL_RETOS_ALCANZABLES);
   assert.ok(Math.max(...NUEVOS.map(m => m.requiereRetos)) <= Math.floor(TOTAL_RETOS_ALCANZABLES * 0.9), 'último umbral <= 90 % del total');
   assert.ok(Math.max(...NUEVOS.map(m => m.requiereRetos)) < TOTAL_RETOS_ALCANZABLES);
   assert.equal(Math.max(...NUEVOS.map(m => m.requiereRetos)), 120);
-  assert.ok(TOTAL_RETOS_ALCANZABLES - 120 >= 30, 'queda un margen de al menos 30 retos sobre el material más difícil');
+  assert.ok(TOTAL_RETOS_ALCANZABLES - 120 >= 60, 'queda un margen de al menos 60 retos sobre el material más difícil');
   // XP aproximado para llegar a 120 retos del camino: 6 por reto (720 XP) y hasta 10 si todos son perfectos (1,200 XP)
   assert.equal(120 * retosServicio.XP_CAMINO, 720);
   assert.equal(120 * retosServicio.XP_CAMINO_PERFECTO, 1200);

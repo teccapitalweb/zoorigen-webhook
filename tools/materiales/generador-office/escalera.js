@@ -9,15 +9,15 @@
 // Del cuarto en adelante la curva sube suave y creciente (el paso crece de 4 a 8 y se afloja al final; en promedio unos 7 retos entre uno y el siguiente):
 //   13, 17, 22, 27, 33, 39, 45, 52, 59, 66, 74, 82, 90, 98, 106, 114 y 120.
 // Diseño (escalera aprobada por el dueño): con 15 retos hay 4 de 20 abiertos; con 35 (los del primer cambio de orden de cursos), 8; con 55 (el segundo
-// cambio), 11; con 80, 14; y con 120 están los 20. El último pide 120, que es menos que el 90 % de los retos que existen (167): queda margen de 66 retos
-// con los 186 de hoy y más cuando se activen las escenas de detective que faltan. Los 12 materiales antiguos no se tocan (conservan su propia regla).
+// cambio), 11; con 80, 14; y con 120 están los 20. El último pide 120, que es menos que el 90 % de los retos que existen (184): queda margen de 85 retos
+// con los 205 de hoy (67 quiz, 79 detective y 59 ordena; falta activar 1 escena de detective). Los 12 materiales antiguos no se tocan (conservan su propia regla).
 //
 // Orden: primero lo sencillo (carteles, hojas de observación y registros), luego controles de salud y administración, luego lo clínico
 // (cuarentena, necropsia, auditoría, rotulado de muestras), después las presentaciones y al final lo legal y más completo.
 
 const PASO = 3;   // los tres primeros suben de 3 en 3 (3, 6 y 9) y no cambian
 const UMBRALES = Object.freeze([3, 6, 9, 13, 17, 22, 27, 33, 39, 45, 52, 59, 66, 74, 82, 90, 98, 106, 114, 120]);
-const TOTAL_RETOS_ALCANZABLES = 186;
+const TOTAL_RETOS_ALCANZABLES = 205;
 const ORDEN = [
   'carteles-visitantes-senales',            //   3    carteles listos para imprimir
   'etograma-hoja-observacion',              //   6    hoja de observación sencilla
