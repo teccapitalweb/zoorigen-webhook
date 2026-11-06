@@ -39,9 +39,14 @@ const ELIMINADOS_TOPE = 200;
 const LOTE_BORRAR = 25;
 const ID_ENCUESTA = /^[A-Za-z0-9-]{8,64}$/;
 const CLAVE_CHATBOT = /^[a-z0-9][a-z0-9 -]{0,89}$/;
-const VISITAS_POR_IP = 120;
-const VISITAS_GLOBAL = 5000;
-const VENTANA_VISITAS_MS = 10 * 60 * 1000;
+// ── Ruta VIEJA de visitas (POST /api/visita) ──
+// Es la del contador anterior: el sitio publicado hoy (assets/js/visitas.js en origin/main) todavía la llama desde https://www.zoorigen.com.
+// El sitio nuevo usa POST /api/metricas/visita (services/rutas-metricas-visitas.js). Mientras conviva, se blinda con el MISMO chequeo de origen
+// y los MISMOS topes que la ruta nueva. DESPUÉS DE PUBLICAR el sitio nuevo y confirmar que ya no llama a /api/visita, se apaga con
+// ZOORIGEN_VISITA_LEGADO=off (o poniendo RUTA_VISITA_LEGADO_ACTIVA = false) y luego se retira: ver PENDIENTES-DESPUES-DE-PUBLICAR.md.
+const RUTA_VISITA_LEGADO_ACTIVA = true;
+const { ORIGEN_PERMITIDO: ORIGEN_VISITA_PERMITIDO, VENTANA_MS: VENTANA_VISITAS_MS, POR_IP: VISITAS_POR_IP, GLOBAL: VISITAS_GLOBAL } = require('./rutas-metricas-visitas');
+const rutaVisitaLegadoActiva = () => RUTA_VISITA_LEGADO_ACTIVA && String(process.env.ZOORIGEN_VISITA_LEGADO || '').trim().toLowerCase() !== 'off';
 const CONFIG_CACHE_MS = 30 * 1000;
 
 function montarRutasAdminExtra(app, deps, a) {
@@ -561,10 +566,15 @@ function montarRutasAdminExtra(app, deps, a) {
   });
 
   const analizadorVisita = express.json({ limit: '1kb', type: ['application/json', 'text/plain'] });
+  // Orígenes que cuentan: los mismos que la ruta nueva (zoorigen.com, www.zoorigen.com y localhost de pruebas, más CORS_ORIGINS_VISITAS)
+  const origenesExtraVisita = String(process.env.CORS_ORIGINS_VISITAS || '').split(',').map(x => x.trim()).filter(Boolean);
+  const origenVisitaPermitido = o => ORIGEN_VISITA_PERMITIDO.test(String(o || '')) || origenesExtraVisita.includes(String(o || ''));
   app.post('/api/visita', (req, res) => {
     // El contador nunca debe estorbar a quien visita: siempre 204, cuente o no la visita.
     analizadorVisita(req, res, async () => {
       try {
+        if (!rutaVisitaLegadoActiva()) return res.status(204).end();                       // apagada: no cuenta
+        if (!origenVisitaPermitido(req.headers.origin)) return res.status(204).end();      // origen ajeno o sin origen: no cuenta
         if (visitas.visitaNoRastreable(req.headers)) return res.status(204).end();
         const ip = referidos.ipDeSolicitud(req.headers, req.ip) || 'desconocida';
         if (!permitirSolicitud(limitesPublicos.visitas, ip, VENTANA_VISITAS_MS, VISITAS_POR_IP) ||

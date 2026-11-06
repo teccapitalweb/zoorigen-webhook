@@ -428,7 +428,7 @@ test('config: GET/POST validan, guardan, anotan y la parte pública solo trae lo
 
 test('contador de visitas: APAGADO por defecto no escribe nada; encendido suma por día y página sin guardar IP ni identificadores', async () => {
   const { app, db } = montar();
-  const visitar = (cuerpo, cabeceras = {}) => request(app).post('/api/visita').set(cabeceras).send(cuerpo);
+  const visitar = (cuerpo, cabeceras = {}) => request(app).post('/api/visita').set({ Origin: 'https://www.zoorigen.com', ...cabeceras }).send(cuerpo);
   const guardadas = () => [...db._data.keys()].filter(k => k.startsWith('visitasDiarias/'));
   assert.equal((await visitar({ pagina: 'portada' })).status, 204);
   assert.equal(guardadas().length, 0);
@@ -463,11 +463,65 @@ test('contador de visitas: APAGADO por defecto no escribe nada; encendido suma p
   assert.equal(db.value(claves[0]).total, 5);
 });
 
-test('contador de visitas: tope por IP en 10 minutos (las demás visitas se ignoran en silencio)', async () => {
+test('contador de visitas: tope por IP en 10 minutos, el mismo que la ruta nueva (las demás visitas se ignoran en silencio)', async () => {
   const { app, db } = montar({ 'config/panel': { contadorVisitas: true } });
-  for (let i = 0; i < 130; i++) assert.equal((await request(app).post('/api/visita').send({ pagina: 'portada' })).status, 204);
+  for (let i = 0; i < 70; i++) assert.equal((await request(app).post('/api/visita').set('Origin', 'https://www.zoorigen.com').send({ pagina: 'portada' })).status, 204);
   const hoy = [...db._data.keys()].find(k => k.startsWith('visitasDiarias/'));
-  assert.equal(db.value(hoy).total, 120);
+  assert.equal(db.value(hoy).total, 60);
+});
+
+// ── Ruta vieja POST /api/visita: blindada mientras el sitio publicado todavía la llama (ver PENDIENTES-DESPUES-DE-PUBLICAR.md) ──
+const visitaLegado = (app, origen, cuerpo = { pagina: 'portada' }) => { const r = request(app).post('/api/visita'); if (origen) r.set('Origin', origen); return r.send(cuerpo); };
+const totalLegado = db => { const k = [...db._data.keys()].find(x => x.startsWith('visitasDiarias/')); return k ? db.value(k).total : 0; };
+
+test('ruta vieja /api/visita: cuenta desde el origen del sitio publicado (www.zoorigen.com), zoorigen.com y localhost de pruebas', async () => {
+  const origenes = ['https://www.zoorigen.com', 'https://zoorigen.com', 'http://localhost:8765', 'http://127.0.0.1:3000'];
+  const { app, db } = montar({ 'config/panel': { contadorVisitas: true } });
+  for (const o of origenes) assert.equal((await visitaLegado(app, o)).status, 204);
+  assert.equal(totalLegado(db), origenes.length);
+  // exactamente lo que manda el visitas.js publicado: texto plano con la página «portada» desde https://www.zoorigen.com
+  const publicado = await request(app).post('/api/visita').set('Origin', 'https://www.zoorigen.com').set('Content-Type', 'text/plain').send(JSON.stringify({ pagina: 'portada' }));
+  assert.equal(publicado.status, 204);
+  assert.equal(totalLegado(db), origenes.length + 1);
+});
+
+test('ruta vieja /api/visita: un origen ajeno o la falta de origen responden 204 pero NO cuentan', async () => {
+  const { app, db } = montar({ 'config/panel': { contadorVisitas: true } });
+  for (const o of ['https://otro-sitio.com', 'https://zoorigen.com.malo.example', 'http://zoorigen.com', 'https://www.zoorigen.com.evil.io', 'null', '']) {
+    assert.equal((await visitaLegado(app, o)).status, 204, 'origen: ' + o);
+  }
+  assert.equal((await visitaLegado(app, null)).status, 204, 'sin cabecera Origin');
+  assert.equal(totalLegado(db), 0);
+});
+
+test('ruta vieja /api/visita: ZOORIGEN_VISITA_LEGADO=off la apaga (204 sin contar) y al quitarlo vuelve a contar; el contador encendido de config sigue mandando', async () => {
+  const previo = process.env.ZOORIGEN_VISITA_LEGADO;
+  try {
+    const { app, db } = montar({ 'config/panel': { contadorVisitas: true } });
+    process.env.ZOORIGEN_VISITA_LEGADO = 'off';
+    assert.equal((await visitaLegado(app, 'https://www.zoorigen.com')).status, 204);
+    process.env.ZOORIGEN_VISITA_LEGADO = ' OFF ';
+    assert.equal((await visitaLegado(app, 'https://www.zoorigen.com')).status, 204);
+    assert.equal(totalLegado(db), 0);
+    delete process.env.ZOORIGEN_VISITA_LEGADO;
+    assert.equal((await visitaLegado(app, 'https://www.zoorigen.com')).status, 204);
+    assert.equal(totalLegado(db), 1);
+    const apagado = montar({});   // contador de config apagado: no cuenta aunque el origen sea bueno
+    assert.equal((await visitaLegado(apagado.app, 'https://www.zoorigen.com')).status, 204);
+    assert.equal(totalLegado(apagado.db), 0);
+  } finally { if (previo === undefined) delete process.env.ZOORIGEN_VISITA_LEGADO; else process.env.ZOORIGEN_VISITA_LEGADO = previo; }
+});
+
+test('ruta vieja /api/visita: topes iguales a los de la ruta nueva (60 por IP y 3000 globales cada 10 min), la ruta sigue existiendo y la constante de apagado está a la vista', () => {
+  const nueva = require('../services/rutas-metricas-visitas');
+  assert.equal(nueva.POR_IP, 60);
+  assert.equal(nueva.GLOBAL, 3000);
+  assert.equal(nueva.VENTANA_MS, 10 * 60 * 1000);
+  const codigo = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'services', 'rutas-admin-extra.js'), 'utf8');
+  assert.match(codigo, /const RUTA_VISITA_LEGADO_ACTIVA = true;/);
+  assert.match(codigo, /ZOORIGEN_VISITA_LEGADO/);
+  assert.match(codigo, /POR_IP: VISITAS_POR_IP, GLOBAL: VISITAS_GLOBAL/, 'usa los topes de la ruta nueva, no los suyos');
+  assert.match(codigo, /app\.post\('\/api\/visita'/, 'la ruta no se elimina');
 });
 
 test('metricas, pruebas, encuesta y configuración: sin sesión 401 y miembros 403', async () => {

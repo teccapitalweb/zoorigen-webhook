@@ -138,4 +138,4 @@ function montarRutasMetricasVisitas(app, deps, a = {}) {
   return { reiniciarConfig: () => { configCache = null; } };
 }
 
-module.exports = { montarRutasMetricasVisitas, ORIGEN_PERMITIDO };
+module.exports = { montarRutasMetricasVisitas, ORIGEN_PERMITIDO, VENTANA_MS, POR_IP, GLOBAL };
