@@ -34,6 +34,11 @@ const bitacoraMemoria = require('./services/bitacora-memoria');
 const { crearBitacoraServidor } = require('./services/bitacora-servidor');
 const libros = require('./services/libros');
 const materiales = require('./services/materiales');
+const googleMeet = require('./services/google-meet');
+const bunnyVideos = require('./services/bunny-videos');
+const webinarsSvc = require('./services/webinars');
+const { montarRutasWebinars } = require('./services/rutas-webinars');
+const { iniciarTareaWebinars } = require('./services/webinar-tareas');
 
 // Guarda en memoria los últimos console.error para el panel de administración (Estado del sistema).
 bitacoraMemoria.instalar();
@@ -62,6 +67,21 @@ const BUNNY_TOKEN_AUTH_KEY = (process.env.BUNNY_TOKEN_AUTH_KEY || '').trim().rep
 // que solo firma los reproductores. Si falta, el resto del servidor funciona igual.
 const BUNNY_API_KEY = (process.env.BUNNY_API_KEY || '').trim().replace(/^["']|["']$/g, '');
 const BUNNY_TOKEN_TTL_SECONDS = Math.min(900, Math.max(60, Number(process.env.BUNNY_TOKEN_TTL_SECONDS) || 300));
+// ── Clases en vivo: librería de Bunny SEPARADA de la de los cursos (se creó a mano en el panel de Bunny) ──
+const BUNNY_WEBINARS_LIBRARY_ID = (process.env.BUNNY_WEBINARS_LIBRARY_ID || '').trim();
+const BUNNY_WEBINARS_API_KEY = (process.env.BUNNY_WEBINARS_API_KEY || '').trim().replace(/^["']|["']$/g, '');
+const BUNNY_WEBINARS_TOKEN_AUTH_KEY = (process.env.BUNNY_WEBINARS_TOKEN_AUTH_KEY || '').trim().replace(/^["']|["']$/g, '');
+const BUNNY_WEBINARS_COLLECTION_ID = (process.env.BUNNY_WEBINARS_COLLECTION_ID || '').trim();
+// Cliente de Google Calendar/Drive de la cuenta dedicada a grabar. Sin las 3 variables arranca igual
+// (automatización de Meet/grabación apagada; el admin puede seguir pegando un enlace de Meet a mano).
+const googleMeetClient = googleMeet.crearCliente({
+  clientId: (process.env.GOOGLE_CLIENT_ID || '').trim(),
+  clientSecret: (process.env.GOOGLE_CLIENT_SECRET || '').trim(),
+  refreshToken: (process.env.GOOGLE_REFRESH_TOKEN || '').trim()
+});
+const bunnyWebinarsClient = bunnyVideos.crearServicio({
+  libraryId: BUNNY_WEBINARS_LIBRARY_ID, apiKey: BUNNY_WEBINARS_API_KEY, collectionId: BUNNY_WEBINARS_COLLECTION_ID
+});
 const BUNNY_VIDEO_IDS = new Set(
   bunnyCatalog.flatMap(course => (course.lecciones || []).map(lesson => String(lesson.videoId || ''))).filter(Boolean)
 );
@@ -234,6 +254,11 @@ function esAdminPorCorreo(decoded) {
 function esAdminPorDocumentos(adminDoc, miembroDoc, decoded) {
   return Boolean(adminDoc.exists || miembroDoc.data()?.role === 'admin' || esAdminPorCorreo(decoded));
 }
+
+// Superadministradores: un puñado fijo de correos (hoy teccapitalweb@gmail.com y bioterramexico1@gmail.com) que,
+// además de administrar, pueden ver las clases en vivo de PRUEBA y usar «Ver como usuario». Vive aparte de
+// ADMIN_EMAILS porque no todo administrador debe ver las pruebas (solo quien las programa y revisa).
+const SUPERADMIN_EMAILS = new Set(String(process.env.SUPERADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
 
 const SINCRONIZACION_ADMIN_MS = 5 * 60 * 1000;
 const adminsSincronizados = new Map(); // uid -> último momento en que se sincronizó por ADMIN_EMAILS
@@ -1228,6 +1253,16 @@ montarRutasCreditos(app, { db, admin, autenticarFirebase, errorHttp, club, catal
 // ── Cupones de créditos: la administración crea una clave y la comparte por el canal de WhatsApp; la persona la canjea (services/rutas-cupones.js) ──
 // creditosCupones y creditosCuponCanjes solo las escribe este servidor. La tarjeta de aviso nunca recibe la clave.
 montarRutasCupones(app, { db, admin, auth, autenticarFirebase, errorHttp, club, analizadorJson: express.json({ limit: '2kb' }) });
+// ── Clases en vivo: Meet automático, avisos y grabación Drive→Bunny (services/rutas-webinars.js) ──
+// sesiones/sesionesPrueba son públicas (sin meetUrl ni bunnyVideoId); sesionesPrivadas/sesionesPruebaPrivadas solo las lee el servidor.
+const webinarsServicio = webinarsSvc.crearServicio({
+  db, admin, auth, google: googleMeetClient, bunny: bunnyWebinarsClient, superadminEmails: [...SUPERADMIN_EMAILS]
+});
+montarRutasWebinars(app, {
+  db, admin, autenticarFirebase, errorHttp, club, esAdminPorDocumentos, tienePlanVigente, webinars: webinarsServicio,
+  bunny: bunnyWebinarsClient, bunnyLibraryId: BUNNY_WEBINARS_LIBRARY_ID, bunnyTokenAuthKey: BUNNY_WEBINARS_TOKEN_AUTH_KEY,
+  analizadorJson: express.json({ limit: '2kb' })
+});
 // ── Reseñas de cursos: la persona califica de 1 a 5 estrellas un curso que ya terminó (services/rutas-resenas.js) ──
 // La colección resenas solo la escribe este servidor y solo la lee la administración.
 montarRutasResenas(app, { db, autenticarFirebase, errorHttp, analizadorJson: express.json({ limit: '4kb' }) });
@@ -1265,6 +1300,7 @@ montarRutasNoticias(app, {
 // Todas las rutas /api/admin/* de este archivo exigen administrador verificado en el servidor (ADMIN_EMAILS o marca en Firestore).
 montarRutasAdmin(app, {
   historial: historialAdmin, express, db, admin, auth, autenticarAdmin, errorHttp, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador, bitacoraServidor, recordatorios: recordatoriosPago, pagos: pagosSvc,
+  webinars: webinarsServicio,
   precios: { stripe, STRIPE_PRICES },
   // Ensayo e importación del avance anterior de los miembros (GET/POST /api/admin/progreso-legado): las mismas reglas que la
   // importación automática (services/rutas-certificados.js)
@@ -1298,6 +1334,11 @@ if (require.main === module) {
       console.log('📧 Recordatorios de pago: revisión cada 20 minutos (envía solo si el panel los activó)');
     }
     const tarea = iniciarProgramador(db);
+    // Clases en vivo: busca grabaciones nuevas cada 3 min y manda avisos cada 1 min. Se apaga con WEBINARS_TAREA=off.
+    const tareaWebinars = iniciarTareaWebinars(db, { webinars: webinarsServicio });
+    console.log(tareaWebinars.activo
+      ? `🎬 Clases en vivo: automatización activa · Google ${googleMeetClient.configurado() ? 'configurado' : 'SIN configurar'} · Bunny ${bunnyWebinarsClient.configurado() ? 'configurado' : 'SIN configurar'}`
+      : '🎬 Clases en vivo: automatización apagada (WEBINARS_TAREA=off)');
     // Migración única de los materiales conservados: en segundo plano, unos segundos después de arrancar; si falla se reintenta en el siguiente arranque
     conservacionMateriales.iniciar();
     conservacionLibros.iniciar({ retrasoMs: 20 * 1000 });   // la de libros arranca después y es independiente (bandera propia)
@@ -1310,6 +1351,10 @@ module.exports = app;
 app.bitacoraServidor = bitacoraServidor;
 // Para pruebas y para el demo: el servicio de recordatorios de pago.
 app.recordatoriosPago = recordatoriosPago;
+// Para pruebas: el servicio de clases en vivo (webinars) y sus clientes de Google/Bunny.
+app.webinars = webinarsServicio;
+app.googleMeetClient = googleMeetClient;
+app.bunnyWebinarsClient = bunnyWebinarsClient;
 // Para pruebas: acceso al índice de videos y sus constantes (no altera el export de `app`).
 app.videosFirestore = {
   obtenerIndiceVideos,

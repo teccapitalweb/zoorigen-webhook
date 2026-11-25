@@ -94,6 +94,11 @@ function cargarServidor({ seed = {}, tokens = {}, suscripciones = [], env = {}, 
         if (!u) throw Object.assign(new Error('There is no user record'), { code: 'auth/user-not-found' });
         return u;
       },
+      getUserByEmail: async email => {
+        const uid = Object.keys(usuariosAuth).find(k => (usuariosAuth[k] || {}).email && usuariosAuth[k].email.toLowerCase() === String(email).toLowerCase());
+        if (!uid) throw Object.assign(new Error('There is no user record'), { code: 'auth/user-not-found' });
+        return usuarioAuth(uid);
+      },
       updateUser: async (uid, cambios) => { registroAuth.actualizaciones.push({ uid, cambios }); return { uid }; },
       deleteUser: async uid => {
         if (!usuariosAuth[uid]) throw Object.assign(new Error('There is no user record'), { code: 'auth/user-not-found' });
