@@ -174,6 +174,8 @@ function crearServicio({ db, admin, auth, google, bunny, superadminEmails = [] }
       db.collection('sesionesPrueba').orderBy('inicioISO', 'desc').limit(100).get()
     ]);
     const filas = [...reales.docs.map(d => vistaPublica(d, { esPrueba: false })), ...pruebas.docs.map(d => vistaPublica(d, { esPrueba: true }))];
+    if (!filas.length) return [];
+    // Firestore.getAll() exige al menos un documento; sin clases todavía, filas está vacío.
     const autos = await db.getAll(...filas.map(f => db.collection('webinarsAuto').doc(f.id)));
     return filas.map((f, i) => ({ ...f, automatizacion: (autos[i].exists && autos[i].data().paso) || 'programada' }));
   }

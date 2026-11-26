@@ -48,6 +48,13 @@ const inscribirme = (app, id, t = 'token-ana') => request(app).post(`/api/webina
 const futuraISO = (minutos = 60 * 24) => new Date(Date.now() + minutos * 60000).toISOString();
 const datosBase = (extra = {}) => ({ titulo: 'Fauna ponzoñosa 101', instructor: 'Dra. López', duracionMin: 60, inicioISO: futuraISO(), crearMeet: false, meetManual: 'https://meet.google.com/abc-defg-hij', ...extra });
 
+test('listar admin sin ninguna clase todavía: responde 200 con lista vacía (regresión: Firestore.getAll() no acepta cero documentos)', async () => {
+  const { app } = servidor();
+  const r = await listarAdmin(app);
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.sesiones, []);
+});
+
 test('sin sesión 401; quien no es administrador no programa clases (403)', async () => {
   const { app } = servidor();
   assert.equal((await request(app).get('/api/admin/webinars')).status, 401);

@@ -197,7 +197,12 @@ class FakeFirestore {
     throw new Error('Transacción abortada por contención');
   }
   collection(name) { return new FakeCollectionReference(this, name); }
-  async getAll(...refs) { return Promise.all(refs.map(ref => ref.get())); }
+  // Igual que el SDK real: exige al menos un documento (una llamada con un array vacío desparramado,
+  // p. ej. `db.getAll(...[])`, es un bug del que llama, no algo que la fake deba disimular).
+  async getAll(...refs) {
+    if (!refs.length) throw new Error('Function "Firestore.getAll()" requires at least 1 argument.');
+    return Promise.all(refs.map(ref => ref.get()));
+  }
   batch() {
     const operaciones = [];
     const lote = {
