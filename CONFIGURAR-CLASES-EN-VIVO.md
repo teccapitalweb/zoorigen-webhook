@@ -4,19 +4,28 @@ El código ya está en la rama `feature/clases-en-vivo` de los dos repos (`ZOORI
 (1488 pruebas en el backend, 1882 en el frontend) y sin publicar. Antes de desplegarlo necesitas hacer estos
 pasos — ninguno los puedo hacer yo (son cuentas, paneles externos y secretos que no debo ver).
 
-## 1. Google Cloud (cuenta `bioterramexico1@gmail.com`)
+## 1. Google Cloud — YA HECHO ✅ (25 nov 2026)
 
-1. Entra a [console.cloud.google.com](https://console.cloud.google.com) **con esa cuenta**.
-2. Crea un proyecto nuevo (ej. "Zoorigen Clases en Vivo"). No actives la prueba gratuita de pago.
-3. **APIs y servicios → Biblioteca**: activa **Google Calendar API** y **Google Drive API**.
-4. **APIs y servicios → Pantalla de consentimiento OAuth**:
-   - Tipo: **Externo**.
-   - Llena nombre de la app, correo de soporte, etc.
-   - En **Publicar la app**, pásala a **"En producción"** (así el permiso no caduca a los 7 días).
-5. **APIs y servicios → Credenciales → Crear credenciales → ID de cliente de OAuth**:
-   - Tipo de aplicación: **Aplicación de escritorio**.
-   - Guarda el **ID de cliente** y el **secreto de cliente** (los vas a pegar en Railway, paso 3).
-6. En tu computadora, en la carpeta `zoorigen-webhook`, instala dependencias si no lo has hecho (`npm install`) y corre:
+`bioterramexico1@gmail.com` había llegado al límite de proyectos de Google Cloud de su cuenta, así que en vez
+de crear uno nuevo reusamos **`club-zoorigen`** (el mismo proyecto de Firebase que ya usa el sitio), que es
+propiedad de `teccapitalweb@gmail.com`. Esto no afecta nada: el proyecto que guarda las credenciales OAuth no
+tiene que ser el mismo que la cuenta que autoriza el acceso a su Calendar/Drive.
+
+Lo que ya se hizo ahí, por si hay que repetirlo algún día:
+1. Con `teccapitalweb@gmail.com`: **APIs y servicios → Biblioteca** → se habilitaron **Google Calendar API** y
+   **Google Drive API** en `club-zoorigen`.
+2. **Google Auth Platform → Público**: ya estaba "En producción" / Usuarios externos (no hubo que tocarlo; lo
+   usa el login con Google del sitio).
+3. **Acceso a los datos**: se agregaron los permisos `calendar.events` y `drive.readonly` (Google avisa que
+   `drive.readonly` es "restringido" y pide verificación — no hace falta verificar: solo lo autoriza 1 cuenta,
+   muy por debajo del límite de 100 usuarios sin verificar).
+4. **Clientes → Crear cliente → App de escritorio** ("Zoorigen - Clases en vivo (grabación)") → de ahí salieron
+   el **ID de cliente** y el **secreto de cliente** (ya pegados en Railway, paso 3).
+5. Con la cuenta `bioterramexico1@gmail.com`, se corrió el script de abajo y se autorizó Calendar+Drive → el
+   **GOOGLE_REFRESH_TOKEN** ya está pegado en Railway también.
+
+Cómo se obtuvo el refresh token (ya hecho, queda documentado para la próxima vez que haga falta, por ejemplo si
+se revoca el permiso): en la carpeta `zoorigen-webhook`, con `npm install` ya corrido:
 
    ```bash
    GOOGLE_CLIENT_ID=tu-id GOOGLE_CLIENT_SECRET=tu-secreto node scripts/google-token.js
@@ -26,30 +35,24 @@ pasos — ninguno los puedo hacer yo (son cuentas, paneles externos y secretos q
    los permisos de Calendar y Drive). Al final te da un **GOOGLE_REFRESH_TOKEN**. Cópialo — no lo compartas por
    chat ni lo subas al repo.
 
-## 2. Bunny Stream (librería de clases en vivo)
+## 2. Bunny Stream — YA HECHO ✅ (26 nov 2026)
 
-Ya creaste la librería y la colección "clases en vivo" a mano. Necesitas, del panel de Bunny:
-
-- **Library ID** de esa librería (no la de los cursos, `731751`) → `BUNNY_WEBINARS_LIBRARY_ID`
-- **API Key de gestión** de esa librería (Library → API) → `BUNNY_WEBINARS_API_KEY`
-- **Token Authentication Key** de esa librería (Library → Security → Token Authentication) → `BUNNY_WEBINARS_TOKEN_AUTH_KEY`
-- **Id de la colección** "clases en vivo" dentro de esa librería → `BUNNY_WEBINARS_COLLECTION_ID`
+La colección "clases en vivo" vive **dentro de la misma librería de los cursos** (731751, "ZOORIGEN"), no en
+una librería aparte — así que las clases en vivo reusan `BUNNY_STREAM_LIBRARY_ID`, `BUNNY_API_KEY` y
+`BUNNY_TOKEN_AUTH_KEY`, que ya están en Railway. El único dato nuevo, el id de esa colección, ya se obtuvo
+(Stream → Manage library → Collections → ⋯ en la tarjeta "clases en vivo" → Copy ID) y falta pegarlo como
+`BUNNY_WEBINARS_COLLECTION_ID` (ver tu propio apunte de hoy — no se repite aquí por ser un identificador que
+conviene tratar como dato semi-sensible).
 
 ## 3. Variables en Railway (servicio `zoorigen-webhook`)
 
-En **Variables**, agrega (o confirma) estas — recuerda que ya agregaste `ADMIN_EMAILS` con
-`bioterramexico1@gmail.com` hace unos días; esto es aparte:
+Estado al 26 de noviembre, según lo visto en el panel de Railway:
 
-```
-GOOGLE_CLIENT_ID=<del paso 1.5>
-GOOGLE_CLIENT_SECRET=<del paso 1.5>
-GOOGLE_REFRESH_TOKEN=<del paso 1.6>
-SUPERADMIN_EMAILS=teccapitalweb@gmail.com,bioterramexico1@gmail.com
-BUNNY_WEBINARS_LIBRARY_ID=<del paso 2>
-BUNNY_WEBINARS_API_KEY=<del paso 2>
-BUNNY_WEBINARS_TOKEN_AUTH_KEY=<del paso 2>
-BUNNY_WEBINARS_COLLECTION_ID=<del paso 2>
-```
+- ✅ `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` — ya pegadas
+- ⏳ `BUNNY_WEBINARS_COLLECTION_ID` — falta pegar (valor del paso 2 de arriba)
+- ⏳ `SUPERADMIN_EMAILS=teccapitalweb@gmail.com,bioterramexico1@gmail.com` — falta pegar
+
+(`BUNNY_STREAM_LIBRARY_ID`, `BUNNY_API_KEY` y `BUNNY_TOKEN_AUTH_KEY` ya existían de antes; no hay que tocarlos.)
 
 Opcional (ya tienen un valor por omisión razonable, no hace falta tocarlos):
 `WEBINARS_TAREA=off` (si alguna vez quieres apagar la automatización sin quitar el código).

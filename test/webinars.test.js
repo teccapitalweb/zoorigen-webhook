@@ -25,7 +25,7 @@ function servidor(seed = {}, env = {}) {
     return cargarServidor({
       tokens,
       usuariosAuth: USUARIOS_AUTH,
-      env: { SUPERADMIN_EMAILS: 'super@example.com', BUNNY_WEBINARS_LIBRARY_ID: '999', BUNNY_WEBINARS_API_KEY: 'clave-gestion', BUNNY_WEBINARS_TOKEN_AUTH_KEY: 'clave-token', ...env },
+      env: { SUPERADMIN_EMAILS: 'super@example.com', BUNNY_STREAM_LIBRARY_ID: '999', BUNNY_API_KEY: 'clave-gestion', BUNNY_TOKEN_AUTH_KEY: 'clave-token', BUNNY_WEBINARS_COLLECTION_ID: 'col-clases-en-vivo', ...env },
       seed: {
         'miembros/ana': miembroSinPlan({ name: 'Ana', email: 'ana@example.com' }),
         'miembros/admin': miembroSinPlan({ role: 'admin', name: 'Admin', email: 'admin@example.com' }),
@@ -184,7 +184,8 @@ test('video manual + token de Bunny: solo con membresía (o admin), y solo si ya
   await videoManual(app2, r2.body.sesion.id, { bunnyVideoId: 'vid-456' });
   const conMembresia = await embedToken(app2, { sesionId: r2.body.sesion.id });
   assert.equal(conMembresia.status, 200);
-  assert.match(conMembresia.body.embedUrl, /^https:\/\/iframe\.mediadelivery\.net\/embed\/999\/vid-456\?token=/);
+  // Misma librería que los cursos (731751, el valor por omisión cuando no se define BUNNY_STREAM_LIBRARY_ID).
+  assert.match(conMembresia.body.embedUrl, /^https:\/\/iframe\.mediadelivery\.net\/embed\/731751\/vid-456\?token=/);
 });
 
 test('inscribirme: queda marcada en el siguiente listado', async () => {

@@ -67,10 +67,8 @@ const BUNNY_TOKEN_AUTH_KEY = (process.env.BUNNY_TOKEN_AUTH_KEY || '').trim().rep
 // que solo firma los reproductores. Si falta, el resto del servidor funciona igual.
 const BUNNY_API_KEY = (process.env.BUNNY_API_KEY || '').trim().replace(/^["']|["']$/g, '');
 const BUNNY_TOKEN_TTL_SECONDS = Math.min(900, Math.max(60, Number(process.env.BUNNY_TOKEN_TTL_SECONDS) || 300));
-// ── Clases en vivo: librería de Bunny SEPARADA de la de los cursos (se creó a mano en el panel de Bunny) ──
-const BUNNY_WEBINARS_LIBRARY_ID = (process.env.BUNNY_WEBINARS_LIBRARY_ID || '').trim();
-const BUNNY_WEBINARS_API_KEY = (process.env.BUNNY_WEBINARS_API_KEY || '').trim().replace(/^["']|["']$/g, '');
-const BUNNY_WEBINARS_TOKEN_AUTH_KEY = (process.env.BUNNY_WEBINARS_TOKEN_AUTH_KEY || '').trim().replace(/^["']|["']$/g, '');
+// ── Clases en vivo: usa la MISMA librería de Bunny que los cursos (731751) y las mismas llaves;
+// solo cambia la colección dentro de esa librería, creada a mano en el panel de Bunny. ──
 const BUNNY_WEBINARS_COLLECTION_ID = (process.env.BUNNY_WEBINARS_COLLECTION_ID || '').trim();
 // Cliente de Google Calendar/Drive de la cuenta dedicada a grabar. Sin las 3 variables arranca igual
 // (automatización de Meet/grabación apagada; el admin puede seguir pegando un enlace de Meet a mano).
@@ -80,7 +78,7 @@ const googleMeetClient = googleMeet.crearCliente({
   refreshToken: (process.env.GOOGLE_REFRESH_TOKEN || '').trim()
 });
 const bunnyWebinarsClient = bunnyVideos.crearServicio({
-  libraryId: BUNNY_WEBINARS_LIBRARY_ID, apiKey: BUNNY_WEBINARS_API_KEY, collectionId: BUNNY_WEBINARS_COLLECTION_ID
+  libraryId: BUNNY_STREAM_LIBRARY_ID, apiKey: BUNNY_API_KEY, collectionId: BUNNY_WEBINARS_COLLECTION_ID
 });
 const BUNNY_VIDEO_IDS = new Set(
   bunnyCatalog.flatMap(course => (course.lecciones || []).map(lesson => String(lesson.videoId || ''))).filter(Boolean)
@@ -1260,7 +1258,7 @@ const webinarsServicio = webinarsSvc.crearServicio({
 });
 montarRutasWebinars(app, {
   db, admin, autenticarFirebase, errorHttp, club, esAdminPorDocumentos, tienePlanVigente, webinars: webinarsServicio,
-  bunny: bunnyWebinarsClient, bunnyLibraryId: BUNNY_WEBINARS_LIBRARY_ID, bunnyTokenAuthKey: BUNNY_WEBINARS_TOKEN_AUTH_KEY,
+  bunny: bunnyWebinarsClient, bunnyLibraryId: BUNNY_STREAM_LIBRARY_ID, bunnyTokenAuthKey: BUNNY_TOKEN_AUTH_KEY,
   analizadorJson: express.json({ limit: '2kb' })
 });
 // ── Reseñas de cursos: la persona califica de 1 a 5 estrellas un curso que ya terminó (services/rutas-resenas.js) ──
