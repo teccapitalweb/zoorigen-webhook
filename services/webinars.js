@@ -176,8 +176,23 @@ function crearServicio({ db, admin, auth, google, bunny, superadminEmails = [] }
     const filas = [...reales.docs.map(d => vistaPublica(d, { esPrueba: false })), ...pruebas.docs.map(d => vistaPublica(d, { esPrueba: true }))];
     if (!filas.length) return [];
     // Firestore.getAll() exige al menos un documento; sin clases todavía, filas está vacío.
-    const autos = await db.getAll(...filas.map(f => db.collection('webinarsAuto').doc(f.id)));
-    return filas.map((f, i) => ({ ...f, automatizacion: (autos[i].exists && autos[i].data().paso) || 'programada' }));
+    const [autos, privados] = await Promise.all([
+      db.getAll(...filas.map(f => db.collection('webinarsAuto').doc(f.id))),
+      db.getAll(...filas.map(f => db.collection(colPrivada(f.esPrueba)).doc(f.id)))
+    ]);
+    return filas.map((f, i) => {
+      const auto = autos[i].exists ? autos[i].data() : {};
+      const priv = privados[i].exists ? privados[i].data() : {};
+      return {
+        ...f,
+        automatizacion: auto.paso || 'programada',
+        automatizacionMensaje: auto.mensaje || '',
+        // Solo las clases con Meet automático (calendarEventId) buscan su grabación solas; una con enlace
+        // manual nunca tendrá qué rastrear en Drive.
+        meetAutomatico: Boolean(priv.calendarEventId),
+        videoManual: priv.videoManual === true
+      };
+    });
   }
 
   // El enlace de Meet solo se entrega dentro de la ventana de la clase (y nunca a quien no debe verla).
