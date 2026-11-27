@@ -37,6 +37,7 @@ const { montarRutasAdminCreditos } = require('./rutas-creditos');
 const { montarRutasAdminResenas } = require('./rutas-resenas');
 const { montarRutasAdminCupones } = require('./rutas-cupones');
 const { montarRutasAdminWebinars } = require('./rutas-webinars');
+const { montarRutasAdminSoporte } = require('./rutas-soporte');
 const { montarRutasAdminPagos } = require('./rutas-pagos');
 const { montarRutasAdminRecordatorios } = require('./rutas-recordatorios');
 const { montarRutasAdminHistorial } = require('./rutas-admin-historial');
@@ -727,6 +728,7 @@ function montarRutasAdmin(app, deps) {
   montarRutasAdminResenas(app, deps, { conAdmin });
   montarRutasAdminCupones(app, deps, { conAdmin, anotarAccion, analizadorJson });
   if (deps.webinars) montarRutasAdminWebinars(app, deps, { conAdmin, anotarAccion, analizadorJson });
+  if (deps.soporte) montarRutasAdminSoporte(app, deps, { conAdmin, anotarAccion, analizadorJson });
   if (deps.pagos) montarRutasAdminPagos(app, deps, { conAdmin, anotarAccion, analizadorJson });
   if (deps.recordatorios) montarRutasAdminRecordatorios(app, deps, { conAdmin, anotarAccion, analizadorJson });
 

@@ -8,7 +8,7 @@
 
 const { texto, enlaceInterno, aIso, idSeguro } = require('./texto');
 
-const TIPOS_PERSONALES = Object.freeze(['certificado', 'logro', 'premio', 'libro', 'xp', 'bienvenida', 'curso']);
+const TIPOS_PERSONALES = Object.freeze(['certificado', 'logro', 'premio', 'libro', 'xp', 'bienvenida', 'curso', 'soporte']);
 const TIPOS_GLOBALES = Object.freeze(['noticia', 'dato', 'sistema', 'clase', 'curso', 'general']);
 const LIMITES = Object.freeze({ titulo: 120, texto: 240, descripcion: 320, enlace: 40 });
 const MAX_PERSONALES = 30;
@@ -24,6 +24,7 @@ const PRESETS = Object.freeze({
   libro: { icono: '📖', color: '#8B7FBA' },
   xp: { icono: '⭐', color: '#D4A017' },
   bienvenida: { icono: '👋', color: '#2AA4D5' },
+  soporte: { icono: '🎧', color: '#2AA4D5' },
   noticia: { icono: '📰', color: '#2AA4D5' },
   dato: { icono: '💡', color: '#E8A317' },
   sistema: { icono: '⚙️', color: '#6B7280' },

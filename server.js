@@ -39,6 +39,8 @@ const bunnyVideos = require('./services/bunny-videos');
 const webinarsSvc = require('./services/webinars');
 const { montarRutasWebinars } = require('./services/rutas-webinars');
 const { iniciarTareaWebinars } = require('./services/webinar-tareas');
+const soporteSvc = require('./services/soporte');
+const { montarRutasSoporte } = require('./services/rutas-soporte');
 
 // Guarda en memoria los últimos console.error para el panel de administración (Estado del sistema).
 bitacoraMemoria.instalar();
@@ -1264,6 +1266,10 @@ montarRutasWebinars(app, {
   bunny: bunnyWebinarsClient, bunnyLibraryId: BUNNY_STREAM_LIBRARY_ID, bunnyTokenAuthKey: BUNNY_TOKEN_AUTH_KEY,
   analizadorJson: express.json({ limit: '2kb' })
 });
+// ── Soporte privado: buzón 1-a-1 entre un miembro y la administración (services/rutas-soporte.js) ──
+// soporteTickets/{id} y su subcolección mensajes solo las escribe este servidor.
+const soporteServicio = soporteSvc.crearServicio({ db, admin, auth, adminEmails: [...correosAdministrador()] });
+montarRutasSoporte(app, { db, autenticarFirebase, errorHttp, soporte: soporteServicio, analizadorJson: express.json({ limit: '4kb' }) });
 // ── Reseñas de cursos: la persona califica de 1 a 5 estrellas un curso que ya terminó (services/rutas-resenas.js) ──
 // La colección resenas solo la escribe este servidor y solo la lee la administración.
 montarRutasResenas(app, { db, autenticarFirebase, errorHttp, analizadorJson: express.json({ limit: '4kb' }) });
@@ -1302,6 +1308,7 @@ montarRutasNoticias(app, {
 montarRutasAdmin(app, {
   historial: historialAdmin, express, db, admin, auth, autenticarAdmin, errorHttp, tieneAccesoVigente, esAdminPorCorreo, correosAdministrador, bitacoraServidor, recordatorios: recordatoriosPago, pagos: pagosSvc,
   webinars: webinarsServicio,
+  soporte: soporteServicio,
   precios: { stripe, STRIPE_PRICES },
   // Ensayo e importación del avance anterior de los miembros (GET/POST /api/admin/progreso-legado): las mismas reglas que la
   // importación automática (services/rutas-certificados.js)
