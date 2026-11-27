@@ -195,6 +195,24 @@ test('video manual + token de Bunny: solo con membresía (o admin), y solo si ya
   assert.match(conMembresia.body.embedUrl, /^https:\/\/iframe\.mediadelivery\.net\/embed\/731751\/vid-456\?token=/);
 });
 
+test('miniatura (thumbnailUrl): solo con grabación y con BUNNY_CDN_HOSTNAME configurado', async () => {
+  const { app } = servidor({ 'miembros/ana': miembroConPlan({ name: 'Ana', email: 'ana@example.com' }) }, { BUNNY_CDN_HOSTNAME: 'vz-cdn-prueba.b-cdn.net' });
+  const r = await crear(app, datosBase());
+  const sinGrabacion = await listar(app);
+  assert.equal(sinGrabacion.body.sesiones[0].thumbnailUrl, null);
+
+  await videoManual(app, r.body.sesion.id, { bunnyVideoId: 'vid-789' });
+  const conGrabacion = await listar(app);
+  assert.equal(conGrabacion.body.sesiones[0].thumbnailUrl, 'https://vz-cdn-prueba.b-cdn.net/vid-789/thumbnail.jpg');
+
+  // Sin BUNNY_CDN_HOSTNAME (valor por omisión en las pruebas), nunca hay miniatura aunque sí haya grabación.
+  const { app: app2 } = servidor({ 'miembros/ana': miembroConPlan({ name: 'Ana', email: 'ana@example.com' }) });
+  const r2 = await crear(app2, datosBase());
+  await videoManual(app2, r2.body.sesion.id, { bunnyVideoId: 'vid-000' });
+  const sinCdn = await listar(app2);
+  assert.equal(sinCdn.body.sesiones[0].thumbnailUrl, null);
+});
+
 test('inscribirme: queda marcada en el siguiente listado', async () => {
   const { app } = servidor({ 'miembros/ana': miembroConPlan({ name: 'Ana', email: 'ana@example.com' }) });
   const r = await crear(app, datosBase());

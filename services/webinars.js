@@ -63,7 +63,16 @@ function vistaPublica(doc, { esPrueba = false } = {}) {
   };
 }
 
-function crearServicio({ db, admin, auth, google, bunny, superadminEmails = [] }) {
+function crearServicio({ db, admin, auth, google, bunny, superadminEmails = [], bunnyCdnHostname = '' }) {
+  // Las miniaturas de Bunny Stream son públicas por diseño (una sola imagen de portada, no el video
+  // completo) y no necesitan token firmado: https://{cdn de la librería}/{videoId}/thumbnail.jpg
+  function urlMiniatura(bunnyVideoId) {
+    return bunnyVideoId && bunnyCdnHostname ? `https://${bunnyCdnHostname}/${bunnyVideoId}/thumbnail.jpg` : null;
+  }
+  async function datosPrivados(filas) {
+    if (!filas.length) return [];
+    return db.getAll(...filas.map(f => db.collection(colPrivada(f.esPrueba)).doc(f.id)));
+  }
   const FieldValue = () => admin.firestore.FieldValue;
   const superadmins = new Set((superadminEmails || []).map(e => String(e).trim().toLowerCase()).filter(Boolean));
   const uidsSuperadminCache = { en: 0, uids: [] };
@@ -160,11 +169,14 @@ function crearServicio({ db, admin, auth, google, bunny, superadminEmails = [] }
 
   async function listarPublico({ esSuperadmin = false } = {}) {
     const snap = await db.collection('sesiones').orderBy('inicioISO', 'asc').limit(200).get();
-    const reales = snap.docs.map(d => vistaPublica(d, { esPrueba: false }));
-    if (!esSuperadmin) return reales;
-    const snapPrueba = await db.collection('sesionesPrueba').orderBy('inicioISO', 'asc').limit(50).get();
-    const pruebas = snapPrueba.docs.map(d => vistaPublica(d, { esPrueba: true }));
-    return [...reales, ...pruebas].sort((a, b) => (a.inicioISO < b.inicioISO ? -1 : 1));
+    let filas = snap.docs.map(d => vistaPublica(d, { esPrueba: false }));
+    if (esSuperadmin) {
+      const snapPrueba = await db.collection('sesionesPrueba').orderBy('inicioISO', 'asc').limit(50).get();
+      filas = [...filas, ...snapPrueba.docs.map(d => vistaPublica(d, { esPrueba: true }))].sort((a, b) => (a.inicioISO < b.inicioISO ? -1 : 1));
+    }
+    if (!filas.length) return filas;
+    const privados = await datosPrivados(filas);
+    return filas.map((f, i) => ({ ...f, thumbnailUrl: f.tieneGrabacion ? urlMiniatura(privados[i].exists ? privados[i].data().bunnyVideoId : null) : null }));
   }
 
   // Para el panel admin: todas las reales + todas las de prueba, con su estado de automatización.
@@ -178,7 +190,7 @@ function crearServicio({ db, admin, auth, google, bunny, superadminEmails = [] }
     // Firestore.getAll() exige al menos un documento; sin clases todavía, filas está vacío.
     const [autos, privados] = await Promise.all([
       db.getAll(...filas.map(f => db.collection('webinarsAuto').doc(f.id))),
-      db.getAll(...filas.map(f => db.collection(colPrivada(f.esPrueba)).doc(f.id)))
+      datosPrivados(filas)
     ]);
     return filas.map((f, i) => {
       const auto = autos[i].exists ? autos[i].data() : {};
@@ -190,7 +202,8 @@ function crearServicio({ db, admin, auth, google, bunny, superadminEmails = [] }
         // Solo las clases con Meet automático (calendarEventId) buscan su grabación solas; una con enlace
         // manual nunca tendrá qué rastrear en Drive.
         meetAutomatico: Boolean(priv.calendarEventId),
-        videoManual: priv.videoManual === true
+        videoManual: priv.videoManual === true,
+        thumbnailUrl: f.tieneGrabacion ? urlMiniatura(priv.bunnyVideoId) : null
       };
     });
   }

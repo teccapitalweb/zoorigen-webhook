@@ -1254,7 +1254,10 @@ montarRutasCupones(app, { db, admin, auth, autenticarFirebase, errorHttp, club, 
 // ── Clases en vivo: Meet automático, avisos y grabación Drive→Bunny (services/rutas-webinars.js) ──
 // sesiones/sesionesPrueba son públicas (sin meetUrl ni bunnyVideoId); sesionesPrivadas/sesionesPruebaPrivadas solo las lee el servidor.
 const webinarsServicio = webinarsSvc.crearServicio({
-  db, admin, auth, google: googleMeetClient, bunny: bunnyWebinarsClient, superadminEmails: [...SUPERADMIN_EMAILS]
+  db, admin, auth, google: googleMeetClient, bunny: bunnyWebinarsClient, superadminEmails: [...SUPERADMIN_EMAILS],
+  // Hostname de la zona CDN de la librería de Bunny (Library → API → "CDN hostname"): sirve para armar la
+  // miniatura pública de cada grabación (.../{videoId}/thumbnail.jpg), sin necesitar token firmado.
+  bunnyCdnHostname: (process.env.BUNNY_CDN_HOSTNAME || '').trim()
 });
 montarRutasWebinars(app, {
   db, admin, autenticarFirebase, errorHttp, club, esAdminPorDocumentos, tienePlanVigente, webinars: webinarsServicio,
